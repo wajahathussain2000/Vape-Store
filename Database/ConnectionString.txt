@@ -1,0 +1,16 @@
+Connection String for Vape Store Application:
+
+Server: DESKTOP-KPKLR5V\SQLEXPRESS
+Database: VapeStore
+Integrated Security: true
+
+Full Connection String:
+"Server=DESKTOP-KPKLR5V\\SQLEXPRESS;Database=VapeStore;Integrated Security=true;TrustServerCertificate=true;"
+
+Alternative Connection String (if Integrated Security doesn't work):
+"Server=DESKTOP-KPKLR5V\\SQLEXPRESS;Database=VapeStore;User Id=your_username;Password=your_password;TrustServerCertificate=true;"
+
+To use in your App.config file:
+<connectionStrings>
+    <add name="dbs" connectionString="Server=DESKTOP-KPKLR5V\\SQLEXPRESS;Database=VapeStore;Integrated Security=true;TrustServerCertificate=true;" providerName="System.Data.SqlClient" />
+</connectionStrings>
