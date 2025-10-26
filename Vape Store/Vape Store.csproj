@@ -282,6 +282,8 @@
     <Compile Include="Services\SalesReturnService.cs" />
     <Compile Include="Services\BarcodeService.cs" />
     <Compile Include="Services\DatabaseBackupService.cs" />
+    <Compile Include="Services\ConfigurationService.cs" />
+    <Compile Include="Services\LoggingService.cs" />
     <Compile Include="DatabaseBackupForm.cs">
       <SubType>Form</SubType>
     </Compile>

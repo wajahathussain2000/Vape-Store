@@ -6,42 +6,123 @@ using System.Windows.Forms;
 
 namespace Vape_Store
 {
+    /// <summary>
+    /// Main entry point for the Vape Store POS System
+    /// Handles application startup, global exception handling, and initialization
+    /// </summary>
     internal static class Program
     {
+        #region Application Entry Point
+
         /// <summary>
         /// The main entry point for the application.
+        /// Initializes the Windows Forms application and sets up global exception handling.
         /// </summary>
         [STAThread]
         static void Main()
         {
             try
             {
-                // Set up global exception handling
-                Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-                Application.ThreadException += Application_ThreadException;
-                AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+                // Configure global exception handling
+                SetupGlobalExceptionHandling();
 
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
+                // Initialize Windows Forms application
+                InitializeApplication();
+
+                // Start the main application form
                 Application.Run(new Form1());
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Critical error starting the application: {ex.Message}", 
-                    "Critical Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowCriticalError($"Critical error starting the application: {ex.Message}", ex);
             }
         }
 
-        private static void Application_ThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)
+        #endregion
+
+        #region Application Initialization
+
+        /// <summary>
+        /// Sets up global exception handling for the application
+        /// </summary>
+        private static void SetupGlobalExceptionHandling()
         {
-            MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}", 
-                "Unexpected Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += Application_ThreadException;
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         }
 
+        /// <summary>
+        /// Initializes the Windows Forms application with proper settings
+        /// </summary>
+        private static void InitializeApplication()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+        }
+
+        #endregion
+
+        #region Exception Handling
+
+        /// <summary>
+        /// Handles unhandled exceptions from the main UI thread
+        /// </summary>
+        /// <param name="sender">The source of the event</param>
+        /// <param name="e">Event arguments containing exception details</param>
+        private static void Application_ThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)
+        {
+            ShowError($"An unexpected error occurred: {e.Exception.Message}", e.Exception);
+        }
+
+        /// <summary>
+        /// Handles unhandled exceptions from any thread
+        /// </summary>
+        /// <param name="sender">The source of the event</param>
+        /// <param name="e">Event arguments containing exception details</param>
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            MessageBox.Show($"A critical error occurred: {e.ExceptionObject}", 
-                "Critical Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowCriticalError($"A critical error occurred: {e.ExceptionObject}", e.ExceptionObject as Exception);
         }
+
+        #endregion
+
+        #region Error Display Methods
+
+        /// <summary>
+        /// Displays a critical error message to the user
+        /// </summary>
+        /// <param name="message">Error message to display</param>
+        /// <param name="exception">Exception that caused the error</param>
+        private static void ShowCriticalError(string message, Exception exception = null)
+        {
+            MessageBox.Show(message, "Critical Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            
+            // Log the exception if logging is available
+            if (exception != null)
+            {
+                // TODO: Implement proper logging mechanism
+                System.Diagnostics.Debug.WriteLine($"Critical Error: {message}\nException: {exception}");
+            }
+        }
+
+        /// <summary>
+        /// Displays a general error message to the user
+        /// </summary>
+        /// <param name="message">Error message to display</param>
+        /// <param name="exception">Exception that caused the error</param>
+        private static void ShowError(string message, Exception exception = null)
+        {
+            MessageBox.Show(message, "Unexpected Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            
+            // Log the exception if logging is available
+            if (exception != null)
+            {
+                // TODO: Implement proper logging mechanism
+                System.Diagnostics.Debug.WriteLine($"Error: {message}\nException: {exception}");
+            }
+        }
+
+        #endregion
     }
 }

@@ -6,17 +6,45 @@ using System.Windows.Forms;
 
 namespace Vape_Store.Services
 {
+    /// <summary>
+    /// Service class for managing database backup and restore operations
+    /// Provides functionality to create, restore, and manage database backups
+    /// </summary>
     public class DatabaseBackupService
     {
-        private string connectionString;
+        #region Private Fields
+
+        /// <summary>
+        /// Database connection string for backup operations
+        /// </summary>
+        private readonly string connectionString;
+
+        /// <summary>
+        /// Current backup folder path where backups are stored
+        /// </summary>
         private string backupFolderPath;
 
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the DatabaseBackupService class
+        /// Loads connection string and initializes backup location
+        /// </summary>
         public DatabaseBackupService()
         {
             connectionString = ConfigurationManager.ConnectionStrings["dbs"].ConnectionString;
             LoadBackupLocation();
         }
 
+        #endregion
+
+        #region Backup Location Management
+
+        /// <summary>
+        /// Loads and initializes the backup location from settings or fallback locations
+        /// </summary>
         private void LoadBackupLocation()
         {
             // Try to load from settings first
@@ -27,11 +55,11 @@ namespace Vape_Store.Services
                 try
                 {
                     // Test write access to saved location
-                    string testFile = Path.Combine(savedLocation, "test_write.tmp");
-                    File.WriteAllText(testFile, "test");
-                    File.Delete(testFile);
-                    backupFolderPath = savedLocation;
-                    return;
+                    if (TestWriteAccess(savedLocation))
+                    {
+                        backupFolderPath = savedLocation;
+                        return;
+                    }
                 }
                 catch
                 {
@@ -57,14 +85,12 @@ namespace Vape_Store.Services
                         Directory.CreateDirectory(location);
                     }
                     
-                    // Test write access
-                    string testFile = Path.Combine(location, "test_write.tmp");
-                    File.WriteAllText(testFile, "test");
-                    File.Delete(testFile);
-                    
-                    backupFolderPath = location;
-                    SaveBackupLocation(location);
-                    break;
+                    if (TestWriteAccess(location))
+                    {
+                        backupFolderPath = location;
+                        SaveBackupLocation(location);
+                        break;
+                    }
                 }
                 catch
                 {
@@ -92,6 +118,30 @@ namespace Vape_Store.Services
             }
         }
 
+        /// <summary>
+        /// Tests write access to a directory by creating and deleting a test file
+        /// </summary>
+        /// <param name="directoryPath">Path to the directory to test</param>
+        /// <returns>True if write access is available, false otherwise</returns>
+        private bool TestWriteAccess(string directoryPath)
+        {
+            try
+            {
+                string testFile = Path.Combine(directoryPath, "test_write.tmp");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Saves the backup location to application settings
+        /// </summary>
+        /// <param name="location">The backup location path to save</param>
         private void SaveBackupLocation(string location)
         {
             try
@@ -105,6 +155,11 @@ namespace Vape_Store.Services
             }
         }
 
+        /// <summary>
+        /// Sets a new backup location and validates write access
+        /// </summary>
+        /// <param name="newLocation">The new backup location path</param>
+        /// <returns>True if location is valid and accessible, false otherwise</returns>
         public bool SetBackupLocation(string newLocation)
         {
             try
@@ -119,9 +174,8 @@ namespace Vape_Store.Services
                 }
 
                 // Test write access
-                string testFile = Path.Combine(newLocation, "test_write.tmp");
-                File.WriteAllText(testFile, "test");
-                File.Delete(testFile);
+                if (!TestWriteAccess(newLocation))
+                    return false;
 
                 // Update location
                 backupFolderPath = newLocation;
@@ -134,6 +188,15 @@ namespace Vape_Store.Services
             }
         }
 
+        #endregion
+
+        #region Database Backup Operations
+
+        /// <summary>
+        /// Creates a full backup of the VapeStore database
+        /// </summary>
+        /// <returns>Path to the created backup file</returns>
+        /// <exception cref="Exception">Thrown when backup operation fails</exception>
         public string BackupDatabase()
         {
             try
@@ -167,6 +230,12 @@ namespace Vape_Store.Services
             }
         }
 
+        /// <summary>
+        /// Restores the VapeStore database from a backup file
+        /// </summary>
+        /// <param name="backupFilePath">Path to the backup file to restore from</param>
+        /// <returns>True if restore was successful, false otherwise</returns>
+        /// <exception cref="Exception">Thrown when restore operation fails</exception>
         public bool RestoreDatabase(string backupFilePath)
         {
             try
@@ -215,6 +284,15 @@ namespace Vape_Store.Services
             }
         }
 
+        #endregion
+
+        #region Backup File Management
+
+        /// <summary>
+        /// Gets a list of all backup files in the backup folder, sorted by creation date (newest first)
+        /// </summary>
+        /// <returns>Array of backup file paths</returns>
+        /// <exception cref="Exception">Thrown when unable to access backup folder</exception>
         public string[] GetBackupFiles()
         {
             try
@@ -234,6 +312,11 @@ namespace Vape_Store.Services
             }
         }
 
+        /// <summary>
+        /// Deletes a backup file from the backup folder
+        /// </summary>
+        /// <param name="filePath">Path to the backup file to delete</param>
+        /// <exception cref="Exception">Thrown when file deletion fails</exception>
         public void DeleteBackupFile(string filePath)
         {
             try
@@ -249,11 +332,23 @@ namespace Vape_Store.Services
             }
         }
 
+        #endregion
+
+        #region Utility Methods
+
+        /// <summary>
+        /// Gets the current backup folder path
+        /// </summary>
+        /// <returns>Path to the backup folder</returns>
         public string GetBackupFolderPath()
         {
             return backupFolderPath;
         }
 
+        /// <summary>
+        /// Gets formatted information about the current backup location
+        /// </summary>
+        /// <returns>String containing backup location information</returns>
         public string GetBackupLocationInfo()
         {
             try
@@ -276,6 +371,11 @@ namespace Vape_Store.Services
             }
         }
 
+        /// <summary>
+        /// Gets the size of a backup file in bytes
+        /// </summary>
+        /// <param name="filePath">Path to the backup file</param>
+        /// <returns>File size in bytes, or 0 if file doesn't exist or error occurs</returns>
         public long GetBackupFileSize(string filePath)
         {
             try
@@ -292,6 +392,11 @@ namespace Vape_Store.Services
             }
         }
 
+        /// <summary>
+        /// Gets the creation date of a backup file
+        /// </summary>
+        /// <param name="filePath">Path to the backup file</param>
+        /// <returns>File creation date, or DateTime.MinValue if file doesn't exist or error occurs</returns>
         public DateTime GetBackupFileDate(string filePath)
         {
             try
@@ -308,6 +413,11 @@ namespace Vape_Store.Services
             }
         }
 
+        /// <summary>
+        /// Formats a file size in bytes to a human-readable string
+        /// </summary>
+        /// <param name="bytes">File size in bytes</param>
+        /// <returns>Formatted file size string (e.g., "1.5 MB")</returns>
         public string FormatFileSize(long bytes)
         {
             string[] sizes = { "B", "KB", "MB", "GB" };
@@ -320,5 +430,7 @@ namespace Vape_Store.Services
             }
             return $"{len:0.##} {sizes[order]}";
         }
+
+        #endregion
     }
 }
