@@ -20,6 +20,19 @@ namespace Vape_Store.Services
         
         public bool ProcessSale(Sale sale)
         {
+            // Validate sale items for negative or zero quantities
+            foreach (var item in sale.SaleItems)
+            {
+                if (item.Quantity <= 0)
+                {
+                    throw new ArgumentException($"Invalid quantity ({item.Quantity}) for product {item.ProductName}. Quantity must be greater than zero.");
+                }
+                if (item.UnitPrice < 0)
+                {
+                    throw new ArgumentException($"Invalid unit price ({item.UnitPrice}) for product {item.ProductName}. Price cannot be negative.");
+                }
+            }
+            
             using (var connection = DatabaseConnection.GetConnection())
             {
                 connection.Open();
@@ -55,9 +68,11 @@ namespace Vape_Store.Services
         private int InsertSale(Sale sale, SqlConnection connection, SqlTransaction transaction)
         {
             string query = @"INSERT INTO Sales (InvoiceNumber, CustomerID, SaleDate, SubTotal, TaxAmount, TaxPercent, 
-                           TotalAmount, PaymentMethod, PaidAmount, ChangeAmount, UserID) 
+                           TotalAmount, PaymentMethod, PaidAmount, ChangeAmount, UserID, BarcodeImage, BarcodeData, 
+                           DiscountAmount, DiscountPercent) 
                            VALUES (@InvoiceNumber, @CustomerID, @SaleDate, @SubTotal, @TaxAmount, @TaxPercent, 
-                           @TotalAmount, @PaymentMethod, @PaidAmount, @ChangeAmount, @UserID);
+                           @TotalAmount, @PaymentMethod, @PaidAmount, @ChangeAmount, @UserID, @BarcodeImage, @BarcodeData,
+                           @DiscountAmount, @DiscountPercent);
                            SELECT SCOPE_IDENTITY();";
             
             using (var command = new SqlCommand(query, connection, transaction))
@@ -73,6 +88,10 @@ namespace Vape_Store.Services
                 command.Parameters.AddWithValue("@PaidAmount", sale.PaidAmount);
                 command.Parameters.AddWithValue("@ChangeAmount", sale.ChangeAmount);
                 command.Parameters.AddWithValue("@UserID", sale.UserID);
+                command.Parameters.AddWithValue("@BarcodeImage", sale.BarcodeImage ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@BarcodeData", sale.BarcodeData ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@DiscountAmount", sale.DiscountAmount);
+                command.Parameters.AddWithValue("@DiscountPercent", sale.DiscountPercent);
                 
                 return Convert.ToInt32(command.ExecuteScalar());
             }
@@ -233,7 +252,18 @@ namespace Vape_Store.Services
         
         public string GetNextInvoiceNumber()
         {
-            string query = "SELECT ISNULL(MAX(CAST(SUBSTRING(InvoiceNumber, 4, LEN(InvoiceNumber)) AS INT)), 0) + 1 FROM Sales WHERE InvoiceNumber LIKE 'INV%'";
+            // Handle the current format: INV-YYYY-XXX
+            string query = @"
+                SELECT ISNULL(
+                    MAX(CAST(
+                        SUBSTRING(InvoiceNumber, 
+                            CHARINDEX('-', InvoiceNumber, CHARINDEX('-', InvoiceNumber) + 1) + 1, 
+                            LEN(InvoiceNumber)
+                        ) AS INT
+                    )), 0
+                ) + 1 
+                FROM Sales 
+                WHERE InvoiceNumber LIKE 'INV-%-%'";
             
             using (var connection = DatabaseConnection.GetConnection())
             {
@@ -241,7 +271,7 @@ namespace Vape_Store.Services
                 {
                     connection.Open();
                     var result = command.ExecuteScalar();
-                    return $"INV{result:D3}";
+                    return $"INV-{DateTime.Now.Year}-{result:D3}";
                 }
             }
         }

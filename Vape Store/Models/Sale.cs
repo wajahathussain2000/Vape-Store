@@ -19,9 +19,20 @@ namespace Vape_Store.Models
         public int UserID { get; set; }
         public DateTime CreatedDate { get; set; }
         
+        // New audit and enhancement fields
+        public DateTime? LastModified { get; set; }
+        public int? ModifiedBy { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal DiscountPercent { get; set; }
+        public string Status { get; set; }
+        public string Notes { get; set; }
+        public byte[] BarcodeImage { get; set; }
+        public string BarcodeData { get; set; }
+        
         // Navigation properties
         public string CustomerName { get; set; }
         public string UserName { get; set; }
+        public string ModifiedByName { get; set; }
         public List<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
     }
     
@@ -33,6 +44,7 @@ namespace Vape_Store.Models
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal SubTotal { get; set; }
+        public DateTime? LastModified { get; set; }
         
         // Navigation properties
         public string ProductName { get; set; }

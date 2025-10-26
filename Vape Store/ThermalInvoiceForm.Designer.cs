@@ -34,7 +34,10 @@ namespace Vape_Store
             this.btnClose = new System.Windows.Forms.Button();
             this.txtInvoiceNumber = new System.Windows.Forms.TextBox();
             this.lblSaleInfo = new System.Windows.Forms.Label();
-            ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
+            this.lblInvoiceNumber = new System.Windows.Forms.Label();
+            this.lblDate = new System.Windows.Forms.Label();
+            this.lblSupplier = new System.Windows.Forms.Label();
+            this.lblTotal = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnLoadSale
@@ -89,11 +92,51 @@ namespace Vape_Store
             this.lblSaleInfo.TabIndex = 5;
             this.lblSaleInfo.Text = "Sale Info:";
             // 
+            // lblInvoiceNumber
+            // 
+            this.lblInvoiceNumber.AutoSize = true;
+            this.lblInvoiceNumber.Location = new System.Drawing.Point(12, 120);
+            this.lblInvoiceNumber.Name = "lblInvoiceNumber";
+            this.lblInvoiceNumber.Size = new System.Drawing.Size(85, 13);
+            this.lblInvoiceNumber.TabIndex = 6;
+            this.lblInvoiceNumber.Text = "Invoice Number:";
+            // 
+            // lblDate
+            // 
+            this.lblDate.AutoSize = true;
+            this.lblDate.Location = new System.Drawing.Point(12, 140);
+            this.lblDate.Name = "lblDate";
+            this.lblDate.Size = new System.Drawing.Size(33, 13);
+            this.lblDate.TabIndex = 7;
+            this.lblDate.Text = "Date:";
+            // 
+            // lblSupplier
+            // 
+            this.lblSupplier.AutoSize = true;
+            this.lblSupplier.Location = new System.Drawing.Point(12, 160);
+            this.lblSupplier.Name = "lblSupplier";
+            this.lblSupplier.Size = new System.Drawing.Size(48, 13);
+            this.lblSupplier.TabIndex = 8;
+            this.lblSupplier.Text = "Supplier:";
+            // 
+            // lblTotal
+            // 
+            this.lblTotal.AutoSize = true;
+            this.lblTotal.Location = new System.Drawing.Point(12, 180);
+            this.lblTotal.Name = "lblTotal";
+            this.lblTotal.Size = new System.Drawing.Size(34, 13);
+            this.lblTotal.TabIndex = 9;
+            this.lblTotal.Text = "Total:";
+            // 
             // ThermalInvoiceForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(500, 300);
+            this.Controls.Add(this.lblTotal);
+            this.Controls.Add(this.lblSupplier);
+            this.Controls.Add(this.lblDate);
+            this.Controls.Add(this.lblInvoiceNumber);
             this.Controls.Add(this.lblSaleInfo);
             this.Controls.Add(this.txtInvoiceNumber);
             this.Controls.Add(this.btnClose);
@@ -102,7 +145,6 @@ namespace Vape_Store
             this.Controls.Add(this.btnLoadSale);
             this.Name = "ThermalInvoiceForm";
             this.Text = "Thermal Invoice";
-            ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
         }
@@ -115,5 +157,9 @@ namespace Vape_Store
         private System.Windows.Forms.Button btnClose;
         private System.Windows.Forms.TextBox txtInvoiceNumber;
         private System.Windows.Forms.Label lblSaleInfo;
+        private System.Windows.Forms.Label lblInvoiceNumber;
+        private System.Windows.Forms.Label lblDate;
+        private System.Windows.Forms.Label lblSupplier;
+        private System.Windows.Forms.Label lblTotal;
     }
 }

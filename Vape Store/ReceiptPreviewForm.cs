@@ -173,8 +173,8 @@ namespace Vape_Store
                     // Draw all item details at the same Y position
                     DrawText(g, productName, new Font("Arial", 8), itemCol, yPosition);
                     DrawText(g, item.Quantity.ToString(), new Font("Arial", 8), qtyCol, yPosition);
-                    DrawText(g, "$" + item.UnitPrice.ToString("F2"), new Font("Arial", 8), priceCol, yPosition);
-                    DrawText(g, "$" + item.SubTotal.ToString("F2"), new Font("Arial", 8), totalCol, yPosition);
+                    DrawText(g, item.UnitPrice.ToString("F2"), new Font("Arial", 8), priceCol, yPosition);
+                    DrawText(g, item.SubTotal.ToString("F2"), new Font("Arial", 8), totalCol, yPosition);
                     
                     // Move to next line for next item
                     yPosition += new Font("Arial", 8).Height + 3;
@@ -190,14 +190,14 @@ namespace Vape_Store
                 
                 // Subtotal
                 DrawText(g, "SUBTOTAL:", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
-                DrawText(g, "$" + _sale.SubTotal.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
+                DrawText(g, _sale.SubTotal.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
                 yPosition += new Font("Arial", 9).Height;
                 
                 // Tax
                 if (_sale.TaxAmount > 0)
                 {
                     DrawText(g, "TAX (" + _sale.TaxPercent.ToString("F1") + "%):", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
-                    DrawText(g, "$" + _sale.TaxAmount.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
+                    DrawText(g, _sale.TaxAmount.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
                     yPosition += new Font("Arial", 9).Height;
                 }
                 
@@ -206,7 +206,7 @@ namespace Vape_Store
                 if (discountAmount > 0)
                 {
                     DrawText(g, "DISCOUNT:", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
-                    DrawText(g, "-$" + discountAmount.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
+                    DrawText(g, "-" + discountAmount.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
                     yPosition += new Font("Arial", 9).Height;
                 }
                 
@@ -216,7 +216,7 @@ namespace Vape_Store
 
                 // Total with emphasis
                 DrawText(g, "TOTAL:", new Font("Arial", 12, FontStyle.Bold), labelCol, yPosition);
-                DrawText(g, "$" + _sale.TotalAmount.ToString("F2"), new Font("Arial", 12, FontStyle.Bold), valueCol, yPosition);
+                DrawText(g, _sale.TotalAmount.ToString("F2"), new Font("Arial", 12, FontStyle.Bold), valueCol, yPosition);
                 yPosition += new Font("Arial", 12, FontStyle.Bold).Height;
                 
                 yPosition += 15;
@@ -237,6 +237,37 @@ namespace Vape_Store
                 }
 
                 yPosition += 20;
+
+                // Display barcode if available
+                if (_sale.BarcodeImage != null && _sale.BarcodeImage.Length > 0)
+                {
+                    try
+                    {
+                        using (var barcodeStream = new System.IO.MemoryStream(_sale.BarcodeImage))
+                        {
+                            using (var barcodeBitmap = new Bitmap(barcodeStream))
+                            {
+                                // Center the barcode
+                                float barcodeWidth = 150;
+                                float barcodeHeight = 50;
+                                float barcodeX = centerX - (barcodeWidth / 2);
+                                
+                                g.DrawImage(barcodeBitmap, barcodeX, yPosition, barcodeWidth, barcodeHeight);
+                                yPosition += barcodeHeight + 10;
+                                
+                                // Add barcode text below
+                                yPosition = DrawCenteredText(g, _sale.BarcodeData, new Font("Arial", 8), centerX, yPosition);
+                                yPosition += 10;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // If barcode display fails, just continue without it
+                        yPosition = DrawCenteredText(g, "Barcode: " + _sale.BarcodeData, new Font("Arial", 8), centerX, yPosition);
+                        yPosition += 10;
+                    }
+                }
 
                 // Additional receipt information
                 yPosition = DrawCenteredText(g, "Receipt #" + _sale.InvoiceNumber, new Font("Arial", 8), centerX, yPosition);

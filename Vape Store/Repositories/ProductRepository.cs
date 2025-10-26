@@ -8,11 +8,19 @@ namespace Vape_Store.Repositories
 {
     public class ProductRepository
     {
+        // Static event for product updates
+        public static event EventHandler ProductsUpdated;
+        
+        // Method to trigger the event
+        public static void OnProductsUpdated()
+        {
+            ProductsUpdated?.Invoke(null, EventArgs.Empty);
+        }
         public List<Product> GetAllProducts()
         {
             List<Product> products = new List<Product>();
             string query = @"SELECT p.ProductID, p.ProductCode, p.ProductName, p.Description, p.CategoryID, p.BrandID,
-                           p.PurchasePrice, p.CostPrice, p.RetailPrice, p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, p.CreatedDate,
+                           p.PurchasePrice, ISNULL(p.CostPrice, p.PurchasePrice) as CostPrice, p.RetailPrice, p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, ISNULL(p.IsAvailableForSale, 1) as IsAvailableForSale, p.CreatedDate,
                            c.CategoryName, b.BrandName
                            FROM Products p
                            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
@@ -20,37 +28,49 @@ namespace Vape_Store.Repositories
                            WHERE p.IsActive = 1
                            ORDER BY p.ProductName";
             
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    connection.Open();
-                    using (var reader = command.ExecuteReader())
+                    using (var command = new SqlCommand(query, connection))
                     {
-                        while (reader.Read())
+                        connection.Open();
+                        
+                        using (var reader = command.ExecuteReader())
                         {
-                            products.Add(new Product
+                            while (reader.Read())
                             {
-                                ProductID = Convert.ToInt32(reader["ProductID"]),
-                                ProductCode = reader["ProductCode"].ToString(),
-                                ProductName = reader["ProductName"].ToString(),
-                                Description = reader["Description"].ToString(),
-                                CategoryID = Convert.ToInt32(reader["CategoryID"]),
-                                BrandID = Convert.ToInt32(reader["BrandID"]),
-                                PurchasePrice = Convert.ToDecimal(reader["PurchasePrice"]),
-                                CostPrice = Convert.ToDecimal(reader["CostPrice"]),
-                                RetailPrice = Convert.ToDecimal(reader["RetailPrice"]),
-                                StockQuantity = Convert.ToInt32(reader["StockQuantity"]),
-                                ReorderLevel = Convert.ToInt32(reader["ReorderLevel"]),
-                                Barcode = reader["Barcode"].ToString(),
-                                IsActive = Convert.ToBoolean(reader["IsActive"]),
-                                CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
-                                CategoryName = reader["CategoryName"].ToString(),
-                                BrandName = reader["BrandName"].ToString()
-                            });
+                                var product = new Product
+                                {
+                                    ProductID = Convert.ToInt32(reader["ProductID"]),
+                                    ProductCode = reader["ProductCode"]?.ToString() ?? "",
+                                    ProductName = reader["ProductName"]?.ToString() ?? "",
+                                    Description = reader["Description"]?.ToString() ?? "",
+                                    CategoryID = reader["CategoryID"] == DBNull.Value ? 0 : Convert.ToInt32(reader["CategoryID"]),
+                                    BrandID = reader["BrandID"] == DBNull.Value ? 0 : Convert.ToInt32(reader["BrandID"]),
+                                    PurchasePrice = reader["PurchasePrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["PurchasePrice"]),
+                                    CostPrice = reader["CostPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["CostPrice"]),
+                                    RetailPrice = reader["RetailPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["RetailPrice"]),
+                                    UnitPrice = reader["RetailPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["RetailPrice"]), // Map UnitPrice to RetailPrice
+                                    StockQuantity = reader["StockQuantity"] == DBNull.Value ? 0 : Convert.ToInt32(reader["StockQuantity"]),
+                                    ReorderLevel = reader["ReorderLevel"] == DBNull.Value ? 0 : Convert.ToInt32(reader["ReorderLevel"]),
+                                    Barcode = reader["Barcode"]?.ToString() ?? "",
+                                    IsActive = reader["IsActive"] == DBNull.Value ? true : Convert.ToBoolean(reader["IsActive"]),
+                                    IsAvailableForSale = reader["IsAvailableForSale"] == DBNull.Value ? true : Convert.ToBoolean(reader["IsAvailableForSale"]),
+                                    CreatedDate = reader["CreatedDate"] == DBNull.Value ? DateTime.Now : Convert.ToDateTime(reader["CreatedDate"]),
+                                    CategoryName = reader["CategoryName"]?.ToString() ?? "",
+                                    BrandName = reader["BrandName"]?.ToString() ?? ""
+                                };
+                                
+                                products.Add(product);
+                            }
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw;
             }
             
             return products;
@@ -80,21 +100,22 @@ namespace Vape_Store.Repositories
                             product = new Product
                             {
                                 ProductID = Convert.ToInt32(reader["ProductID"]),
-                                ProductCode = reader["ProductCode"].ToString(),
-                                ProductName = reader["ProductName"].ToString(),
-                                Description = reader["Description"].ToString(),
-                                CategoryID = Convert.ToInt32(reader["CategoryID"]),
-                                BrandID = Convert.ToInt32(reader["BrandID"]),
-                                PurchasePrice = Convert.ToDecimal(reader["PurchasePrice"]),
-                                CostPrice = Convert.ToDecimal(reader["CostPrice"]),
-                                RetailPrice = Convert.ToDecimal(reader["RetailPrice"]),
-                                StockQuantity = Convert.ToInt32(reader["StockQuantity"]),
-                                ReorderLevel = Convert.ToInt32(reader["ReorderLevel"]),
-                                Barcode = reader["Barcode"].ToString(),
-                                IsActive = Convert.ToBoolean(reader["IsActive"]),
-                                CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
-                                CategoryName = reader["CategoryName"].ToString(),
-                                BrandName = reader["BrandName"].ToString()
+                                ProductCode = reader["ProductCode"]?.ToString() ?? "",
+                                ProductName = reader["ProductName"]?.ToString() ?? "",
+                                Description = reader["Description"]?.ToString() ?? "",
+                                CategoryID = reader["CategoryID"] == DBNull.Value ? 0 : Convert.ToInt32(reader["CategoryID"]),
+                                BrandID = reader["BrandID"] == DBNull.Value ? 0 : Convert.ToInt32(reader["BrandID"]),
+                                PurchasePrice = reader["PurchasePrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["PurchasePrice"]),
+                                CostPrice = reader["CostPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["CostPrice"]),
+                                RetailPrice = reader["RetailPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["RetailPrice"]),
+                                UnitPrice = reader["RetailPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["RetailPrice"]), // Map UnitPrice to RetailPrice
+                                StockQuantity = reader["StockQuantity"] == DBNull.Value ? 0 : Convert.ToInt32(reader["StockQuantity"]),
+                                ReorderLevel = reader["ReorderLevel"] == DBNull.Value ? 0 : Convert.ToInt32(reader["ReorderLevel"]),
+                                Barcode = reader["Barcode"]?.ToString() ?? "",
+                                IsActive = reader["IsActive"] == DBNull.Value ? true : Convert.ToBoolean(reader["IsActive"]),
+                                CreatedDate = reader["CreatedDate"] == DBNull.Value ? DateTime.Now : Convert.ToDateTime(reader["CreatedDate"]),
+                                CategoryName = reader["CategoryName"]?.ToString() ?? "",
+                                BrandName = reader["BrandName"]?.ToString() ?? ""
                             };
                         }
                     }
@@ -121,6 +142,7 @@ namespace Vape_Store.Repositories
                     command.Parameters.AddWithValue("@CategoryID", product.CategoryID);
                     command.Parameters.AddWithValue("@BrandID", product.BrandID);
                     command.Parameters.AddWithValue("@PurchasePrice", product.PurchasePrice);
+                    command.Parameters.AddWithValue("@CostPrice", product.CostPrice > 0 ? product.CostPrice : product.PurchasePrice);
                     command.Parameters.AddWithValue("@RetailPrice", product.RetailPrice);
                     command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
                     command.Parameters.AddWithValue("@ReorderLevel", product.ReorderLevel);
@@ -128,7 +150,15 @@ namespace Vape_Store.Repositories
                     command.Parameters.AddWithValue("@IsActive", product.IsActive);
                     
                     connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    bool success = command.ExecuteNonQuery() > 0;
+                    
+                    // Trigger event if product was added successfully
+                    if (success)
+                    {
+                        OnProductsUpdated();
+                    }
+                    
+                    return success;
                 }
             }
         }
@@ -137,8 +167,9 @@ namespace Vape_Store.Repositories
         {
             string query = @"UPDATE Products SET ProductName = @ProductName, Description = @Description, 
                            CategoryID = @CategoryID, BrandID = @BrandID, PurchasePrice = @PurchasePrice, 
-                           RetailPrice = @RetailPrice, StockQuantity = @StockQuantity, ReorderLevel = @ReorderLevel, 
-                           Barcode = @Barcode, IsActive = @IsActive WHERE ProductID = @ProductID";
+                           CostPrice = @CostPrice, RetailPrice = @RetailPrice, StockQuantity = @StockQuantity, 
+                           ReorderLevel = @ReorderLevel, Barcode = @Barcode, IsActive = @IsActive 
+                           WHERE ProductID = @ProductID";
             
             using (var connection = DatabaseConnection.GetConnection())
             {
@@ -150,6 +181,7 @@ namespace Vape_Store.Repositories
                     command.Parameters.AddWithValue("@CategoryID", product.CategoryID);
                     command.Parameters.AddWithValue("@BrandID", product.BrandID);
                     command.Parameters.AddWithValue("@PurchasePrice", product.PurchasePrice);
+                    command.Parameters.AddWithValue("@CostPrice", product.CostPrice > 0 ? product.CostPrice : product.PurchasePrice);
                     command.Parameters.AddWithValue("@RetailPrice", product.RetailPrice);
                     command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
                     command.Parameters.AddWithValue("@ReorderLevel", product.ReorderLevel);
@@ -157,7 +189,15 @@ namespace Vape_Store.Repositories
                     command.Parameters.AddWithValue("@IsActive", product.IsActive);
                     
                     connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    bool success = command.ExecuteNonQuery() > 0;
+                    
+                    // Trigger event if product was updated successfully
+                    if (success)
+                    {
+                        OnProductsUpdated();
+                    }
+                    
+                    return success;
                 }
             }
         }
@@ -172,7 +212,15 @@ namespace Vape_Store.Repositories
                 {
                     command.Parameters.AddWithValue("@ProductID", productID);
                     connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    bool success = command.ExecuteNonQuery() > 0;
+                    
+                    // Trigger event if product was deleted successfully
+                    if (success)
+                    {
+                        OnProductsUpdated();
+                    }
+                    
+                    return success;
                 }
             }
         }

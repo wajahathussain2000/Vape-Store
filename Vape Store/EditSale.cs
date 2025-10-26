@@ -62,6 +62,7 @@ namespace Vape_Store
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView1.MultiSelect = false;
             dataGridView1.ReadOnly = false;
+            dataGridView1.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
             
             // Clear existing columns
             dataGridView1.Columns.Clear();
@@ -80,15 +81,28 @@ namespace Vape_Store
             dataGridView1.Columns["Price"].Width = 120;
             dataGridView1.Columns["SubTotal"].Width = 120;
             
-            // Format currency columns
-            dataGridView1.Columns["Price"].DefaultCellStyle.Format = "C2";
-            dataGridView1.Columns["SubTotal"].DefaultCellStyle.Format = "C2";
-            
-            // Make Qty and Price columns editable
+            // Set column properties
+            dataGridView1.Columns["SrNo"].ReadOnly = true;
+            dataGridView1.Columns["ItemName"].ReadOnly = true;
+            dataGridView1.Columns["SubTotal"].ReadOnly = true;
             dataGridView1.Columns["Qty"].ReadOnly = false;
             dataGridView1.Columns["Price"].ReadOnly = false;
+            
+            // Format currency columns
+            dataGridView1.Columns["Price"].DefaultCellStyle.Format = "F2";
+            dataGridView1.Columns["SubTotal"].DefaultCellStyle.Format = "F2";
+            
+            // Visual indicators for editable columns
             dataGridView1.Columns["Qty"].DefaultCellStyle.BackColor = Color.LightYellow;
             dataGridView1.Columns["Price"].DefaultCellStyle.BackColor = Color.LightYellow;
+            dataGridView1.Columns["Qty"].DefaultCellStyle.SelectionBackColor = Color.LightBlue;
+            dataGridView1.Columns["Price"].DefaultCellStyle.SelectionBackColor = Color.LightBlue;
+            
+            // Set alignment
+            dataGridView1.Columns["SrNo"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridView1.Columns["Qty"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridView1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dataGridView1.Columns["SubTotal"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
         }
 
         private void SetupEventHandlers()
@@ -292,7 +306,7 @@ namespace Vape_Store
 
                 // Populate totals
                 txtsubTotal.Text = _currentSale.SubTotal.ToString("F2");
-                txtTaxPercent.Text = _currentSale.TaxPercent.ToString("F2");
+                txtTaxPercent.Text = _currentSale.DiscountPercent.ToString("F2"); // Using txtTaxPercent for discount
                 txtTax.Text = _currentSale.TaxAmount.ToString("F2");
                 txtTotal.Text = _currentSale.TotalAmount.ToString("F2");
                 txtPaid.Text = _currentSale.PaidAmount.ToString("F2");
@@ -327,6 +341,12 @@ namespace Vape_Store
         {
             try
             {
+                if (!isEditMode)
+                {
+                    ShowMessage("Please load a sale first before adding items.", "Validation Error", MessageBoxIcon.Warning);
+                    return;
+                }
+                
                 if (string.IsNullOrWhiteSpace(txtProductName.Text))
                 {
                     ShowMessage("Please enter a product name.", "Validation Error", MessageBoxIcon.Warning);
@@ -356,6 +376,15 @@ namespace Vape_Store
                 if (product.StockQuantity <= 0)
                 {
                     ShowMessage("Product is out of stock.", "Stock Error", MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                // Check if adding this item would exceed available stock
+                int totalQuantity = 1; // Since we already checked that existingItem is null, quantity is 1
+                
+                if (totalQuantity > product.StockQuantity)
+                {
+                    ShowMessage($"Insufficient stock for '{product.ProductName}'. Available: {product.StockQuantity}, Requested: {totalQuantity}", "Stock Error", MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -408,9 +437,20 @@ namespace Vape_Store
                     if (e.ColumnIndex == dataGridView1.Columns["Qty"].Index || 
                         e.ColumnIndex == dataGridView1.Columns["Price"].Index)
                     {
-                        // Update quantity and price
-                        int qty = Convert.ToInt32(dataGridView1.Rows[e.RowIndex].Cells["Qty"].Value ?? 0);
-                        decimal price = Convert.ToDecimal(dataGridView1.Rows[e.RowIndex].Cells["Price"].Value ?? 0);
+                        // Update quantity and price with safe parsing
+                        int qty = 0;
+                        decimal price = 0;
+                        
+                        if (!int.TryParse(dataGridView1.Rows[e.RowIndex].Cells["Qty"].Value?.ToString() ?? "0", out qty))
+                        {
+                            qty = 0;
+                        }
+                        
+                        if (!decimal.TryParse(dataGridView1.Rows[e.RowIndex].Cells["Price"].Value?.ToString() ?? "0", out price))
+                        {
+                            price = 0;
+                        }
+                        
                         decimal subtotal = qty * price;
                         
                         dataGridView1.Rows[e.RowIndex].Cells["SubTotal"].Value = subtotal;
@@ -418,6 +458,18 @@ namespace Vape_Store
                         // Update sale items list
                         if (e.RowIndex < _saleItems.Count)
                         {
+                            // Validate stock availability for quantity changes
+                            var saleItem = _saleItems[e.RowIndex];
+                            var product = _products.FirstOrDefault(p => p.ProductID == saleItem.ProductID);
+                            
+                            if (product != null && qty > product.StockQuantity)
+                            {
+                                ShowMessage($"Insufficient stock for '{product.ProductName}'. Available: {product.StockQuantity}, Requested: {qty}", "Stock Error", MessageBoxIcon.Warning);
+                                // Revert to original quantity
+                                dataGridView1.Rows[e.RowIndex].Cells["Qty"].Value = saleItem.Quantity;
+                                return;
+                            }
+                            
                             _saleItems[e.RowIndex].Quantity = qty;
                             _saleItems[e.RowIndex].UnitPrice = price;
                             _saleItems[e.RowIndex].SubTotal = subtotal;
@@ -437,24 +489,40 @@ namespace Vape_Store
         {
             try
             {
-                if (e.RowIndex >= 0 && e.RowIndex < dataGridView1.Rows.Count)
+                if (e.RowIndex >= 0 && e.RowIndex < dataGridView1.Rows.Count && e.RowIndex < _saleItems.Count)
                 {
+                    var row = dataGridView1.Rows[e.RowIndex];
+                    var saleItem = _saleItems[e.RowIndex];
+                    
+                    // Validate and format quantity
                     if (e.ColumnIndex == dataGridView1.Columns["Qty"].Index)
                     {
-                        int qty = Convert.ToInt32(dataGridView1.Rows[e.RowIndex].Cells["Qty"].Value ?? 0);
-                        
-                        // Validate quantity
-                        if (qty <= 0)
+                        if (!int.TryParse(row.Cells["Qty"].Value?.ToString(), out int quantity) || quantity <= 0)
                         {
-                            dataGridView1.Rows[e.RowIndex].Cells["Qty"].Value = 1;
+                            row.Cells["Qty"].Value = saleItem.Quantity; // Revert to original
                             ShowMessage("Quantity must be greater than 0.", "Validation Error", MessageBoxIcon.Warning);
+                        }
+                    }
+                    
+                    // Validate and format price
+                    if (e.ColumnIndex == dataGridView1.Columns["Price"].Index)
+                    {
+                        if (!decimal.TryParse(row.Cells["Price"].Value?.ToString(), out decimal price) || price < 0)
+                        {
+                            row.Cells["Price"].Value = saleItem.UnitPrice; // Revert to original
+                            ShowMessage("Price cannot be negative.", "Validation Error", MessageBoxIcon.Warning);
+                        }
+                        else
+                        {
+                            // Format price to 2 decimal places
+                            row.Cells["Price"].Value = price.ToString("F2");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error validating quantity: {ex.Message}", "Error", MessageBoxIcon.Error);
+                ShowMessage($"Error validating cell: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
 
@@ -471,10 +539,16 @@ namespace Vape_Store
             }
         }
 
+
         private void RemoveSelectedItem()
         {
             try
             {
+                if (_saleItems == null || _saleItems.Count == 0)
+                {
+                    return;
+                }
+                
                 if (dataGridView1.SelectedRows.Count > 0)
                 {
                     int rowIndex = dataGridView1.SelectedRows[0].Index;
@@ -503,11 +577,34 @@ namespace Vape_Store
         {
             try
             {
+                // Check if we have sale items to calculate
+                if (_saleItems == null || _saleItems.Count == 0)
+                {
+                    // Initialize with default values if no items
+                    txtsubTotal.Text = "0.00";
+                    txtTax.Text = "0.00";
+                    txtTotal.Text = "0.00";
+                    txtChange.Text = "0.00";
+                    return;
+                }
+                
                 decimal subtotal = _saleItems.Sum(item => item.SubTotal);
-                decimal discount = Convert.ToDecimal(txtTaxPercent.Text ?? "0");
-                decimal discountAmount = subtotal * (discount / 100);
+                
+                // Calculate discount
+                decimal discountPercent = 0;
+                decimal discountAmount = 0;
+                
+                if (!string.IsNullOrEmpty(txtTaxPercent.Text))
+                {
+                    if (decimal.TryParse(txtTaxPercent.Text, out discountPercent))
+                    {
+                        discountAmount = subtotal * (discountPercent / 100);
+                    }
+                }
+                
                 decimal taxableAmount = subtotal - discountAmount;
                 
+                // Calculate tax
                 decimal taxPercent = 0;
                 if (cmbTax.SelectedItem != null)
                 {
@@ -522,13 +619,25 @@ namespace Vape_Store
                 decimal taxAmount = taxableAmount * (taxPercent / 100);
                 decimal total = taxableAmount + taxAmount;
                 
-                decimal paid = Convert.ToDecimal(txtPaid.Text ?? "0");
+                decimal paid = 0;
+                if (!decimal.TryParse(txtPaid.Text ?? "0", out paid))
+                {
+                    paid = 0;
+                }
                 decimal change = paid - total;
                 
+                // Update all fields
                 txtsubTotal.Text = subtotal.ToString("F2");
                 txtTax.Text = taxAmount.ToString("F2");
                 txtTotal.Text = total.ToString("F2");
                 txtChange.Text = change.ToString("F2");
+                
+                // Store discount values for saving (only if sale is loaded)
+                if (_currentSale != null)
+                {
+                    _currentSale.DiscountAmount = discountAmount;
+                    _currentSale.DiscountPercent = discountPercent;
+                }
             }
             catch (Exception ex)
             {
@@ -613,21 +722,29 @@ namespace Vape_Store
                     return;
                 }
 
-                if (_saleItems.Count == 0)
+                // Validate sale data
+                string validationError = ValidateSaleData();
+                if (!string.IsNullOrEmpty(validationError))
                 {
-                    ShowMessage("Please add at least one item to the sale.", "Validation Error", MessageBoxIcon.Warning);
-                    return;
-                }
-
-                if (cmbCustomer.SelectedValue == null)
-                {
-                    ShowMessage("Please select a customer.", "Validation Error", MessageBoxIcon.Warning);
+                    ShowMessage(validationError, "Validation Error", MessageBoxIcon.Warning);
                     return;
                 }
 
                 // Validate payment
-                decimal total = Convert.ToDecimal(txtTotal.Text ?? "0");
-                decimal paid = Convert.ToDecimal(txtPaid.Text ?? "0");
+                decimal total = 0;
+                decimal paid = 0;
+                
+                if (!decimal.TryParse(txtTotal.Text ?? "0", out total))
+                {
+                    ShowMessage("Invalid total amount.", "Validation Error", MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                if (!decimal.TryParse(txtPaid.Text ?? "0", out paid))
+                {
+                    ShowMessage("Invalid paid amount.", "Validation Error", MessageBoxIcon.Warning);
+                    return;
+                }
                 
                 if (paid < total)
                 {
@@ -643,19 +760,59 @@ namespace Vape_Store
                     }
                 }
 
-                // Update sale object
+                // Update sale object with comprehensive data
                 _currentSale.CustomerID = ((Customer)cmbCustomer.SelectedItem).CustomerID;
                 _currentSale.SaleDate = guna2DateTimePicker1.Value;
-                _currentSale.SubTotal = Convert.ToDecimal(txtsubTotal.Text ?? "0");
-                _currentSale.TaxPercent = Convert.ToDecimal(txtTaxPercent.Text ?? "0");
-                _currentSale.TaxAmount = Convert.ToDecimal(txtTax.Text ?? "0");
-                _currentSale.TotalAmount = Convert.ToDecimal(txtTotal.Text ?? "0");
+                
+                // Parse all decimal fields safely
+                decimal subtotal = 0;
+                decimal taxAmount = 0;
+                decimal totalAmount = 0;
+                decimal changeAmount = 0;
+                
+                if (!decimal.TryParse(txtsubTotal.Text ?? "0", out subtotal))
+                {
+                    ShowMessage("Invalid subtotal amount.", "Validation Error", MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                if (!decimal.TryParse(txtTax.Text ?? "0", out taxAmount))
+                {
+                    ShowMessage("Invalid tax amount.", "Validation Error", MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                if (!decimal.TryParse(txtTotal.Text ?? "0", out totalAmount))
+                {
+                    ShowMessage("Invalid total amount.", "Validation Error", MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                if (!decimal.TryParse(txtChange.Text ?? "0", out changeAmount))
+                {
+                    ShowMessage("Invalid change amount.", "Validation Error", MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                // Update sale with all fields
+                _currentSale.SubTotal = subtotal;
+                _currentSale.DiscountAmount = _currentSale.DiscountAmount; // Already calculated in CalculateTotals
+                _currentSale.DiscountPercent = _currentSale.DiscountPercent; // Already calculated in CalculateTotals
+                _currentSale.TaxPercent = GetTaxPercentFromComboBox();
+                _currentSale.TaxAmount = taxAmount;
+                _currentSale.TotalAmount = totalAmount;
                 _currentSale.PaymentMethod = cmbPaymentMethod.SelectedItem?.ToString();
                 _currentSale.PaidAmount = paid;
-                _currentSale.ChangeAmount = Convert.ToDecimal(txtChange.Text ?? "0");
+                _currentSale.ChangeAmount = changeAmount;
+                _currentSale.Status = "Active";
+                _currentSale.Notes = ""; // Could add a notes field to the form
+                _currentSale.ModifiedBy = 1; // TODO: Get from current user session
                 _currentSale.SaleItems = _saleItems;
 
-                // Save to database
+                // Update stock quantities for changed items (like Sales Return logic)
+                UpdateStockForChangedItems();
+
+                // Save to database using repository
                 bool success = _saleRepository.UpdateSale(_currentSale);
                 
                 if (success)
@@ -672,6 +829,57 @@ namespace Vape_Store
             catch (Exception ex)
             {
                 ShowMessage($"Error updating sale: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateStockForChangedItems()
+        {
+            try
+            {
+                // Compare original sale items with current items to determine stock changes
+                if (_currentSale?.SaleItems != null)
+                {
+                    var originalItems = _currentSale.SaleItems.ToList();
+                    var currentItems = _saleItems.ToList();
+                    
+                    // Find items that were removed (quantity decreased)
+                    foreach (var originalItem in originalItems)
+                    {
+                        var currentItem = currentItems.FirstOrDefault(ci => ci.ProductID == originalItem.ProductID);
+                        if (currentItem == null)
+                        {
+                            // Item was completely removed - add back to stock
+                            _inventoryService.UpdateStock(originalItem.ProductID, originalItem.Quantity, 0);
+                        }
+                        else if (currentItem.Quantity < originalItem.Quantity)
+                        {
+                            // Item quantity decreased - add back the difference
+                            int difference = originalItem.Quantity - currentItem.Quantity;
+                            _inventoryService.UpdateStock(originalItem.ProductID, difference, 0);
+                        }
+                    }
+                    
+                    // Find items that were added or quantity increased
+                    foreach (var currentItem in currentItems)
+                    {
+                        var originalItem = originalItems.FirstOrDefault(oi => oi.ProductID == currentItem.ProductID);
+                        if (originalItem == null)
+                        {
+                            // New item added - subtract from stock
+                            _inventoryService.UpdateStock(currentItem.ProductID, 0, currentItem.Quantity);
+                        }
+                        else if (currentItem.Quantity > originalItem.Quantity)
+                        {
+                            // Item quantity increased - subtract the difference
+                            int difference = currentItem.Quantity - originalItem.Quantity;
+                            _inventoryService.UpdateStock(currentItem.ProductID, 0, difference);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error updating stock: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
 
@@ -718,18 +926,80 @@ namespace Vape_Store
             cmbCategory.SelectedIndex = -1;
             cmbBrand.SelectedIndex = -1;
             dataGridView1.Rows.Clear();
-            txtsubTotal.Clear();
-            txtTaxPercent.Clear();
-            txtTax.Clear();
-            txtTotal.Clear();
-            txtPaid.Clear();
-            txtChange.Clear();
+            InitializeFinancialFields();
             cmbTax.SelectedIndex = 0;
             
             _saleItems.Clear();
             _currentSale = null;
             selectedSaleId = -1;
             isEditMode = false;
+        }
+
+        private string ValidateSaleData()
+        {
+            if (_saleItems == null || _saleItems.Count == 0)
+            {
+                return "Please add at least one item to the sale.";
+            }
+
+            if (cmbCustomer.SelectedValue == null)
+            {
+                return "Please select a customer.";
+            }
+
+            // Validate quantities and stock availability
+            foreach (var item in _saleItems)
+            {
+                if (item.Quantity <= 0)
+                {
+                    return $"Quantity for {item.ProductName} must be greater than 0.";
+                }
+
+                if (item.UnitPrice <= 0)
+                {
+                    return $"Price for {item.ProductName} must be greater than 0.";
+                }
+                
+                // Validate stock availability
+                var product = _products.FirstOrDefault(p => p.ProductID == item.ProductID);
+                if (product != null)
+                {
+                    if (product.StockQuantity < item.Quantity)
+                    {
+                        return $"Insufficient stock for '{item.ProductName}'. Available: {product.StockQuantity}, Required: {item.Quantity}";
+                    }
+                }
+            }
+
+            // Validate totals
+            if (!decimal.TryParse(txtTotal.Text ?? "0", out decimal total))
+            {
+                return "Invalid total amount format.";
+            }
+            
+            if (total <= 0)
+            {
+                return "Total amount must be greater than 0.";
+            }
+
+            return string.Empty; // No validation errors
+        }
+
+        private decimal GetTaxPercentFromComboBox()
+        {
+            if (cmbTax.SelectedItem != null)
+            {
+                string taxText = cmbTax.SelectedItem.ToString();
+                if (taxText.Contains("%"))
+                {
+                    taxText = taxText.Replace("%", "").Trim();
+                    if (decimal.TryParse(taxText, out decimal taxPercent))
+                    {
+                        return taxPercent;
+                    }
+                }
+            }
+            return 0;
         }
 
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
@@ -742,6 +1012,19 @@ namespace Vape_Store
             // Set initial state
             guna2DateTimePicker1.Value = DateTime.Now;
             txtinvoiceNo.Focus();
+            
+            // Initialize all text fields with default values to prevent parsing errors
+            InitializeFinancialFields();
+        }
+        
+        private void InitializeFinancialFields()
+        {
+            txtsubTotal.Text = "0.00";
+            txtTaxPercent.Text = "0";
+            txtTax.Text = "0.00";
+            txtTotal.Text = "0.00";
+            txtPaid.Text = "0.00";
+            txtChange.Text = "0.00";
         }
     }
 }

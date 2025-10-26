@@ -45,7 +45,6 @@ namespace Vape_Store
             PurchaseDropdown= new ContextMenuStrip();  
             PurchaseDropdown.Items.Add("Add Purchase",null, (s,e) => OpenAddPurchaseForm());
             PurchaseDropdown.Items.Add("Purchase Returns", null, (s, e) => OpenPurchaseReturnForm());
-            PurchaseDropdown.Items.Add("Edit Purchase", null, (s, e) => OpenEditPurchaseForm());
             PurchaseDropdown.Items.Add("Purchase Ledger",null, (s,e) => OpenPurchaseLedgerForm());
 
             InventoryDropdown = new ContextMenuStrip();
@@ -98,27 +97,38 @@ namespace Vape_Store
         private void OpenNewSaleForm() //method for opening the product form 
         {
             NewSale newsale = new NewSale();
+            newsale.FormClosed += (s, e) => RefreshDashboardData();
             newsale.Show();
         }
        
         private void OpenSalesLedgerForm()
         {
-            SalesReportForm salesReport = new SalesReportForm();
-            salesReport.Show();
+            try
+            {
+                var salesLedgerForm = new SalesLedgerForm();
+                salesLedgerForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening sales ledger: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         private void OpenEditSalesForm()
         {
             EditSale editsale = new EditSale();
+            editsale.FormClosed += (s, e) => RefreshDashboardData();
             editsale.Show();
         }
         private void OpenSalesReturnForm()
         {
             SalesReturnForm salesreturn = new SalesReturnForm();
+            salesreturn.FormClosed += (s, e) => RefreshDashboardData();
             salesreturn.Show();
         }
         private void OpenAddPurchaseForm()
         { 
            NewPurchase newPurchase= new NewPurchase();  
+            newPurchase.FormClosed += (s, e) => RefreshDashboardData();
             newPurchase.Show(); 
 
         }
@@ -128,14 +138,10 @@ namespace Vape_Store
             purchaseReport.Show();
         }
 
-        private void OpenEditPurchaseForm()
-        {
-            EditPurchase editspurchase = new EditPurchase(); 
-            editspurchase.Show();   
-        }
         private void OpenPurchaseReturnForm()
         {
            PurchaseReturnForm purchaseReturn= new PurchaseReturnForm(); 
+            purchaseReturn.FormClosed += (s, e) => RefreshDashboardData();
             purchaseReturn.Show();  
 
         }
@@ -160,7 +166,16 @@ namespace Vape_Store
         }
         private void OpenPrintBarCodeForm()
         {
-            MessageBox.Show("Barcode printing functionality will be available in the next update.", "Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Open Products form to allow barcode printing
+                var productsForm = new Products();
+                productsForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening barcode printing: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         private void OpenStockInHandForm()
         {
@@ -208,8 +223,15 @@ namespace Vape_Store
 
         private void OpenProfitAndLossForm()
         {
-        
-        
+            try
+            {
+                var profitLossReport = new ProfitAndLossReportForm();
+                profitLossReport.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening profit and loss report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void OpenStockReportForm()
@@ -238,12 +260,32 @@ namespace Vape_Store
 
         private void OpenItemsSalesReportForm()
         {
-            MessageBox.Show("Item-wise sales report functionality will be available in the next update.", "Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Create a custom item-wise sales report
+                var itemwiseReport = new SalesReportForm();
+                // Set to show item-wise data by default
+                itemwiseReport.SetItemWiseMode();
+                itemwiseReport.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening item-wise sales report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void OpenSalesReturnReportForm()
         {
-            MessageBox.Show("Sales return report functionality will be available in the next update.", "Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Create a specialized sales return report
+                var salesReturnReport = new SalesReturnReportForm();
+                salesReturnReport.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening sales return report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void OpenPurchaseReportForm()
@@ -254,7 +296,16 @@ namespace Vape_Store
 
         private void OpenPurchaseReturnReportForm()
         {
-            MessageBox.Show("Purchase return report functionality will be available in the next update.", "Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Create a specialized purchase return report
+                var purchaseReturnReport = new PurchaseReturnReportForm();
+                purchaseReturnReport.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening purchase return report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void OpenProfitMarginReportForm()
@@ -283,7 +334,16 @@ namespace Vape_Store
 
         private void OpenDataBaseBackupForm()
         {
-            MessageBox.Show("Database backup functionality will be available in the next update.", "Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Open Database Statistics form for backup information
+                var databaseStatsForm = new DatabaseStatisticsReport();
+                databaseStatsForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening database backup: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         private void OpenUserManagementForm()
         {
@@ -293,7 +353,16 @@ namespace Vape_Store
 
         private void OpenUserAccessForm()
         {
-            MessageBox.Show("User access management functionality will be available in the next update.", "Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Open Users form for user access management
+                var usersForm = new Users();
+                usersForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening user access management: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void OpenThermalInvoiceForm()
@@ -400,7 +469,7 @@ namespace Vape_Store
         {
             // Initialize recent activity list
             recentActivities.Add(new RecentActivity { Time = DateTime.Now, Description = "New product added: Vaporesso XROS", Type = "Product" });
-            recentActivities.Add(new RecentActivity { Time = DateTime.Now.AddMinutes(-15), Description = "Sale completed: $125.50", Type = "Sale" });
+            recentActivities.Add(new RecentActivity { Time = DateTime.Now.AddMinutes(-15), Description = "Sale completed: 125.50", Type = "Sale" });
             recentActivities.Add(new RecentActivity { Time = DateTime.Now.AddMinutes(-30), Description = "Low stock alert: SMOK Nord 4", Type = "Alert" });
             recentActivities.Add(new RecentActivity { Time = DateTime.Now.AddHours(-1), Description = "New customer registered: John Smith", Type = "Customer" });
         }
@@ -506,19 +575,19 @@ namespace Vape_Store
             try
             {
                 // Update Sales KPI
-                label9.Text = $"Rs: {currentStats.TodaySales:F2}";
+                label9.Text = $"{currentStats.TodaySales:F2}";
                 
                 // Update Sales Return KPI
-                label10.Text = $"Rs: {currentStats.SalesReturns:F2}";
+                label10.Text = $"{currentStats.SalesReturns:F2}";
                 
-                // Update Purchase KPI
-                label11.Text = $"Rs: {currentStats.MonthlySales:F2}";
+                // Update Purchase KPI - Fixed: Use MonthlyPurchases instead of MonthlySales
+                label11.Text = $"{currentStats.MonthlyPurchases:F2}";
                 
                 // Update Purchase Return KPI
-                label12.Text = $"Rs: {currentStats.PurchaseReturns:F2}";
+                label12.Text = $"{currentStats.PurchaseReturns:F2}";
                 
                 // Update Expenses KPI
-                label13.Text = $"Rs: {currentStats.Expenses:F2}";
+                label13.Text = $"{currentStats.Expenses:F2}";
                 
                 // Update Users KPI
                 label14.Text = $"{currentStats.ActiveUsers}-All Time";
@@ -675,6 +744,7 @@ namespace Vape_Store
     {
         public decimal TodaySales { get; set; }
         public decimal MonthlySales { get; set; }
+        public decimal MonthlyPurchases { get; set; }
         public int TotalProducts { get; set; }
         public int LowStockItems { get; set; }
         public int TotalCustomers { get; set; }

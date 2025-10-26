@@ -19,6 +19,8 @@ namespace Vape_Store
         private SaleRepository _saleRepository;
         private Sale _currentSale;
         private List<SaleItem> _saleItems;
+        private Purchase _currentPurchase;
+        private List<PurchaseItem> _purchaseItems;
         private Font _headerFont;
         private Font _bodyFont;
         private Font _footerFont;
@@ -131,9 +133,10 @@ namespace Vape_Store
 
         private void BtnPrintInvoice_Click(object sender, EventArgs e)
         {
-            if (_currentSale == null)
+            // Check if we have purchase data or sale data
+            if (_currentPurchase == null && _currentSale == null)
             {
-                ShowMessage("Please load a sale first.", "No Sale", MessageBoxIcon.Warning);
+                ShowMessage("Please load data first.", "No Data", MessageBoxIcon.Warning);
                 return;
             }
 
@@ -154,7 +157,7 @@ namespace Vape_Store
                 if (printDialog.ShowDialog() == DialogResult.OK)
                 {
                     printDoc.Print();
-                    ShowMessage("Invoice printed successfully!", "Print Complete", MessageBoxIcon.Information);
+                    // Success message removed to avoid annoying popups
                 }
             }
             catch (Exception ex)
@@ -227,9 +230,22 @@ namespace Vape_Store
 
         private void PrintBusinessInfo(Graphics g)
         {
-            string invoiceNumber = $"Invoice: {_currentSale.InvoiceNumber}";
-            string date = $"Date: {_currentSale.SaleDate:MM/dd/yyyy HH:mm}";
-            string cashier = $"Cashier: {_currentSale.UserName ?? "System"}";
+            string invoiceNumber, date, cashier;
+            
+            if (_currentPurchase != null)
+            {
+                // Purchase invoice
+                invoiceNumber = $"Purchase Invoice: {_currentPurchase.InvoiceNumber}";
+                date = $"Date: {_currentPurchase.PurchaseDate:MM/dd/yyyy HH:mm}";
+                cashier = $"Entered By: {_currentPurchase.UserName ?? "System"}";
+            }
+            else
+            {
+                // Sale invoice
+                invoiceNumber = $"Invoice: {_currentSale.InvoiceNumber}";
+                date = $"Date: {_currentSale.SaleDate:MM/dd/yyyy HH:mm}";
+                cashier = $"Cashier: {_currentSale.UserName ?? "System"}";
+            }
 
             g.DrawString(invoiceNumber, _bodyFont, Brushes.Black, 0, _currentY);
             _currentY += _lineHeight;
@@ -247,16 +263,27 @@ namespace Vape_Store
 
         private void PrintCustomerInfo(Graphics g)
         {
-            if (_currentSale.CustomerID > 0)
+            if (_currentPurchase != null)
             {
-                string customerName = $"Customer: {_currentSale.CustomerName ?? "Walk-in Customer"}";
-                g.DrawString(customerName, _bodyFont, Brushes.Black, 0, _currentY);
+                // Purchase invoice - show supplier info
+                string supplierName = $"Supplier: {_currentPurchase.SupplierName ?? "N/A"}";
+                g.DrawString(supplierName, _bodyFont, Brushes.Black, 0, _currentY);
                 _currentY += _lineHeight;
             }
-            else
+            else if (_currentSale != null)
             {
-                g.DrawString("Customer: Walk-in Customer", _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
+                // Sale invoice - show customer info
+                if (_currentSale.CustomerID > 0)
+                {
+                    string customerName = $"Customer: {_currentSale.CustomerName ?? "Walk-in Customer"}";
+                    g.DrawString(customerName, _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+                }
+                else
+                {
+                    g.DrawString("Customer: Walk-in Customer", _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+                }
             }
             
             _currentY += _lineHeight;
@@ -271,18 +298,38 @@ namespace Vape_Store
             g.DrawString("----------------------------------------", _bodyFont, Brushes.Black, 0, _currentY);
             _currentY += _lineHeight;
 
-            // Items
-            foreach (var item in _saleItems)
+            // Items - handle both sales and purchases
+            if (_currentPurchase != null && _purchaseItems != null)
             {
-                // Product name (truncate if too long)
-                string productName = item.ProductName.Length > 25 ? item.ProductName.Substring(0, 22) + "..." : item.ProductName;
-                g.DrawString(productName, _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
+                // Purchase items
+                foreach (var item in _purchaseItems)
+                {
+                    // Product name (truncate if too long)
+                    string productName = item.ProductName.Length > 25 ? item.ProductName.Substring(0, 22) + "..." : item.ProductName;
+                    g.DrawString(productName, _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
 
-                // Quantity and price
-                string itemLine = $"Qty: {item.Quantity} x ${item.UnitPrice:F2} = ${item.SubTotal:F2}";
-                g.DrawString(itemLine, _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
+                    // Quantity and price
+                    string itemLine = $"Qty: {item.Quantity} x ${item.UnitPrice:F2} = ${item.SubTotal:F2}";
+                    g.DrawString(itemLine, _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+                }
+            }
+            else if (_currentSale != null && _saleItems != null)
+            {
+                // Sale items
+                foreach (var item in _saleItems)
+                {
+                    // Product name (truncate if too long)
+                    string productName = item.ProductName.Length > 25 ? item.ProductName.Substring(0, 22) + "..." : item.ProductName;
+                    g.DrawString(productName, _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+
+                    // Quantity and price
+                    string itemLine = $"Qty: {item.Quantity} x ${item.UnitPrice:F2} = ${item.SubTotal:F2}";
+                    g.DrawString(itemLine, _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+                }
             }
 
             g.DrawString("----------------------------------------", _bodyFont, Brushes.Black, 0, _currentY);
@@ -291,32 +338,67 @@ namespace Vape_Store
 
         private void PrintTotals(Graphics g)
         {
-            // Subtotal
-            g.DrawString($"Subtotal: ${_currentSale.SubTotal:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-            _currentY += _lineHeight;
-
-            // Tax
-            if (_currentSale.TaxAmount > 0)
+            if (_currentPurchase != null)
             {
-                g.DrawString($"Tax ({_currentSale.TaxPercent:F1}%): ${_currentSale.TaxAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
+                // Purchase totals
+                g.DrawString($"Subtotal: ${_currentPurchase.SubTotal:F2}", _bodyFont, Brushes.Black, 0, _currentY);
                 _currentY += _lineHeight;
+
+                // Tax
+                if (_currentPurchase.TaxAmount > 0)
+                {
+                    g.DrawString($"Tax ({_currentPurchase.TaxPercent:F1}%): ${_currentPurchase.TaxAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+                }
+
+                // Total
+                g.DrawString($"TOTAL: ${_currentPurchase.TotalAmount:F2}", _footerFont, Brushes.Black, 0, _currentY);
+                _currentY += _lineHeight * 2;
+
+                // Payment info
+                g.DrawString($"Payment Method: {_currentPurchase.PaymentMethod}", _bodyFont, Brushes.Black, 0, _currentY);
+                _currentY += _lineHeight;
+                
+                g.DrawString($"Amount Paid: ${_currentPurchase.PaidAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
+                _currentY += _lineHeight;
+                
+                // Calculate balance amount (Total - Paid)
+                decimal balanceAmount = _currentPurchase.TotalAmount - _currentPurchase.PaidAmount;
+                if (balanceAmount > 0)
+                {
+                    g.DrawString($"Balance: ${balanceAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+                }
             }
-
-            // Total
-            g.DrawString($"TOTAL: ${_currentSale.TotalAmount:F2}", _footerFont, Brushes.Black, 0, _currentY);
-            _currentY += _lineHeight * 2;
-
-            // Payment info
-            g.DrawString($"Payment Method: {_currentSale.PaymentMethod}", _bodyFont, Brushes.Black, 0, _currentY);
-            _currentY += _lineHeight;
-            
-            g.DrawString($"Amount Paid: ${_currentSale.PaidAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-            _currentY += _lineHeight;
-            
-            if (_currentSale.ChangeAmount > 0)
+            else if (_currentSale != null)
             {
-                g.DrawString($"Change: ${_currentSale.ChangeAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
+                // Sale totals
+                g.DrawString($"Subtotal: ${_currentSale.SubTotal:F2}", _bodyFont, Brushes.Black, 0, _currentY);
                 _currentY += _lineHeight;
+
+                // Tax
+                if (_currentSale.TaxAmount > 0)
+                {
+                    g.DrawString($"Tax ({_currentSale.TaxPercent:F1}%): ${_currentSale.TaxAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+                }
+
+                // Total
+                g.DrawString($"TOTAL: ${_currentSale.TotalAmount:F2}", _footerFont, Brushes.Black, 0, _currentY);
+                _currentY += _lineHeight * 2;
+
+                // Payment info
+                g.DrawString($"Payment Method: {_currentSale.PaymentMethod}", _bodyFont, Brushes.Black, 0, _currentY);
+                _currentY += _lineHeight;
+                
+                g.DrawString($"Amount Paid: ${_currentSale.PaidAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
+                _currentY += _lineHeight;
+                
+                if (_currentSale.ChangeAmount > 0)
+                {
+                    g.DrawString($"Change: ${_currentSale.ChangeAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
+                    _currentY += _lineHeight;
+                }
             }
         }
 
@@ -347,6 +429,53 @@ namespace Vape_Store
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
+        }
+
+        public void SetPurchaseData(Purchase purchase, List<PurchaseItem> purchaseItems)
+        {
+            try
+            {
+                _currentPurchase = purchase;
+                _purchaseItems = purchaseItems;
+                
+                // Update form title
+                this.Text = $"Purchase Invoice - {purchase.InvoiceNumber}";
+                
+                // Update invoice number field
+                txtInvoiceNumber.Text = purchase.InvoiceNumber;
+                
+                // Load purchase data
+                LoadPurchaseData();
+                
+                // Don't show the form here - let the caller decide when to show it
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error setting purchase data: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void LoadPurchaseData()
+        {
+            try
+            {
+                if (_currentPurchase == null || _purchaseItems == null)
+                    return;
+                
+                // Update form fields with purchase data
+                lblInvoiceNumber.Text = _currentPurchase.InvoiceNumber;
+                lblDate.Text = _currentPurchase.PurchaseDate.ToString("dd/MM/yyyy");
+                lblSupplier.Text = _currentPurchase.SupplierName ?? "N/A";
+                lblTotal.Text = _currentPurchase.TotalAmount.ToString("F2");
+                
+                // Success message removed to avoid annoying popups
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading purchase data: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 
@@ -481,6 +610,7 @@ namespace Vape_Store
             
             g.DrawString("Please come again!", bodyFont, Brushes.Black, 0, currentY);
         }
+
     }
 }
 

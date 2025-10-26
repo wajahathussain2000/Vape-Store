@@ -176,10 +176,10 @@ namespace Vape_Store.Repositories
                     {
                         try
                         {
-                            // Insert sales return
+                            // Insert sales return with original invoice details
                             var returnQuery = @"
-                                INSERT INTO SalesReturns (ReturnNumber, SaleID, CustomerID, ReturnDate, ReturnReason, Description, TotalAmount, UserID, CreatedDate)
-                                VALUES (@ReturnNumber, @SaleID, @CustomerID, @ReturnDate, @ReturnReason, @Description, @TotalAmount, @UserID, @CreatedDate);
+                                INSERT INTO SalesReturns (ReturnNumber, SaleID, CustomerID, ReturnDate, ReturnReason, Description, TotalAmount, UserID, CreatedDate, OriginalInvoiceNumber, OriginalInvoiceDate, OriginalInvoiceTotal, IsFullyReturned, ReturnStatus)
+                                VALUES (@ReturnNumber, @SaleID, @CustomerID, @ReturnDate, @ReturnReason, @Description, @TotalAmount, @UserID, @CreatedDate, @OriginalInvoiceNumber, @OriginalInvoiceDate, @OriginalInvoiceTotal, @IsFullyReturned, @ReturnStatus);
                                 SELECT SCOPE_IDENTITY();";
 
                             using (var returnCommand = new SqlCommand(returnQuery, connection, transaction))
@@ -193,12 +193,18 @@ namespace Vape_Store.Repositories
                                 returnCommand.Parameters.AddWithValue("@TotalAmount", salesReturn.TotalAmount);
                                 returnCommand.Parameters.AddWithValue("@UserID", salesReturn.UserID);
                                 returnCommand.Parameters.AddWithValue("@CreatedDate", salesReturn.CreatedDate);
+                                returnCommand.Parameters.AddWithValue("@OriginalInvoiceNumber", salesReturn.OriginalInvoiceNumber ?? (object)DBNull.Value);
+                                returnCommand.Parameters.AddWithValue("@OriginalInvoiceDate", salesReturn.OriginalInvoiceDate ?? (object)DBNull.Value);
+                                returnCommand.Parameters.AddWithValue("@OriginalInvoiceTotal", salesReturn.OriginalInvoiceTotal ?? (object)DBNull.Value);
+                                returnCommand.Parameters.AddWithValue("@IsFullyReturned", salesReturn.IsFullyReturned);
+                                returnCommand.Parameters.AddWithValue("@ReturnStatus", salesReturn.ReturnStatus ?? "Partial");
 
                                 var returnId = Convert.ToInt32(returnCommand.ExecuteScalar());
 
-                                // Insert return items
+                                // Insert return items and update stock
                                 foreach (var item in salesReturn.ReturnItems)
                                 {
+                                    // Insert return item
                                     var itemQuery = @"
                                         INSERT INTO SalesReturnItems (ReturnID, ProductID, Quantity, UnitPrice, SubTotal)
                                         VALUES (@ReturnID, @ProductID, @Quantity, @UnitPrice, @SubTotal)";
@@ -212,6 +218,19 @@ namespace Vape_Store.Repositories
                                         itemCommand.Parameters.AddWithValue("@SubTotal", item.SubTotal);
 
                                         itemCommand.ExecuteNonQuery();
+                                    }
+
+                                    // Update stock - ADD back to inventory (return increases stock)
+                                    var stockUpdateQuery = @"
+                                        UPDATE Products 
+                                        SET StockQuantity = StockQuantity + @Quantity
+                                        WHERE ProductID = @ProductID";
+
+                                    using (var stockCommand = new SqlCommand(stockUpdateQuery, connection, transaction))
+                                    {
+                                        stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                        stockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
+                                        stockCommand.ExecuteNonQuery();
                                     }
                                 }
 
@@ -244,6 +263,40 @@ namespace Vape_Store.Repositories
                     {
                         try
                         {
+                            // Get old return items to reverse stock changes
+                            var oldItemsQuery = @"
+                                SELECT ProductID, Quantity FROM SalesReturnItems 
+                                WHERE ReturnID = @ReturnID";
+                            
+                            var oldItems = new List<(int ProductID, int Quantity)>();
+                            using (var oldItemsCommand = new SqlCommand(oldItemsQuery, connection, transaction))
+                            {
+                                oldItemsCommand.Parameters.AddWithValue("@ReturnID", salesReturn.ReturnID);
+                                using (var reader = oldItemsCommand.ExecuteReader())
+                                {
+                                    while (reader.Read())
+                                    {
+                                        oldItems.Add((Convert.ToInt32(reader["ProductID"]), Convert.ToInt32(reader["Quantity"])));
+                                    }
+                                }
+                            }
+
+                            // Reverse old stock changes (subtract what was previously added)
+                            foreach (var oldItem in oldItems)
+                            {
+                                var reverseStockQuery = @"
+                                    UPDATE Products 
+                                    SET StockQuantity = StockQuantity - @Quantity
+                                    WHERE ProductID = @ProductID";
+
+                                using (var reverseStockCommand = new SqlCommand(reverseStockQuery, connection, transaction))
+                                {
+                                    reverseStockCommand.Parameters.AddWithValue("@ProductID", oldItem.ProductID);
+                                    reverseStockCommand.Parameters.AddWithValue("@Quantity", oldItem.Quantity);
+                                    reverseStockCommand.ExecuteNonQuery();
+                                }
+                            }
+
                             // Update sales return
                             var returnQuery = @"
                                 UPDATE SalesReturns 
@@ -275,9 +328,10 @@ namespace Vape_Store.Repositories
                                 deleteCommand.ExecuteNonQuery();
                             }
 
-                            // Insert updated return items
+                            // Insert updated return items and apply new stock changes
                             foreach (var item in salesReturn.ReturnItems)
                             {
+                                // Insert return item
                                 var itemQuery = @"
                                     INSERT INTO SalesReturnItems (ReturnID, ProductID, Quantity, UnitPrice, SubTotal)
                                     VALUES (@ReturnID, @ProductID, @Quantity, @UnitPrice, @SubTotal)";
@@ -291,6 +345,19 @@ namespace Vape_Store.Repositories
                                     itemCommand.Parameters.AddWithValue("@SubTotal", item.SubTotal);
 
                                     itemCommand.ExecuteNonQuery();
+                                }
+
+                                // Update stock - ADD back to inventory (return increases stock)
+                                var stockUpdateQuery = @"
+                                    UPDATE Products 
+                                    SET StockQuantity = StockQuantity + @Quantity
+                                        WHERE ProductID = @ProductID";
+
+                                using (var stockCommand = new SqlCommand(stockUpdateQuery, connection, transaction))
+                                {
+                                    stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                    stockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
+                                    stockCommand.ExecuteNonQuery();
                                 }
                             }
 
@@ -322,6 +389,40 @@ namespace Vape_Store.Repositories
                     {
                         try
                         {
+                            // Get return items to reverse stock changes
+                            var getItemsQuery = @"
+                                SELECT ProductID, Quantity FROM SalesReturnItems 
+                                WHERE ReturnID = @ReturnID";
+                            
+                            var returnItems = new List<(int ProductID, int Quantity)>();
+                            using (var getItemsCommand = new SqlCommand(getItemsQuery, connection, transaction))
+                            {
+                                getItemsCommand.Parameters.AddWithValue("@ReturnID", returnId);
+                                using (var reader = getItemsCommand.ExecuteReader())
+                                {
+                                    while (reader.Read())
+                                    {
+                                        returnItems.Add((Convert.ToInt32(reader["ProductID"]), Convert.ToInt32(reader["Quantity"])));
+                                    }
+                                }
+                            }
+
+                            // Reverse stock changes (subtract what was previously added)
+                            foreach (var item in returnItems)
+                            {
+                                var reverseStockQuery = @"
+                                    UPDATE Products 
+                                    SET StockQuantity = StockQuantity - @Quantity
+                                    WHERE ProductID = @ProductID";
+
+                                using (var reverseStockCommand = new SqlCommand(reverseStockQuery, connection, transaction))
+                                {
+                                    reverseStockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                    reverseStockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
+                                    reverseStockCommand.ExecuteNonQuery();
+                                }
+                            }
+
                             // Delete return items first
                             var deleteItemsQuery = "DELETE FROM SalesReturnItems WHERE ReturnID = @ReturnID";
                             using (var deleteItemsCommand = new SqlCommand(deleteItemsQuery, connection, transaction))
@@ -572,6 +673,288 @@ namespace Vape_Store.Repositories
             }
 
             return salesReturns;
+        }
+
+        // New comprehensive methods for return management
+        public bool ValidateReturnEligibility(int saleId, int productId, int requestedQuantity)
+        {
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = @"
+                        SELECT si.Quantity, 
+                               ISNULL(SUM(sri.Quantity), 0) as ReturnedQuantity
+                        FROM SaleItems si
+                        LEFT JOIN SalesReturns sr ON si.SaleID = sr.SaleID
+                        LEFT JOIN SalesReturnItems sri ON sr.ReturnID = sri.ReturnID AND sri.ProductID = si.ProductID
+                        WHERE si.SaleID = @SaleID AND si.ProductID = @ProductID
+                        GROUP BY si.Quantity";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@SaleID", saleId);
+                        command.Parameters.AddWithValue("@ProductID", productId);
+                        connection.Open();
+                        
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                int originalQuantity = Convert.ToInt32(reader["Quantity"]);
+                                int returnedQuantity = Convert.ToInt32(reader["ReturnedQuantity"]);
+                                int availableForReturn = originalQuantity - returnedQuantity;
+                                
+                                return requestedQuantity <= availableForReturn;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error validating return eligibility: {ex.Message}", ex);
+            }
+
+            return false;
+        }
+
+        public List<SalesReturn> GetReturnsByCustomer(int customerId)
+        {
+            var salesReturns = new List<SalesReturn>();
+            
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = @"
+                        SELECT sr.*, c.CustomerName, u.FullName as UserName, s.InvoiceNumber
+                        FROM SalesReturns sr
+                        LEFT JOIN Customers c ON sr.CustomerID = c.CustomerID
+                        LEFT JOIN Users u ON sr.UserID = u.UserID
+                        LEFT JOIN Sales s ON sr.SaleID = s.SaleID
+                        WHERE sr.CustomerID = @CustomerID
+                        ORDER BY sr.ReturnDate DESC";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@CustomerID", customerId);
+                        connection.Open();
+                        
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                salesReturns.Add(new SalesReturn
+                                {
+                                    ReturnID = Convert.ToInt32(reader["ReturnID"]),
+                                    ReturnNumber = reader["ReturnNumber"].ToString(),
+                                    SaleID = Convert.ToInt32(reader["SaleID"]),
+                                    CustomerID = Convert.ToInt32(reader["CustomerID"]),
+                                    ReturnDate = Convert.ToDateTime(reader["ReturnDate"]),
+                                    ReturnReason = reader["ReturnReason"]?.ToString(),
+                                    Description = reader["Description"]?.ToString(),
+                                    TotalAmount = Convert.ToDecimal(reader["TotalAmount"]),
+                                    UserID = Convert.ToInt32(reader["UserID"]),
+                                    CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
+                                    CustomerName = reader["CustomerName"]?.ToString(),
+                                    UserName = reader["UserName"]?.ToString(),
+                                    InvoiceNumber = reader["InvoiceNumber"]?.ToString()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving returns by customer: {ex.Message}", ex);
+            }
+
+            return salesReturns;
+        }
+
+        public decimal GetTotalReturnsAmount(DateTime fromDate, DateTime toDate)
+        {
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = @"
+                        SELECT ISNULL(SUM(TotalAmount), 0) as TotalReturns
+                        FROM SalesReturns 
+                        WHERE ReturnDate BETWEEN @FromDate AND @ToDate";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FromDate", fromDate);
+                        command.Parameters.AddWithValue("@ToDate", toDate);
+                        connection.Open();
+                        
+                        var result = command.ExecuteScalar();
+                        return result != DBNull.Value ? Convert.ToDecimal(result) : 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error calculating total returns amount: {ex.Message}", ex);
+            }
+        }
+
+        public int GetTotalReturnsCount(DateTime fromDate, DateTime toDate)
+        {
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = @"
+                        SELECT COUNT(*) as TotalReturns
+                        FROM SalesReturns 
+                        WHERE ReturnDate BETWEEN @FromDate AND @ToDate";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FromDate", fromDate);
+                        command.Parameters.AddWithValue("@ToDate", toDate);
+                        connection.Open();
+                        
+                        return Convert.ToInt32(command.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error calculating total returns count: {ex.Message}", ex);
+            }
+        }
+
+        public List<SalesReturn> GetRecentReturns(int count = 10)
+        {
+            var salesReturns = new List<SalesReturn>();
+            
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = @"
+                        SELECT TOP (@Count) sr.*, c.CustomerName, u.FullName as UserName, s.InvoiceNumber
+                        FROM SalesReturns sr
+                        LEFT JOIN Customers c ON sr.CustomerID = c.CustomerID
+                        LEFT JOIN Users u ON sr.UserID = u.UserID
+                        LEFT JOIN Sales s ON sr.SaleID = s.SaleID
+                        ORDER BY sr.ReturnDate DESC";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Count", count);
+                        connection.Open();
+                        
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                salesReturns.Add(new SalesReturn
+                                {
+                                    ReturnID = Convert.ToInt32(reader["ReturnID"]),
+                                    ReturnNumber = reader["ReturnNumber"].ToString(),
+                                    SaleID = Convert.ToInt32(reader["SaleID"]),
+                                    CustomerID = Convert.ToInt32(reader["CustomerID"]),
+                                    ReturnDate = Convert.ToDateTime(reader["ReturnDate"]),
+                                    ReturnReason = reader["ReturnReason"]?.ToString(),
+                                    Description = reader["Description"]?.ToString(),
+                                    TotalAmount = Convert.ToDecimal(reader["TotalAmount"]),
+                                    UserID = Convert.ToInt32(reader["UserID"]),
+                                    CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
+                                    CustomerName = reader["CustomerName"]?.ToString(),
+                                    UserName = reader["UserName"]?.ToString(),
+                                    InvoiceNumber = reader["InvoiceNumber"]?.ToString()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving recent returns: {ex.Message}", ex);
+            }
+
+            return salesReturns;
+        }
+
+        public List<Sale> GetAvailableSalesForReturn()
+        {
+            var sales = new List<Sale>();
+            
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = @"
+                        SELECT DISTINCT s.SaleID, s.InvoiceNumber, s.SaleDate, s.TotalAmount, s.CustomerID, c.CustomerName
+                        FROM Sales s
+                        INNER JOIN Customers c ON s.CustomerID = c.CustomerID
+                        WHERE s.SaleID NOT IN (
+                            SELECT DISTINCT SaleID 
+                            FROM SalesReturns 
+                            WHERE ReturnStatus IN ('Full', 'Partial')
+                        )
+                        ORDER BY s.SaleDate DESC";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        connection.Open();
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                sales.Add(new Sale
+                                {
+                                    SaleID = Convert.ToInt32(reader["SaleID"]),
+                                    InvoiceNumber = reader["InvoiceNumber"].ToString(),
+                                    SaleDate = Convert.ToDateTime(reader["SaleDate"]),
+                                    TotalAmount = Convert.ToDecimal(reader["TotalAmount"]),
+                                    CustomerID = Convert.ToInt32(reader["CustomerID"]),
+                                    CustomerName = reader["CustomerName"].ToString()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving available sales for return: {ex.Message}", ex);
+            }
+
+            return sales;
+        }
+
+        public bool IsInvoiceFullyReturned(int saleId)
+        {
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = @"
+                        SELECT COUNT(*) 
+                        FROM SalesReturns 
+                        WHERE SaleID = @SaleId AND ReturnStatus = 'Full'";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@SaleId", saleId);
+                        connection.Open();
+                        var count = Convert.ToInt32(command.ExecuteScalar());
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking if invoice is fully returned: {ex.Message}", ex);
+            }
         }
     }
 }

@@ -71,55 +71,122 @@ namespace Vape_Store.Repositories
         
         public bool AddBrand(Brand brand)
         {
-            string query = @"INSERT INTO Brands (BrandName, Description, IsActive) 
-                           VALUES (@BrandName, @Description, @IsActive)";
-            
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                string query = @"INSERT INTO Brands (BrandName, Description, IsActive, CreatedDate) 
+                               VALUES (@BrandName, @Description, @IsActive, @CreatedDate)";
+                
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    command.Parameters.AddWithValue("@BrandName", brand.BrandName);
-                    command.Parameters.AddWithValue("@Description", brand.Description ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@IsActive", brand.IsActive);
-                    
-                    connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@BrandName", brand.BrandName.Trim());
+                        command.Parameters.AddWithValue("@Description", string.IsNullOrWhiteSpace(brand.Description) ? (object)DBNull.Value : brand.Description.Trim());
+                        command.Parameters.AddWithValue("@IsActive", brand.IsActive);
+                        command.Parameters.AddWithValue("@CreatedDate", brand.CreatedDate);
+                        
+                        connection.Open();
+                        return command.ExecuteNonQuery() > 0;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error adding brand: {ex.Message}", ex);
             }
         }
         
         public bool UpdateBrand(Brand brand)
         {
-            string query = @"UPDATE Brands SET BrandName = @BrandName, Description = @Description, 
-                           IsActive = @IsActive WHERE BrandID = @BrandID";
-            
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                string query = @"UPDATE Brands SET BrandName = @BrandName, Description = @Description, 
+                               IsActive = @IsActive WHERE BrandID = @BrandID";
+                
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    command.Parameters.AddWithValue("@BrandID", brand.BrandID);
-                    command.Parameters.AddWithValue("@BrandName", brand.BrandName);
-                    command.Parameters.AddWithValue("@Description", brand.Description ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@IsActive", brand.IsActive);
-                    
-                    connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@BrandID", brand.BrandID);
+                        command.Parameters.AddWithValue("@BrandName", brand.BrandName.Trim());
+                        command.Parameters.AddWithValue("@Description", string.IsNullOrWhiteSpace(brand.Description) ? (object)DBNull.Value : brand.Description.Trim());
+                        command.Parameters.AddWithValue("@IsActive", brand.IsActive);
+                        
+                        connection.Open();
+                        return command.ExecuteNonQuery() > 0;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error updating brand: {ex.Message}", ex);
             }
         }
         
         public bool DeleteBrand(int brandID)
         {
-            string query = "UPDATE Brands SET IsActive = 0 WHERE BrandID = @BrandID";
-            
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                string query = "UPDATE Brands SET IsActive = 0 WHERE BrandID = @BrandID";
+                
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    command.Parameters.AddWithValue("@BrandID", brandID);
-                    connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@BrandID", brandID);
+                        connection.Open();
+                        return command.ExecuteNonQuery() > 0;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error deleting brand: {ex.Message}", ex);
+            }
+        }
+
+        // Additional methods for enhanced functionality
+        public bool BrandExists(string brandName, int excludeBrandId = -1)
+        {
+            try
+            {
+                string query = "SELECT COUNT(*) FROM Brands WHERE BrandName = @BrandName AND BrandID != @ExcludeBrandId AND IsActive = 1";
+                
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@BrandName", brandName.Trim());
+                        command.Parameters.AddWithValue("@ExcludeBrandId", excludeBrandId);
+                        connection.Open();
+                        return Convert.ToInt32(command.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking brand existence: {ex.Message}", ex);
+            }
+        }
+
+        public int GetBrandCount()
+        {
+            try
+            {
+                string query = "SELECT COUNT(*) FROM Brands WHERE IsActive = 1";
+                
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        connection.Open();
+                        return Convert.ToInt32(command.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting brand count: {ex.Message}", ex);
             }
         }
     }

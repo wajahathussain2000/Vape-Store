@@ -63,6 +63,7 @@ namespace Vape_Store
             
             // Add columns
             dataGridView1.Columns.Add("Select", "Select");
+            dataGridView1.Columns.Add("ProductID", "ProductID"); // Hidden column for data binding
             dataGridView1.Columns.Add("ItemCode", "Item Code");
             dataGridView1.Columns.Add("ItemName", "Item Name");
             dataGridView1.Columns.Add("OrignalQty", "Original Qty");
@@ -72,6 +73,8 @@ namespace Vape_Store
             
             // Configure column properties
             dataGridView1.Columns["Select"].Width = 80;
+            dataGridView1.Columns["ProductID"].Width = 0; // Hidden column
+            dataGridView1.Columns["ProductID"].Visible = false; // Hide the ProductID column
             dataGridView1.Columns["ItemCode"].Width = 120;
             dataGridView1.Columns["ItemName"].Width = 200;
             dataGridView1.Columns["OrignalQty"].Width = 100;
@@ -80,8 +83,8 @@ namespace Vape_Store
             dataGridView1.Columns["Total"].Width = 100;
             
             // Format currency columns
-            dataGridView1.Columns["Price"].DefaultCellStyle.Format = "C2";
-            dataGridView1.Columns["Total"].DefaultCellStyle.Format = "C2";
+            dataGridView1.Columns["Price"].DefaultCellStyle.Format = "F2";
+            dataGridView1.Columns["Total"].DefaultCellStyle.Format = "F2";
             
             // Make ReturnQty column editable
             dataGridView1.Columns["ReturnQty"].ReadOnly = false;
@@ -113,10 +116,10 @@ namespace Vape_Store
             try
             {
                 _suppliers = _supplierRepository.GetAllSuppliers();
-                cmbSupplier.DataSource = _suppliers;
-                cmbSupplier.DisplayMember = "SupplierName";
-                cmbSupplier.ValueMember = "SupplierID";
-                cmbSupplier.SelectedIndex = -1;
+                cmbCustomer.DataSource = _suppliers;
+                cmbCustomer.DisplayMember = "SupplierName";
+                cmbCustomer.ValueMember = "SupplierID";
+                cmbCustomer.SelectedIndex = -1;
             }
             catch (Exception ex)
             {
@@ -200,7 +203,7 @@ namespace Vape_Store
                 // Populate original invoice details
                 txtOriginalInvoiceNumber.Text = _selectedPurchase.InvoiceNumber;
                 txtOriginalInvoiceDate.Text = _selectedPurchase.PurchaseDate.ToString("dd/MM/yyyy");
-                txtOriginalInvoiceTotal.Text = _selectedPurchase.TotalAmount.ToString("C2");
+                txtOriginalInvoiceTotal.Text = _selectedPurchase.TotalAmount.ToString("F2");
 
                 // Populate supplier details
                 cmbCustomer.SelectedValue = _selectedPurchase.SupplierID;
@@ -324,7 +327,14 @@ namespace Vape_Store
             try
             {
                 decimal subtotal = _returnItems.Sum(item => item.SubTotal);
-                decimal discount = Convert.ToDecimal(txtTaxPercent.Text ?? "0");
+                
+                // Safe parsing for discount percentage
+                decimal discount = 0;
+                if (!string.IsNullOrEmpty(txtTaxPercent.Text))
+                {
+                    decimal.TryParse(txtTaxPercent.Text, out discount);
+                }
+                
                 decimal discountAmount = subtotal * (discount / 100);
                 decimal taxableAmount = subtotal - discountAmount;
                 
@@ -360,6 +370,11 @@ namespace Vape_Store
             }
         }
 
+        private void CmbSupplier_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            LoadSupplierDetails();
+        }
+
         private void CmbCustomer_SelectedIndexChanged(object sender, EventArgs e)
         {
             LoadSupplierDetails();
@@ -369,9 +384,14 @@ namespace Vape_Store
         {
             try
             {
+                // Check cmbCustomer for supplier selection
+                ComboBox selectedCombo = null;
                 if (cmbCustomer.SelectedValue != null)
+                    selectedCombo = cmbCustomer;
+
+                if (selectedCombo != null)
                 {
-                    int supplierId = ((Supplier)cmbCustomer.SelectedItem).SupplierID;
+                    int supplierId = ((Supplier)selectedCombo.SelectedItem).SupplierID;
                     var supplier = _suppliers.FirstOrDefault(s => s.SupplierID == supplierId);
                     
                     if (supplier != null)
@@ -454,7 +474,7 @@ namespace Vape_Store
                     ReturnDate = dtpReturnDate.Value,
                     ReturnReason = cmbreturnreason.SelectedItem?.ToString(),
                     Description = txtdescription.Text.Trim(),
-                    TotalAmount = Convert.ToDecimal(txtTotal.Text ?? "0"),
+                    TotalAmount = ParseDecimal(txtTotal.Text),
                     UserID = 1, // TODO: Get from current user session
                     CreatedDate = DateTime.Now,
                     ReturnItems = selectedItems
@@ -533,10 +553,21 @@ namespace Vape_Store
             cmbTax.SelectedIndex = 0;
         }
 
-        private void cmbCustomer_SelectedIndexChanged(object sender, EventArgs e)
+        private decimal ParseDecimal(string value)
         {
-            // Handle customer selection change
-            // Implementation depends on the specific functionality needed
+            if (string.IsNullOrWhiteSpace(value))
+                return 0;
+            
+            // Remove any non-numeric characters except decimal point and minus sign
+            string cleanValue = System.Text.RegularExpressions.Regex.Replace(value, @"[^\d.-]", "");
+            
+            if (string.IsNullOrWhiteSpace(cleanValue))
+                return 0;
+            
+            if (decimal.TryParse(cleanValue, out decimal result))
+                return result;
+            
+            return 0;
         }
     }
 }

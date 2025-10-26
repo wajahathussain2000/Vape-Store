@@ -50,6 +50,7 @@ namespace Vape_Store
                         // Store user session
                         UserSession.CurrentUser = new UserSession
                         {
+                            UserID = user.UserID,
                             Username = user.Username,
                             FullName = user.FullName,
                             Role = user.Role,

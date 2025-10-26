@@ -28,330 +28,309 @@ namespace Vape_Store
         /// </summary>
         private void InitializeComponent()
         {
-            this.panel1 = new System.Windows.Forms.Panel();
+            this.pnlHeader = new System.Windows.Forms.Panel();
             this.lblTitle = new System.Windows.Forms.Label();
-            this.panel2 = new System.Windows.Forms.Panel();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.cmbBrand = new System.Windows.Forms.ComboBox();
+            this.pnlFilters = new System.Windows.Forms.Panel();
             this.lblBrand = new System.Windows.Forms.Label();
-            this.cmbCategory = new System.Windows.Forms.ComboBox();
+            this.cmbBrand = new System.Windows.Forms.ComboBox();
             this.lblCategory = new System.Windows.Forms.Label();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.chkCriticalStock = new System.Windows.Forms.CheckBox();
-            this.chkOutOfStock = new System.Windows.Forms.CheckBox();
-            this.chkLowStock = new System.Windows.Forms.CheckBox();
+            this.cmbCategory = new System.Windows.Forms.ComboBox();
             this.lblStockStatus = new System.Windows.Forms.Label();
-            this.groupBox3 = new System.Windows.Forms.GroupBox();
-            this.txtSearch = new System.Windows.Forms.TextBox();
+            this.chkLowStock = new System.Windows.Forms.CheckBox();
+            this.chkOutOfStock = new System.Windows.Forms.CheckBox();
+            this.chkCriticalStock = new System.Windows.Forms.CheckBox();
             this.lblSearch = new System.Windows.Forms.Label();
-            this.panel3 = new System.Windows.Forms.Panel();
+            this.txtSearch = new System.Windows.Forms.TextBox();
+            this.pnlButtons = new System.Windows.Forms.Panel();
+            this.btnGenerateReport = new System.Windows.Forms.Button();
             this.btnCreatePurchaseOrder = new System.Windows.Forms.Button();
-            this.btnClose = new System.Windows.Forms.Button();
-            this.btnPrint = new System.Windows.Forms.Button();
             this.btnExportPDF = new System.Windows.Forms.Button();
             this.btnExportExcel = new System.Windows.Forms.Button();
+            this.btnPrint = new System.Windows.Forms.Button();
             this.btnClear = new System.Windows.Forms.Button();
-            this.btnGenerateReport = new System.Windows.Forms.Button();
-            this.panel4 = new System.Windows.Forms.Panel();
+            this.btnClose = new System.Windows.Forms.Button();
+            this.pnlData = new System.Windows.Forms.Panel();
             this.dgvLowStockReport = new System.Windows.Forms.DataGridView();
-            this.panel5 = new System.Windows.Forms.Panel();
-            this.lblSelectedCost = new System.Windows.Forms.Label();
-            this.lblSelectedItems = new System.Windows.Forms.Label();
-            this.lblTotalEstimatedCost = new System.Windows.Forms.Label();
+            this.pnlSummary = new System.Windows.Forms.Panel();
             this.lblLowStock = new System.Windows.Forms.Label();
             this.lblOutOfStock = new System.Windows.Forms.Label();
             this.lblCriticalStock = new System.Windows.Forms.Label();
-            this.lblTotalItems = new System.Windows.Forms.Label();
-            this.panel1.SuspendLayout();
-            this.panel2.SuspendLayout();
-            this.groupBox1.SuspendLayout();
-            this.groupBox2.SuspendLayout();
-            this.groupBox3.SuspendLayout();
-            this.panel3.SuspendLayout();
-            this.panel4.SuspendLayout();
+            this.lblTotalProducts = new System.Windows.Forms.Label();
+            this.lblTotalValue = new System.Windows.Forms.Label();
+            this.pnlHeader.SuspendLayout();
+            this.pnlFilters.SuspendLayout();
+            this.pnlButtons.SuspendLayout();
+            this.pnlData.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvLowStockReport)).BeginInit();
-            this.panel5.SuspendLayout();
+            this.pnlSummary.SuspendLayout();
             this.SuspendLayout();
             // 
-            // panel1
+            // pnlHeader
             // 
-            this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(76)))), ((int)(((byte)(60)))));
-            this.panel1.Controls.Add(this.lblTitle);
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panel1.Location = new System.Drawing.Point(0, 0);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1400, 60);
-            this.panel1.TabIndex = 0;
+            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(41)))), ((int)(((byte)(128)))), ((int)(((byte)(185)))));
+            this.pnlHeader.Controls.Add(this.lblTitle);
+            this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlHeader.Location = new System.Drawing.Point(0, 0);
+            this.pnlHeader.Name = "pnlHeader";
+            this.pnlHeader.Size = new System.Drawing.Size(1200, 60);
+            this.pnlHeader.TabIndex = 0;
             // 
             // lblTitle
             // 
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
+            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblTitle.ForeColor = System.Drawing.Color.White;
             this.lblTitle.Location = new System.Drawing.Point(20, 15);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(200, 30);
+            this.lblTitle.Size = new System.Drawing.Size(200, 32);
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "Low Stock Report";
             // 
-            // panel2
+            // pnlFilters
             // 
-            this.panel2.Controls.Add(this.groupBox3);
-            this.panel2.Controls.Add(this.groupBox2);
-            this.panel2.Controls.Add(this.groupBox1);
-            this.panel2.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panel2.Location = new System.Drawing.Point(0, 60);
-            this.panel2.Name = "panel2";
-            this.panel2.Padding = new System.Windows.Forms.Padding(10);
-            this.panel2.Size = new System.Drawing.Size(1400, 120);
-            this.panel2.TabIndex = 1;
-            // 
-            // groupBox1
-            // 
-            this.groupBox1.Controls.Add(this.cmbBrand);
-            this.groupBox1.Controls.Add(this.lblBrand);
-            this.groupBox1.Controls.Add(this.cmbCategory);
-            this.groupBox1.Controls.Add(this.lblCategory);
-            this.groupBox1.Location = new System.Drawing.Point(10, 10);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(400, 80);
-            this.groupBox1.TabIndex = 0;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Filters";
-            // 
-            // cmbBrand
-            // 
-            this.cmbBrand.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbBrand.FormattingEnabled = true;
-            this.cmbBrand.Location = new System.Drawing.Point(200, 45);
-            this.cmbBrand.Name = "cmbBrand";
-            this.cmbBrand.Size = new System.Drawing.Size(150, 21);
-            this.cmbBrand.TabIndex = 3;
+            this.pnlFilters.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(236)))), ((int)(((byte)(240)))), ((int)(((byte)(241)))));
+            this.pnlFilters.Controls.Add(this.lblBrand);
+            this.pnlFilters.Controls.Add(this.cmbBrand);
+            this.pnlFilters.Controls.Add(this.lblCategory);
+            this.pnlFilters.Controls.Add(this.cmbCategory);
+            this.pnlFilters.Controls.Add(this.lblStockStatus);
+            this.pnlFilters.Controls.Add(this.chkLowStock);
+            this.pnlFilters.Controls.Add(this.chkOutOfStock);
+            this.pnlFilters.Controls.Add(this.chkCriticalStock);
+            this.pnlFilters.Controls.Add(this.lblSearch);
+            this.pnlFilters.Controls.Add(this.txtSearch);
+            this.pnlFilters.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlFilters.Location = new System.Drawing.Point(0, 60);
+            this.pnlFilters.Name = "pnlFilters";
+            this.pnlFilters.Padding = new System.Windows.Forms.Padding(20);
+            this.pnlFilters.Size = new System.Drawing.Size(1200, 120);
+            this.pnlFilters.TabIndex = 1;
             // 
             // lblBrand
             // 
             this.lblBrand.AutoSize = true;
-            this.lblBrand.Location = new System.Drawing.Point(200, 25);
+            this.lblBrand.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblBrand.Location = new System.Drawing.Point(20, 20);
             this.lblBrand.Name = "lblBrand";
-            this.lblBrand.Size = new System.Drawing.Size(38, 13);
-            this.lblBrand.TabIndex = 2;
+            this.lblBrand.Size = new System.Drawing.Size(44, 15);
+            this.lblBrand.TabIndex = 0;
             this.lblBrand.Text = "Brand:";
             // 
-            // cmbCategory
+            // cmbBrand
             // 
-            this.cmbCategory.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbCategory.FormattingEnabled = true;
-            this.cmbCategory.Location = new System.Drawing.Point(10, 45);
-            this.cmbCategory.Name = "cmbCategory";
-            this.cmbCategory.Size = new System.Drawing.Size(150, 21);
-            this.cmbCategory.TabIndex = 1;
+            this.cmbBrand.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbBrand.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cmbBrand.FormattingEnabled = true;
+            this.cmbBrand.Location = new System.Drawing.Point(20, 40);
+            this.cmbBrand.Name = "cmbBrand";
+            this.cmbBrand.Size = new System.Drawing.Size(120, 23);
+            this.cmbBrand.TabIndex = 1;
             // 
             // lblCategory
             // 
             this.lblCategory.AutoSize = true;
-            this.lblCategory.Location = new System.Drawing.Point(10, 25);
+            this.lblCategory.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblCategory.Location = new System.Drawing.Point(160, 20);
             this.lblCategory.Name = "lblCategory";
-            this.lblCategory.Size = new System.Drawing.Size(55, 13);
-            this.lblCategory.TabIndex = 0;
+            this.lblCategory.Size = new System.Drawing.Size(64, 15);
+            this.lblCategory.TabIndex = 2;
             this.lblCategory.Text = "Category:";
             // 
-            // groupBox2
+            // cmbCategory
             // 
-            this.groupBox2.Controls.Add(this.chkCriticalStock);
-            this.groupBox2.Controls.Add(this.chkOutOfStock);
-            this.groupBox2.Controls.Add(this.chkLowStock);
-            this.groupBox2.Controls.Add(this.lblStockStatus);
-            this.groupBox2.Location = new System.Drawing.Point(420, 10);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(300, 80);
-            this.groupBox2.TabIndex = 1;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Stock Status";
-            // 
-            // chkCriticalStock
-            // 
-            this.chkCriticalStock.AutoSize = true;
-            this.chkCriticalStock.Checked = true;
-            this.chkCriticalStock.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkCriticalStock.ForeColor = System.Drawing.Color.Red;
-            this.chkCriticalStock.Location = new System.Drawing.Point(200, 45);
-            this.chkCriticalStock.Name = "chkCriticalStock";
-            this.chkCriticalStock.Size = new System.Drawing.Size(90, 17);
-            this.chkCriticalStock.TabIndex = 3;
-            this.chkCriticalStock.Text = "Critical Stock";
-            this.chkCriticalStock.UseVisualStyleBackColor = true;
-            // 
-            // chkOutOfStock
-            // 
-            this.chkOutOfStock.AutoSize = true;
-            this.chkOutOfStock.Checked = true;
-            this.chkOutOfStock.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkOutOfStock.ForeColor = System.Drawing.Color.DarkRed;
-            this.chkOutOfStock.Location = new System.Drawing.Point(100, 45);
-            this.chkOutOfStock.Name = "chkOutOfStock";
-            this.chkOutOfStock.Size = new System.Drawing.Size(90, 17);
-            this.chkOutOfStock.TabIndex = 2;
-            this.chkOutOfStock.Text = "Out of Stock";
-            this.chkOutOfStock.UseVisualStyleBackColor = true;
-            // 
-            // chkLowStock
-            // 
-            this.chkLowStock.AutoSize = true;
-            this.chkLowStock.Checked = true;
-            this.chkLowStock.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkLowStock.ForeColor = System.Drawing.Color.Orange;
-            this.chkLowStock.Location = new System.Drawing.Point(10, 45);
-            this.chkLowStock.Name = "chkLowStock";
-            this.chkLowStock.Size = new System.Drawing.Size(80, 17);
-            this.chkLowStock.TabIndex = 1;
-            this.chkLowStock.Text = "Low Stock";
-            this.chkLowStock.UseVisualStyleBackColor = true;
+            this.cmbCategory.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbCategory.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cmbCategory.FormattingEnabled = true;
+            this.cmbCategory.Location = new System.Drawing.Point(160, 40);
+            this.cmbCategory.Name = "cmbCategory";
+            this.cmbCategory.Size = new System.Drawing.Size(120, 23);
+            this.cmbCategory.TabIndex = 3;
             // 
             // lblStockStatus
             // 
             this.lblStockStatus.AutoSize = true;
-            this.lblStockStatus.Location = new System.Drawing.Point(10, 25);
+            this.lblStockStatus.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblStockStatus.Location = new System.Drawing.Point(300, 20);
             this.lblStockStatus.Name = "lblStockStatus";
-            this.lblStockStatus.Size = new System.Drawing.Size(70, 13);
-            this.lblStockStatus.TabIndex = 0;
-            this.lblStockStatus.Text = "Show Status:";
+            this.lblStockStatus.Size = new System.Drawing.Size(80, 15);
+            this.lblStockStatus.TabIndex = 4;
+            this.lblStockStatus.Text = "Stock Status:";
             // 
-            // groupBox3
+            // chkLowStock
             // 
-            this.groupBox3.Controls.Add(this.txtSearch);
-            this.groupBox3.Controls.Add(this.lblSearch);
-            this.groupBox3.Location = new System.Drawing.Point(730, 10);
-            this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(250, 80);
-            this.groupBox3.TabIndex = 2;
-            this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Search";
+            this.chkLowStock.AutoSize = true;
+            this.chkLowStock.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.chkLowStock.Location = new System.Drawing.Point(300, 40);
+            this.chkLowStock.Name = "chkLowStock";
+            this.chkLowStock.Size = new System.Drawing.Size(80, 19);
+            this.chkLowStock.TabIndex = 5;
+            this.chkLowStock.Text = "Low Stock";
+            this.chkLowStock.UseVisualStyleBackColor = true;
             // 
-            // txtSearch
+            // chkOutOfStock
             // 
-            this.txtSearch.Location = new System.Drawing.Point(10, 45);
-            this.txtSearch.Name = "txtSearch";
-            this.txtSearch.Size = new System.Drawing.Size(230, 20);
-            this.txtSearch.TabIndex = 1;
+            this.chkOutOfStock.AutoSize = true;
+            this.chkOutOfStock.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.chkOutOfStock.Location = new System.Drawing.Point(400, 40);
+            this.chkOutOfStock.Name = "chkOutOfStock";
+            this.chkOutOfStock.Size = new System.Drawing.Size(95, 19);
+            this.chkOutOfStock.TabIndex = 6;
+            this.chkOutOfStock.Text = "Out of Stock";
+            this.chkOutOfStock.UseVisualStyleBackColor = true;
+            // 
+            // chkCriticalStock
+            // 
+            this.chkCriticalStock.AutoSize = true;
+            this.chkCriticalStock.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.chkCriticalStock.Location = new System.Drawing.Point(520, 40);
+            this.chkCriticalStock.Name = "chkCriticalStock";
+            this.chkCriticalStock.Size = new System.Drawing.Size(90, 19);
+            this.chkCriticalStock.TabIndex = 7;
+            this.chkCriticalStock.Text = "Critical Stock";
+            this.chkCriticalStock.UseVisualStyleBackColor = true;
             // 
             // lblSearch
             // 
             this.lblSearch.AutoSize = true;
-            this.lblSearch.Location = new System.Drawing.Point(10, 25);
+            this.lblSearch.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblSearch.Location = new System.Drawing.Point(640, 20);
             this.lblSearch.Name = "lblSearch";
-            this.lblSearch.Size = new System.Drawing.Size(44, 13);
-            this.lblSearch.TabIndex = 0;
+            this.lblSearch.Size = new System.Drawing.Size(46, 15);
+            this.lblSearch.TabIndex = 8;
             this.lblSearch.Text = "Search:";
             // 
-            // panel3
+            // txtSearch
             // 
-            this.panel3.Controls.Add(this.btnCreatePurchaseOrder);
-            this.panel3.Controls.Add(this.btnClose);
-            this.panel3.Controls.Add(this.btnPrint);
-            this.panel3.Controls.Add(this.btnExportPDF);
-            this.panel3.Controls.Add(this.btnExportExcel);
-            this.panel3.Controls.Add(this.btnClear);
-            this.panel3.Controls.Add(this.btnGenerateReport);
-            this.panel3.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panel3.Location = new System.Drawing.Point(0, 180);
-            this.panel3.Name = "panel3";
-            this.panel3.Padding = new System.Windows.Forms.Padding(10);
-            this.panel3.Size = new System.Drawing.Size(1400, 60);
-            this.panel3.TabIndex = 2;
+            this.txtSearch.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtSearch.Location = new System.Drawing.Point(640, 40);
+            this.txtSearch.Name = "txtSearch";
+            this.txtSearch.Size = new System.Drawing.Size(200, 23);
+            this.txtSearch.TabIndex = 9;
+            // 
+            // pnlButtons
+            // 
+            this.pnlButtons.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(236)))), ((int)(((byte)(240)))), ((int)(((byte)(241)))));
+            this.pnlButtons.Controls.Add(this.btnGenerateReport);
+            this.pnlButtons.Controls.Add(this.btnCreatePurchaseOrder);
+            this.pnlButtons.Controls.Add(this.btnExportPDF);
+            this.pnlButtons.Controls.Add(this.btnExportExcel);
+            this.pnlButtons.Controls.Add(this.btnPrint);
+            this.pnlButtons.Controls.Add(this.btnClear);
+            this.pnlButtons.Controls.Add(this.btnClose);
+            this.pnlButtons.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlButtons.Location = new System.Drawing.Point(0, 180);
+            this.pnlButtons.Name = "pnlButtons";
+            this.pnlButtons.Padding = new System.Windows.Forms.Padding(20, 10, 20, 10);
+            this.pnlButtons.Size = new System.Drawing.Size(1200, 60);
+            this.pnlButtons.TabIndex = 2;
+            // 
+            // btnGenerateReport
+            // 
+            this.btnGenerateReport.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(46)))), ((int)(((byte)(204)))), ((int)(((byte)(113)))));
+            this.btnGenerateReport.FlatAppearance.BorderSize = 0;
+            this.btnGenerateReport.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnGenerateReport.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnGenerateReport.ForeColor = System.Drawing.Color.White;
+            this.btnGenerateReport.Location = new System.Drawing.Point(20, 15);
+            this.btnGenerateReport.Name = "btnGenerateReport";
+            this.btnGenerateReport.Size = new System.Drawing.Size(120, 30);
+            this.btnGenerateReport.TabIndex = 0;
+            this.btnGenerateReport.Text = "Generate Report";
+            this.btnGenerateReport.UseVisualStyleBackColor = false;
             // 
             // btnCreatePurchaseOrder
             // 
-            this.btnCreatePurchaseOrder.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(155)))), ((int)(((byte)(89)))), ((int)(((byte)(182)))));
+            this.btnCreatePurchaseOrder.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(152)))), ((int)(((byte)(219)))));
+            this.btnCreatePurchaseOrder.FlatAppearance.BorderSize = 0;
             this.btnCreatePurchaseOrder.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCreatePurchaseOrder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnCreatePurchaseOrder.ForeColor = System.Drawing.Color.White;
-            this.btnCreatePurchaseOrder.Location = new System.Drawing.Point(1200, 15);
+            this.btnCreatePurchaseOrder.Location = new System.Drawing.Point(160, 15);
             this.btnCreatePurchaseOrder.Name = "btnCreatePurchaseOrder";
-            this.btnCreatePurchaseOrder.Size = new System.Drawing.Size(120, 30);
-            this.btnCreatePurchaseOrder.TabIndex = 6;
-            this.btnCreatePurchaseOrder.Text = "Create PO";
+            this.btnCreatePurchaseOrder.Size = new System.Drawing.Size(150, 30);
+            this.btnCreatePurchaseOrder.TabIndex = 1;
+            this.btnCreatePurchaseOrder.Text = "Create Purchase Order";
             this.btnCreatePurchaseOrder.UseVisualStyleBackColor = false;
-            // 
-            // btnClose
-            // 
-            this.btnClose.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(76)))), ((int)(((byte)(60)))));
-            this.btnClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnClose.ForeColor = System.Drawing.Color.White;
-            this.btnClose.Location = new System.Drawing.Point(1100, 15);
-            this.btnClose.Name = "btnClose";
-            this.btnClose.Size = new System.Drawing.Size(80, 30);
-            this.btnClose.TabIndex = 5;
-            this.btnClose.Text = "Close";
-            this.btnClose.UseVisualStyleBackColor = false;
-            // 
-            // btnPrint
-            // 
-            this.btnPrint.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(152)))), ((int)(((byte)(219)))));
-            this.btnPrint.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnPrint.ForeColor = System.Drawing.Color.White;
-            this.btnPrint.Location = new System.Drawing.Point(1000, 15);
-            this.btnPrint.Name = "btnPrint";
-            this.btnPrint.Size = new System.Drawing.Size(80, 30);
-            this.btnPrint.TabIndex = 4;
-            this.btnPrint.Text = "Print";
-            this.btnPrint.UseVisualStyleBackColor = false;
             // 
             // btnExportPDF
             // 
-            this.btnExportPDF.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(155)))), ((int)(((byte)(89)))), ((int)(((byte)(182)))));
+            this.btnExportPDF.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(76)))), ((int)(((byte)(60)))));
+            this.btnExportPDF.FlatAppearance.BorderSize = 0;
             this.btnExportPDF.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnExportPDF.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnExportPDF.ForeColor = System.Drawing.Color.White;
-            this.btnExportPDF.Location = new System.Drawing.Point(900, 15);
+            this.btnExportPDF.Location = new System.Drawing.Point(330, 15);
             this.btnExportPDF.Name = "btnExportPDF";
-            this.btnExportPDF.Size = new System.Drawing.Size(80, 30);
-            this.btnExportPDF.TabIndex = 3;
+            this.btnExportPDF.Size = new System.Drawing.Size(100, 30);
+            this.btnExportPDF.TabIndex = 2;
             this.btnExportPDF.Text = "Export PDF";
             this.btnExportPDF.UseVisualStyleBackColor = false;
             // 
             // btnExportExcel
             // 
             this.btnExportExcel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(46)))), ((int)(((byte)(204)))), ((int)(((byte)(113)))));
+            this.btnExportExcel.FlatAppearance.BorderSize = 0;
             this.btnExportExcel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnExportExcel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnExportExcel.ForeColor = System.Drawing.Color.White;
-            this.btnExportExcel.Location = new System.Drawing.Point(800, 15);
+            this.btnExportExcel.Location = new System.Drawing.Point(450, 15);
             this.btnExportExcel.Name = "btnExportExcel";
-            this.btnExportExcel.Size = new System.Drawing.Size(80, 30);
-            this.btnExportExcel.TabIndex = 2;
+            this.btnExportExcel.Size = new System.Drawing.Size(100, 30);
+            this.btnExportExcel.TabIndex = 3;
             this.btnExportExcel.Text = "Export Excel";
             this.btnExportExcel.UseVisualStyleBackColor = false;
             // 
+            // btnPrint
+            // 
+            this.btnPrint.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(155)))), ((int)(((byte)(89)))), ((int)(((byte)(182)))));
+            this.btnPrint.FlatAppearance.BorderSize = 0;
+            this.btnPrint.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPrint.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnPrint.ForeColor = System.Drawing.Color.White;
+            this.btnPrint.Location = new System.Drawing.Point(570, 15);
+            this.btnPrint.Name = "btnPrint";
+            this.btnPrint.Size = new System.Drawing.Size(80, 30);
+            this.btnPrint.TabIndex = 4;
+            this.btnPrint.Text = "Print";
+            this.btnPrint.UseVisualStyleBackColor = false;
+            // 
             // btnClear
             // 
-            this.btnClear.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(241)))), ((int)(((byte)(196)))), ((int)(((byte)(15)))));
+            this.btnClear.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(149)))), ((int)(((byte)(165)))), ((int)(((byte)(166)))));
+            this.btnClear.FlatAppearance.BorderSize = 0;
             this.btnClear.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnClear.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnClear.ForeColor = System.Drawing.Color.White;
-            this.btnClear.Location = new System.Drawing.Point(700, 15);
+            this.btnClear.Location = new System.Drawing.Point(670, 15);
             this.btnClear.Name = "btnClear";
             this.btnClear.Size = new System.Drawing.Size(80, 30);
-            this.btnClear.TabIndex = 1;
+            this.btnClear.TabIndex = 5;
             this.btnClear.Text = "Clear";
             this.btnClear.UseVisualStyleBackColor = false;
             // 
-            // btnGenerateReport
+            // btnClose
             // 
-            this.btnGenerateReport.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(39)))), ((int)(((byte)(174)))), ((int)(((byte)(96)))));
-            this.btnGenerateReport.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnGenerateReport.ForeColor = System.Drawing.Color.White;
-            this.btnGenerateReport.Location = new System.Drawing.Point(600, 15);
-            this.btnGenerateReport.Name = "btnGenerateReport";
-            this.btnGenerateReport.Size = new System.Drawing.Size(80, 30);
-            this.btnGenerateReport.TabIndex = 0;
-            this.btnGenerateReport.Text = "Generate";
-            this.btnGenerateReport.UseVisualStyleBackColor = false;
+            this.btnClose.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(76)))), ((int)(((byte)(60)))));
+            this.btnClose.FlatAppearance.BorderSize = 0;
+            this.btnClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnClose.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnClose.ForeColor = System.Drawing.Color.White;
+            this.btnClose.Location = new System.Drawing.Point(770, 15);
+            this.btnClose.Name = "btnClose";
+            this.btnClose.Size = new System.Drawing.Size(80, 30);
+            this.btnClose.TabIndex = 6;
+            this.btnClose.Text = "Close";
+            this.btnClose.UseVisualStyleBackColor = false;
             // 
-            // panel4
+            // pnlData
             // 
-            this.panel4.Controls.Add(this.dgvLowStockReport);
-            this.panel4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel4.Location = new System.Drawing.Point(0, 240);
-            this.panel4.Name = "panel4";
-            this.panel4.Padding = new System.Windows.Forms.Padding(10);
-            this.panel4.Size = new System.Drawing.Size(1400, 300);
-            this.panel4.TabIndex = 3;
+            this.pnlData.Controls.Add(this.dgvLowStockReport);
+            this.pnlData.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlData.Location = new System.Drawing.Point(0, 240);
+            this.pnlData.Name = "pnlData";
+            this.pnlData.Padding = new System.Windows.Forms.Padding(20);
+            this.pnlData.Size = new System.Drawing.Size(1200, 400);
+            this.pnlData.TabIndex = 3;
             // 
             // dgvLowStockReport
             // 
@@ -359,180 +338,138 @@ namespace Vape_Store
             this.dgvLowStockReport.AllowUserToDeleteRows = false;
             this.dgvLowStockReport.BackgroundColor = System.Drawing.Color.White;
             this.dgvLowStockReport.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.dgvLowStockReport.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.Single;
             this.dgvLowStockReport.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvLowStockReport.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dgvLowStockReport.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(189)))), ((int)(((byte)(195)))), ((int)(((byte)(199)))));
-            this.dgvLowStockReport.Location = new System.Drawing.Point(10, 10);
+            this.dgvLowStockReport.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(236)))), ((int)(((byte)(240)))), ((int)(((byte)(241)))));
+            this.dgvLowStockReport.Location = new System.Drawing.Point(20, 20);
             this.dgvLowStockReport.Name = "dgvLowStockReport";
             this.dgvLowStockReport.ReadOnly = true;
-            this.dgvLowStockReport.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.Single;
+            this.dgvLowStockReport.RowHeadersVisible = false;
             this.dgvLowStockReport.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvLowStockReport.Size = new System.Drawing.Size(1380, 280);
+            this.dgvLowStockReport.Size = new System.Drawing.Size(1160, 360);
             this.dgvLowStockReport.TabIndex = 0;
             // 
-            // panel5
+            // pnlSummary
             // 
-            this.panel5.Controls.Add(this.lblSelectedCost);
-            this.panel5.Controls.Add(this.lblSelectedItems);
-            this.panel5.Controls.Add(this.lblTotalEstimatedCost);
-            this.panel5.Controls.Add(this.lblLowStock);
-            this.panel5.Controls.Add(this.lblOutOfStock);
-            this.panel5.Controls.Add(this.lblCriticalStock);
-            this.panel5.Controls.Add(this.lblTotalItems);
-            this.panel5.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panel5.Location = new System.Drawing.Point(0, 540);
-            this.panel5.Name = "panel5";
-            this.panel5.Padding = new System.Windows.Forms.Padding(10);
-            this.panel5.Size = new System.Drawing.Size(1400, 60);
-            this.panel5.TabIndex = 4;
-            // 
-            // lblSelectedCost
-            // 
-            this.lblSelectedCost.AutoSize = true;
-            this.lblSelectedCost.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblSelectedCost.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(155)))), ((int)(((byte)(89)))), ((int)(((byte)(182)))));
-            this.lblSelectedCost.Location = new System.Drawing.Point(1200, 20);
-            this.lblSelectedCost.Name = "lblSelectedCost";
-            this.lblSelectedCost.Size = new System.Drawing.Size(120, 15);
-            this.lblSelectedCost.TabIndex = 6;
-            this.lblSelectedCost.Text = "Selected Cost: Rs 0.00";
-            // 
-            // lblSelectedItems
-            // 
-            this.lblSelectedItems.AutoSize = true;
-            this.lblSelectedItems.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblSelectedItems.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(152)))), ((int)(((byte)(219)))));
-            this.lblSelectedItems.Location = new System.Drawing.Point(1000, 20);
-            this.lblSelectedItems.Name = "lblSelectedItems";
-            this.lblSelectedItems.Size = new System.Drawing.Size(120, 15);
-            this.lblSelectedItems.TabIndex = 5;
-            this.lblSelectedItems.Text = "Selected Items: 0";
-            // 
-            // lblTotalEstimatedCost
-            // 
-            this.lblTotalEstimatedCost.AutoSize = true;
-            this.lblTotalEstimatedCost.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblTotalEstimatedCost.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(39)))), ((int)(((byte)(174)))), ((int)(((byte)(96)))));
-            this.lblTotalEstimatedCost.Location = new System.Drawing.Point(800, 20);
-            this.lblTotalEstimatedCost.Name = "lblTotalEstimatedCost";
-            this.lblTotalEstimatedCost.Size = new System.Drawing.Size(150, 15);
-            this.lblTotalEstimatedCost.TabIndex = 4;
-            this.lblTotalEstimatedCost.Text = "Total Estimated Cost: Rs 0.00";
+            this.pnlSummary.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(236)))), ((int)(((byte)(240)))), ((int)(((byte)(241)))));
+            this.pnlSummary.Controls.Add(this.lblLowStock);
+            this.pnlSummary.Controls.Add(this.lblOutOfStock);
+            this.pnlSummary.Controls.Add(this.lblCriticalStock);
+            this.pnlSummary.Controls.Add(this.lblTotalProducts);
+            this.pnlSummary.Controls.Add(this.lblTotalValue);
+            this.pnlSummary.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.pnlSummary.Location = new System.Drawing.Point(0, 640);
+            this.pnlSummary.Name = "pnlSummary";
+            this.pnlSummary.Padding = new System.Windows.Forms.Padding(20, 10, 20, 10);
+            this.pnlSummary.Size = new System.Drawing.Size(1200, 60);
+            this.pnlSummary.TabIndex = 4;
             // 
             // lblLowStock
             // 
             this.lblLowStock.AutoSize = true;
             this.lblLowStock.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblLowStock.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(241)))), ((int)(((byte)(196)))), ((int)(((byte)(15)))));
-            this.lblLowStock.Location = new System.Drawing.Point(600, 20);
+            this.lblLowStock.Location = new System.Drawing.Point(20, 20);
             this.lblLowStock.Name = "lblLowStock";
             this.lblLowStock.Size = new System.Drawing.Size(100, 15);
-            this.lblLowStock.TabIndex = 3;
+            this.lblLowStock.TabIndex = 0;
             this.lblLowStock.Text = "Low Stock: 0";
             // 
             // lblOutOfStock
             // 
             this.lblOutOfStock.AutoSize = true;
             this.lblOutOfStock.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblOutOfStock.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(76)))), ((int)(((byte)(60)))));
-            this.lblOutOfStock.Location = new System.Drawing.Point(500, 20);
+            this.lblOutOfStock.Location = new System.Drawing.Point(160, 20);
             this.lblOutOfStock.Name = "lblOutOfStock";
-            this.lblOutOfStock.Size = new System.Drawing.Size(100, 15);
-            this.lblOutOfStock.TabIndex = 2;
+            this.lblOutOfStock.Size = new System.Drawing.Size(120, 15);
+            this.lblOutOfStock.TabIndex = 1;
             this.lblOutOfStock.Text = "Out of Stock: 0";
             // 
             // lblCriticalStock
             // 
             this.lblCriticalStock.AutoSize = true;
             this.lblCriticalStock.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblCriticalStock.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(57)))), ((int)(((byte)(43)))));
-            this.lblCriticalStock.Location = new System.Drawing.Point(400, 20);
+            this.lblCriticalStock.Location = new System.Drawing.Point(320, 20);
             this.lblCriticalStock.Name = "lblCriticalStock";
-            this.lblCriticalStock.Size = new System.Drawing.Size(100, 15);
-            this.lblCriticalStock.TabIndex = 1;
+            this.lblCriticalStock.Size = new System.Drawing.Size(120, 15);
+            this.lblCriticalStock.TabIndex = 2;
             this.lblCriticalStock.Text = "Critical Stock: 0";
             // 
-            // lblTotalItems
+            // lblTotalProducts
             // 
-            this.lblTotalItems.AutoSize = true;
-            this.lblTotalItems.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblTotalItems.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(73)))), ((int)(((byte)(94)))));
-            this.lblTotalItems.Location = new System.Drawing.Point(10, 20);
-            this.lblTotalItems.Name = "lblTotalItems";
-            this.lblTotalItems.Size = new System.Drawing.Size(100, 15);
-            this.lblTotalItems.TabIndex = 0;
-            this.lblTotalItems.Text = "Total Items: 0";
+            this.lblTotalProducts.AutoSize = true;
+            this.lblTotalProducts.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblTotalProducts.Location = new System.Drawing.Point(480, 20);
+            this.lblTotalProducts.Name = "lblTotalProducts";
+            this.lblTotalProducts.Size = new System.Drawing.Size(120, 15);
+            this.lblTotalProducts.TabIndex = 3;
+            this.lblTotalProducts.Text = "Total Products: 0";
+            // 
+            // lblTotalValue
+            // 
+            this.lblTotalValue.AutoSize = true;
+            this.lblTotalValue.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblTotalValue.Location = new System.Drawing.Point(640, 20);
+            this.lblTotalValue.Name = "lblTotalValue";
+            this.lblTotalValue.Size = new System.Drawing.Size(100, 15);
+            this.lblTotalValue.TabIndex = 4;
+            this.lblTotalValue.Text = "Total Value: 0.00";
             // 
             // LowStockReportForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(236)))), ((int)(((byte)(240)))), ((int)(((byte)(241)))));
-            this.ClientSize = new System.Drawing.Size(1400, 600);
-            this.Controls.Add(this.panel4);
-            this.Controls.Add(this.panel5);
-            this.Controls.Add(this.panel3);
-            this.Controls.Add(this.panel2);
-            this.Controls.Add(this.panel1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
+            this.ClientSize = new System.Drawing.Size(1200, 700);
+            this.Controls.Add(this.pnlData);
+            this.Controls.Add(this.pnlSummary);
+            this.Controls.Add(this.pnlButtons);
+            this.Controls.Add(this.pnlFilters);
+            this.Controls.Add(this.pnlHeader);
             this.Name = "LowStockReportForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Low Stock Report";
-            this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
-            this.panel2.ResumeLayout(false);
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
-            this.groupBox2.ResumeLayout(false);
-            this.groupBox2.PerformLayout();
-            this.groupBox3.ResumeLayout(false);
-            this.groupBox3.PerformLayout();
-            this.panel3.ResumeLayout(false);
-            this.panel4.ResumeLayout(false);
+            this.pnlHeader.ResumeLayout(false);
+            this.pnlHeader.PerformLayout();
+            this.pnlFilters.ResumeLayout(false);
+            this.pnlFilters.PerformLayout();
+            this.pnlButtons.ResumeLayout(false);
+            this.pnlData.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvLowStockReport)).EndInit();
-            this.panel5.ResumeLayout(false);
-            this.panel5.PerformLayout();
+            this.pnlSummary.ResumeLayout(false);
+            this.pnlSummary.PerformLayout();
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Panel pnlHeader;
         private System.Windows.Forms.Label lblTitle;
-        private System.Windows.Forms.Panel panel2;
-        private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.ComboBox cmbBrand;
+        private System.Windows.Forms.Panel pnlFilters;
         private System.Windows.Forms.Label lblBrand;
-        private System.Windows.Forms.ComboBox cmbCategory;
+        private System.Windows.Forms.ComboBox cmbBrand;
         private System.Windows.Forms.Label lblCategory;
-        private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.CheckBox chkCriticalStock;
-        private System.Windows.Forms.CheckBox chkOutOfStock;
-        private System.Windows.Forms.CheckBox chkLowStock;
+        private System.Windows.Forms.ComboBox cmbCategory;
         private System.Windows.Forms.Label lblStockStatus;
-        private System.Windows.Forms.GroupBox groupBox3;
-        private System.Windows.Forms.TextBox txtSearch;
+        private System.Windows.Forms.CheckBox chkLowStock;
+        private System.Windows.Forms.CheckBox chkOutOfStock;
+        private System.Windows.Forms.CheckBox chkCriticalStock;
         private System.Windows.Forms.Label lblSearch;
-        private System.Windows.Forms.Panel panel3;
+        private System.Windows.Forms.TextBox txtSearch;
+        private System.Windows.Forms.Panel pnlButtons;
+        private System.Windows.Forms.Button btnGenerateReport;
         private System.Windows.Forms.Button btnCreatePurchaseOrder;
-        private System.Windows.Forms.Button btnClose;
-        private System.Windows.Forms.Button btnPrint;
         private System.Windows.Forms.Button btnExportPDF;
         private System.Windows.Forms.Button btnExportExcel;
+        private System.Windows.Forms.Button btnPrint;
         private System.Windows.Forms.Button btnClear;
-        private System.Windows.Forms.Button btnGenerateReport;
-        private System.Windows.Forms.Panel panel4;
+        private System.Windows.Forms.Button btnClose;
+        private System.Windows.Forms.Panel pnlData;
         private System.Windows.Forms.DataGridView dgvLowStockReport;
-        private System.Windows.Forms.Panel panel5;
-        private System.Windows.Forms.Label lblSelectedCost;
-        private System.Windows.Forms.Label lblSelectedItems;
-        private System.Windows.Forms.Label lblTotalEstimatedCost;
+        private System.Windows.Forms.Panel pnlSummary;
         private System.Windows.Forms.Label lblLowStock;
         private System.Windows.Forms.Label lblOutOfStock;
         private System.Windows.Forms.Label lblCriticalStock;
-        private System.Windows.Forms.Label lblTotalItems;
+        private System.Windows.Forms.Label lblTotalProducts;
+        private System.Windows.Forms.Label lblTotalValue;
     }
 }

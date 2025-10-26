@@ -32,6 +32,7 @@
             this.label4 = new System.Windows.Forms.Label();
             this.guna2DateTimePicker1 = new Guna.UI2.WinForms.Guna2DateTimePicker();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.label6 = new System.Windows.Forms.Label();
             this.txtStockQuantity = new System.Windows.Forms.TextBox();
             this.stockLabel = new System.Windows.Forms.Label();
             this.txtReorderLevel = new System.Windows.Forms.TextBox();
@@ -73,7 +74,7 @@
             this.label16 = new System.Windows.Forms.Label();
             this.txtPaid = new System.Windows.Forms.TextBox();
             this.label15 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.panel2.SuspendLayout();
@@ -139,6 +140,17 @@
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(1626, 223);
             this.panel1.TabIndex = 6;
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label6.Location = new System.Drawing.Point(783, 159);
+            this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(100, 28);
+            this.label6.TabIndex = 26;
+            this.label6.Text = "Quantity:";
             // 
             // txtStockQuantity
             // 
@@ -418,7 +430,7 @@
             this.cmbPaymentMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbPaymentMethod.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cmbPaymentMethod.FormattingEnabled = true;
-            this.cmbPaymentMethod.Location = new System.Drawing.Point(730, 659);
+            this.cmbPaymentMethod.Location = new System.Drawing.Point(30, 699);
             this.cmbPaymentMethod.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.cmbPaymentMethod.Name = "cmbPaymentMethod";
             this.cmbPaymentMethod.Size = new System.Drawing.Size(298, 36);
@@ -428,7 +440,7 @@
             // 
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(532, 659);
+            this.label1.Location = new System.Drawing.Point(25, 656);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(180, 28);
@@ -478,7 +490,7 @@
             // txtTax
             // 
             this.txtTax.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtTax.Location = new System.Drawing.Point(345, 77);
+            this.txtTax.Location = new System.Drawing.Point(345, 136);
             this.txtTax.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.txtTax.Name = "txtTax";
             this.txtTax.Size = new System.Drawing.Size(87, 34);
@@ -492,7 +504,7 @@
             this.cmbTax.Location = new System.Drawing.Point(240, 134);
             this.cmbTax.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.cmbTax.Name = "cmbTax";
-            this.cmbTax.Size = new System.Drawing.Size(197, 36);
+            this.cmbTax.Size = new System.Drawing.Size(97, 36);
             this.cmbTax.TabIndex = 31;
             // 
             // label13
@@ -590,22 +602,24 @@
             this.label15.TabIndex = 36;
             this.label15.Text = "Paid Amount:";
             // 
-            // label6
+            // label7
             // 
-            this.label6.AutoSize = true;
-            this.label6.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label6.Location = new System.Drawing.Point(783, 159);
-            this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(100, 28);
-            this.label6.TabIndex = 26;
-            this.label6.Text = "Quantity:";
+            this.label7.AutoSize = true;
+            this.label7.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label7.Location = new System.Drawing.Point(489, 656);
+            this.label7.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(89, 28);
+            this.label7.TabIndex = 35;
+            this.label7.Text = "Barcode";
+            this.label7.Click += new System.EventHandler(this.label7_Click);
             // 
             // NewSale
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1626, 973);
+            this.Controls.Add(this.label7);
             this.Controls.Add(this.panel2);
             this.Controls.Add(this.RefreshBtn);
             this.Controls.Add(this.cmbPaymentMethod);
@@ -677,5 +691,6 @@
         private System.Windows.Forms.TextBox txtChange;
         private System.Windows.Forms.Label label16;
         private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Label label7;
     }
 }

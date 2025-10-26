@@ -33,6 +33,10 @@ namespace Vape_Store
             LoadSuppliers();
             GenerateVoucherNumber();
             SetInitialState();
+            
+            // Ensure event handler is attached after loading suppliers
+            cmbSupplier.SelectedIndexChanged -= CmbSupplier_SelectedIndexChanged;
+            cmbSupplier.SelectedIndexChanged += CmbSupplier_SelectedIndexChanged;
         }
 
         private void SetupEventHandlers()
@@ -44,7 +48,7 @@ namespace Vape_Store
             btnDelete.Click += BtnDelete_Click;
             
             // ComboBox event handlers
-            cmbCustomer.SelectedIndexChanged += CmbSupplier_SelectedIndexChanged;
+            cmbSupplier.SelectedIndexChanged += CmbSupplier_SelectedIndexChanged;
             
             // TextBox event handlers
             txtPaidAmount.TextChanged += TxtPaidAmount_TextChanged;
@@ -102,9 +106,9 @@ namespace Vape_Store
         {
             try
             {
-                if (cmbCustomer.SelectedValue != null)
+                if (cmbSupplier.SelectedValue != null && cmbSupplier.SelectedItem != null)
                 {
-                    int supplierId = ((Supplier)cmbCustomer.SelectedItem).SupplierID;
+                    int supplierId = ((Supplier)cmbSupplier.SelectedItem).SupplierID;
                     var supplier = _suppliers.FirstOrDefault(s => s.SupplierID == supplierId);
                     
                     if (supplier != null)
@@ -151,9 +155,9 @@ namespace Vape_Store
         {
             try
             {
-                decimal totalPayable = Convert.ToDecimal(txtTotalDue.Text ?? "0");
-                decimal previousBalance = Convert.ToDecimal(txtPreviousBalance.Text ?? "0");
-                decimal paidAmount = Convert.ToDecimal(txtPaidAmount.Text ?? "0");
+                decimal totalPayable = ParseDecimal(txtTotalDue.Text);
+                decimal previousBalance = ParseDecimal(txtPreviousBalance.Text);
+                decimal paidAmount = ParseDecimal(txtPaidAmount.Text);
                 
                 decimal remainingAmount = (totalPayable + previousBalance) - paidAmount;
                 txtRemainingBalance.Text = remainingAmount.ToString("F2");
@@ -196,12 +200,12 @@ namespace Vape_Store
                 var payment = new SupplierPayment
                 {
                     VoucherNumber = txtVoucherNo.Text.Trim(),
-                    SupplierID = ((Supplier)cmbCustomer.SelectedItem).SupplierID,
+                    SupplierID = ((Supplier)cmbSupplier.SelectedItem).SupplierID,
                     PaymentDate = dateTimePicker1.Value,
-                    PreviousBalance = Convert.ToDecimal(txtPreviousBalance.Text),
-                    TotalPayable = Convert.ToDecimal(txtTotalDue.Text),
-                    PaidAmount = Convert.ToDecimal(txtPaidAmount.Text),
-                    RemainingAmount = Convert.ToDecimal(txtRemainingBalance.Text),
+                    PreviousBalance = ParseDecimal(txtPreviousBalance.Text),
+                    TotalPayable = ParseDecimal(txtTotalDue.Text),
+                    PaidAmount = ParseDecimal(txtPaidAmount.Text),
+                    RemainingAmount = ParseDecimal(txtRemainingBalance.Text),
                     Description = txtDescription.Text.Trim(),
                     UserID = 1, // TODO: Get from current user session
                     CreatedDate = DateTime.Now
@@ -240,12 +244,12 @@ namespace Vape_Store
                     return;
                 }
 
-                _currentPayment.SupplierID = ((Supplier)cmbCustomer.SelectedItem).SupplierID;
+                _currentPayment.SupplierID = ((Supplier)cmbSupplier.SelectedItem).SupplierID;
                 _currentPayment.PaymentDate = dateTimePicker1.Value;
-                _currentPayment.PreviousBalance = Convert.ToDecimal(txtPreviousBalance.Text);
-                _currentPayment.TotalPayable = Convert.ToDecimal(txtTotalDue.Text);
-                _currentPayment.PaidAmount = Convert.ToDecimal(txtPaidAmount.Text);
-                _currentPayment.RemainingAmount = Convert.ToDecimal(txtRemainingBalance.Text);
+                _currentPayment.PreviousBalance = ParseDecimal(txtPreviousBalance.Text);
+                _currentPayment.TotalPayable = ParseDecimal(txtTotalDue.Text);
+                _currentPayment.PaidAmount = ParseDecimal(txtPaidAmount.Text);
+                _currentPayment.RemainingAmount = ParseDecimal(txtRemainingBalance.Text);
                 _currentPayment.Description = txtDescription.Text.Trim();
 
                 bool success = _supplierPaymentRepository.UpdateSupplierPayment(_currentPayment);
@@ -305,10 +309,11 @@ namespace Vape_Store
 
         private bool ValidateForm()
         {
-            if (cmbCustomer.SelectedValue == null)
+            // Debug: Check what's in the ComboBox
+            if (cmbSupplier.SelectedValue == null || cmbSupplier.SelectedItem == null)
             {
                 ShowMessage("Please select a supplier.", "Validation Error", MessageBoxIcon.Warning);
-                cmbCustomer.Focus();
+                cmbSupplier.Focus();
                 return false;
             }
 
@@ -319,7 +324,8 @@ namespace Vape_Store
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(txtPaidAmount.Text) || Convert.ToDecimal(txtPaidAmount.Text) <= 0)
+            decimal paidAmount = ParseDecimal(txtPaidAmount.Text);
+            if (paidAmount <= 0)
             {
                 ShowMessage("Please enter a valid paid amount.", "Validation Error", MessageBoxIcon.Warning);
                 txtPaidAmount.Focus();
@@ -331,7 +337,7 @@ namespace Vape_Store
 
         private void ClearForm()
         {
-            cmbCustomer.SelectedIndex = -1;
+            cmbSupplier.SelectedIndex = -1;
             GenerateVoucherNumber();
             dateTimePicker1.Value = DateTime.Now;
             txtPreviousBalance.Text = "0.00";
@@ -355,6 +361,76 @@ namespace Vape_Store
         {
             // Set initial state
             SetInitialState();
+            LoadSupplierPayments();
+        }
+
+        private void LoadSupplierPayments()
+        {
+            try
+            {
+                var payments = _supplierPaymentRepository.GetAllSupplierPayments();
+                
+                // If there's a DataGridView, populate it
+                if (this.Controls.Find("dgvPayments", true).FirstOrDefault() is DataGridView dgv)
+                {
+                    dgv.DataSource = payments;
+                    dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error loading payments: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void LoadPaymentForEdit(int paymentId)
+        {
+            try
+            {
+                var payment = _supplierPaymentRepository.GetSupplierPaymentById(paymentId);
+                if (payment != null)
+                {
+                    _currentPayment = payment;
+                    selectedPaymentId = paymentId;
+                    isEditMode = true;
+                    
+                    // Populate form fields
+                    txtVoucherNo.Text = payment.VoucherNumber;
+                    cmbSupplier.SelectedValue = payment.SupplierID;
+                    dateTimePicker1.Value = payment.PaymentDate;
+                    txtPreviousBalance.Text = payment.PreviousBalance.ToString("F2");
+                    txtTotalDue.Text = payment.TotalPayable.ToString("F2");
+                    txtPaidAmount.Text = payment.PaidAmount.ToString("F2");
+                    txtRemainingBalance.Text = payment.RemainingAmount.ToString("F2");
+                    txtDescription.Text = payment.Description;
+                    
+                    // Update button states
+                    btnSave.Enabled = false;
+                    btnUpdate.Enabled = true;
+                    btnDelete.Enabled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error loading payment: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private decimal ParseDecimal(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return 0;
+            
+            // Remove any non-numeric characters except decimal point and minus sign
+            string cleanValue = System.Text.RegularExpressions.Regex.Replace(value, @"[^\d.-]", "");
+            
+            if (string.IsNullOrWhiteSpace(cleanValue))
+                return 0;
+            
+            if (decimal.TryParse(cleanValue, out decimal result))
+                return result;
+            
+            return 0;
         }
     }
 }

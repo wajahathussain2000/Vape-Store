@@ -24,6 +24,7 @@ namespace Vape_Store
         private CategoryRepository _categoryRepository;
         private BrandRepository _brandRepository;
         private InventoryService _inventoryService;
+        private BarcodeService _barcodeService;
         private List<Product> _products;
         private List<Category> _categories;
         private List<Brand> _brands;
@@ -37,6 +38,7 @@ namespace Vape_Store
             _categoryRepository = new CategoryRepository();
             _brandRepository = new BrandRepository();
             _inventoryService = new InventoryService();
+            _barcodeService = new BarcodeService();
             InitializeDataGridView();
             SetupEventHandlers();
             LoadCategories();
@@ -85,8 +87,8 @@ namespace Vape_Store
             dgvProducts.Columns["IsActive"].Width = 80;
             
             // Format currency columns
-            dgvProducts.Columns["CostPrice"].DefaultCellStyle.Format = "C2";
-            dgvProducts.Columns["RetailPrice"].DefaultCellStyle.Format = "C2";
+            dgvProducts.Columns["CostPrice"].DefaultCellStyle.Format = "F2";
+            dgvProducts.Columns["RetailPrice"].DefaultCellStyle.Format = "F2";
             
             // Format status column
             dgvProducts.Columns["IsActive"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
@@ -198,6 +200,30 @@ namespace Vape_Store
             }
         }
 
+        private string GenerateUniqueBarcode()
+        {
+            try
+            {
+                // Generate a unique barcode using product code + timestamp
+                string productCode = txtProductCode.Text.Trim();
+                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                string uniqueBarcode = $"PRD{productCode}{timestamp.Substring(timestamp.Length - 6)}";
+                
+                // Ensure uniqueness by checking against existing barcodes
+                while (_products.Any(p => p.Barcode == uniqueBarcode))
+                {
+                    uniqueBarcode = $"PRD{productCode}{DateTime.Now.Ticks.ToString().Substring(DateTime.Now.Ticks.ToString().Length - 6)}";
+                }
+                
+                return uniqueBarcode;
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error generating barcode: {ex.Message}", "Error", MessageBoxIcon.Error);
+                return $"PRD{DateTime.Now.Ticks}";
+            }
+        }
+
         private void AddButton_Click(object sender, EventArgs e)
         {
             ClearForm();
@@ -284,7 +310,7 @@ namespace Vape_Store
                         RetailPrice = retailPrice,
                         StockQuantity = _products.First(p => p.ProductID == selectedProductId).StockQuantity,
                         ReorderLevel = reorderLevel,
-                        Barcode = txtBarcode.Text.Trim(),
+                        Barcode = !string.IsNullOrEmpty(txtBarcode.Text.Trim()) ? txtBarcode.Text.Trim() : GenerateUniqueBarcode(),
                         IsActive = checkBox1.Checked,
                         CreatedDate = _products.First(p => p.ProductID == selectedProductId).CreatedDate
                     };
@@ -317,7 +343,7 @@ namespace Vape_Store
                         RetailPrice = retailPrice,
                         StockQuantity = 0, // New products start with 0 stock
                         ReorderLevel = reorderLevel,
-                        Barcode = txtBarcode.Text.Trim(),
+                        Barcode = !string.IsNullOrEmpty(txtBarcode.Text.Trim()) ? txtBarcode.Text.Trim() : GenerateUniqueBarcode(),
                         IsActive = checkBox1.Checked,
                         CreatedDate = DateTime.Now
                     };
@@ -462,9 +488,12 @@ namespace Vape_Store
                     return;
                 }
 
-                // Generate barcode based on product code
-                string barcode = GenerateBarcodeFromCode(txtProductCode.Text);
-                txtBarcode.Text = barcode;
+                // Generate barcode text
+                string barcodeText = GenerateBarcodeFromCode(txtProductCode.Text);
+                txtBarcode.Text = barcodeText;
+                
+                // Generate and display barcode image
+                DisplayBarcodeImage(barcodeText);
                 
                 ShowMessage("Barcode generated successfully!", "Success", MessageBoxIcon.Information);
             }
@@ -474,36 +503,71 @@ namespace Vape_Store
             }
         }
 
-        private string GenerateBarcodeFromCode(string productCode)
+        private void DisplayBarcodeImage(string barcodeText)
         {
-            // Generate EAN-13 barcode using ZXing
             try
             {
-                var writer = new BarcodeWriter
+                if (string.IsNullOrEmpty(barcodeText))
+                    return;
+
+                // Generate barcode image using BarcodeService
+                var barcodeImage = _barcodeService.GenerateBarcodeImageObject(barcodeText, 600, 100);
+                
+                if (barcodeImage != null)
                 {
-                    Format = BarcodeFormat.EAN_13,
-                    Options = new EncodingOptions
+                    // Clear the panel and add the barcode image
+                    pnlBarcode.Controls.Clear();
+                    
+                    var pictureBox = new PictureBox
                     {
-                        Height = 100,
-                        Width = 300,
-                        Margin = 2
-                    }
-                };
-                
-                // Create a 13-digit barcode from product code
-                string barcodeData = productCode.PadLeft(12, '0');
-                if (barcodeData.Length > 12)
-                    barcodeData = barcodeData.Substring(0, 12);
-                
-                // Add check digit for EAN-13
-                barcodeData += CalculateEAN13CheckDigit(barcodeData);
-                
-                return barcodeData;
+                        Image = barcodeImage,
+                        SizeMode = PictureBoxSizeMode.Zoom,
+                        Dock = DockStyle.Fill,
+                        BackColor = Color.White
+                    };
+                    
+                    pnlBarcode.Controls.Add(pictureBox);
+                    
+                    // Add barcode text below the image
+                    var label = new Label
+                    {
+                        Text = barcodeText,
+                        Font = new Font("Arial", 10, FontStyle.Bold),
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Dock = DockStyle.Bottom,
+                        Height = 25,
+                        BackColor = Color.White
+                    };
+                    
+                    pnlBarcode.Controls.Add(label);
+                }
             }
             catch (Exception ex)
             {
-                // Fallback to simple barcode if ZXing fails
-                return $"BAR{productCode.PadLeft(10, '0')}";
+                ShowMessage($"Error displaying barcode image: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private string GenerateBarcodeFromCode(string productCode)
+        {
+            try
+            {
+                // Generate a unique barcode using product code + timestamp
+                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                string uniqueBarcode = $"PRD{productCode}{timestamp.Substring(timestamp.Length - 6)}";
+                
+                // Ensure uniqueness by checking against existing barcodes
+                while (_products.Any(p => p.Barcode == uniqueBarcode))
+                {
+                    uniqueBarcode = $"PRD{productCode}{DateTime.Now.Ticks.ToString().Substring(DateTime.Now.Ticks.ToString().Length - 6)}";
+                }
+                
+                return uniqueBarcode;
+            }
+            catch (Exception ex)
+            {
+                // Fallback to simple barcode if generation fails
+                return $"PRD{productCode}{DateTime.Now.Ticks}";
             }
         }
         

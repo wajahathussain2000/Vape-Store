@@ -309,7 +309,7 @@
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(86, 28);
             this.label9.TabIndex = 29;
-            this.label9.Text = "Rs: 0.00";
+            this.label9.Text = "0.00";
             // 
             // label2
             // 
@@ -341,7 +341,7 @@
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(86, 28);
             this.label10.TabIndex = 29;
-            this.label10.Text = "Rs: 0.00";
+            this.label10.Text = "0.00";
             // 
             // label1
             // 
@@ -414,7 +414,7 @@
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(86, 28);
             this.label11.TabIndex = 29;
-            this.label11.Text = "Rs: 0.00";
+            this.label11.Text = "0.00";
             // 
             // label3
             // 
@@ -446,7 +446,7 @@
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(86, 28);
             this.label12.TabIndex = 29;
-            this.label12.Text = "Rs: 0.00";
+            this.label12.Text = "0.00";
             // 
             // label4
             // 
@@ -478,7 +478,7 @@
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(86, 28);
             this.label13.TabIndex = 29;
-            this.label13.Text = "Rs: 0.00";
+            this.label13.Text = "0.00";
             // 
             // label5
             // 
@@ -510,7 +510,7 @@
             this.label14.Name = "label14";
             this.label14.Size = new System.Drawing.Size(86, 28);
             this.label14.TabIndex = 29;
-            this.label14.Text = "Rs: 0.00";
+            this.label14.Text = "0.00";
             // 
             // label6
             // 
@@ -542,7 +542,7 @@
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(86, 28);
             this.label15.TabIndex = 29;
-            this.label15.Text = "Rs: 0.00";
+            this.label15.Text = "0.00";
             // 
             // label7
             // 
@@ -574,7 +574,7 @@
             this.label16.Name = "label16";
             this.label16.Size = new System.Drawing.Size(86, 28);
             this.label16.TabIndex = 29;
-            this.label16.Text = "Rs: 0.00";
+            this.label16.Text = "0.00";
             // 
             // label8
             // 

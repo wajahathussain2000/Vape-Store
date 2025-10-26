@@ -19,6 +19,16 @@ namespace Vape_Store.Models
         public int UserID { get; set; }
         public DateTime CreatedDate { get; set; }
         
+        // Additional purchase fields
+        public string PurchaseOrderNumber { get; set; }
+        public string ReferenceNumber { get; set; }
+        public string PaymentTerms { get; set; }
+        public string PurchaseType { get; set; }
+        public decimal FreightCharges { get; set; }
+        public decimal OtherCharges { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public string Notes { get; set; }
+        
         // Navigation properties
         public string SupplierName { get; set; }
         public string UserName { get; set; }

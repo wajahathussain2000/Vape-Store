@@ -8,9 +8,18 @@ namespace Vape_Store.Models
         public int PurchaseID { get; set; }
         public int ProductID { get; set; }
         public int Quantity { get; set; }
+        public string Unit { get; set; }
         public decimal UnitPrice { get; set; }
+        public decimal SellingPrice { get; set; }
         public decimal SubTotal { get; set; }
         public int Bonus { get; set; }
+        
+        // Additional purchase item fields
+        public string BatchNumber { get; set; }
+        public DateTime ExpiryDate { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal TaxPercent { get; set; }
+        public string Remarks { get; set; }
         
         // Navigation properties
         public string ProductName { get; set; }

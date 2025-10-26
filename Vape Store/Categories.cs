@@ -75,6 +75,10 @@ namespace Vape_Store
             
             // Search event handler
             txtSearch.TextChanged += TxtSearch_TextChanged;
+            
+            // Form event handlers
+            this.KeyPreview = true;
+            this.KeyDown += Categories_KeyDown;
         }
 
         private void LoadCategories()
@@ -83,10 +87,30 @@ namespace Vape_Store
             {
                 _categories = _categoryRepository.GetAllCategories();
                 RefreshDataGridView();
+                
+                // Update status information
+                UpdateStatusInfo();
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error loading categories: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateStatusInfo()
+        {
+            try
+            {
+                int totalCategories = _categoryRepository.GetCategoryCount();
+                int activeCategories = _categories.Count;
+                
+                // You can add a status label to show this information
+                // lblStatus.Text = $"Total Categories: {totalCategories} | Active: {activeCategories}";
+            }
+            catch (Exception ex)
+            {
+                // Silently handle status update errors
+                System.Diagnostics.Debug.WriteLine($"Status update error: {ex.Message}");
             }
         }
 
@@ -129,7 +153,7 @@ namespace Vape_Store
         {
             try
             {
-                // Validate input
+                // Enhanced input validation
                 if (string.IsNullOrWhiteSpace(txtCategoryName.Text))
                 {
                     ShowMessage("Please enter a category name.", "Validation Error", MessageBoxIcon.Warning);
@@ -137,14 +161,34 @@ namespace Vape_Store
                     return;
                 }
 
-                // Check for duplicate category name
-                var existingCategory = _categories.FirstOrDefault(c => 
-                    c.CategoryName.ToLower() == txtCategoryName.Text.ToLower() && 
-                    c.CategoryID != selectedCategoryId);
-
-                if (existingCategory != null)
+                // Validate category name length
+                if (txtCategoryName.Text.Trim().Length < 2)
                 {
-                    ShowMessage("A category with this name already exists.", "Duplicate Error", MessageBoxIcon.Warning);
+                    ShowMessage("Category name must be at least 2 characters long.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                if (txtCategoryName.Text.Trim().Length > 100)
+                {
+                    ShowMessage("Category name cannot exceed 100 characters.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                // Validate description length
+                if (txtCategoryDesc.Text.Trim().Length > 500)
+                {
+                    ShowMessage("Description cannot exceed 500 characters.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryDesc.Focus();
+                    return;
+                }
+
+                // Check for duplicate category name using database validation
+                bool categoryExists = _categoryRepository.CategoryExists(txtCategoryName.Text.Trim(), selectedCategoryId);
+                if (categoryExists)
+                {
+                    ShowMessage($"A category with the name '{txtCategoryName.Text.Trim()}' already exists.", "Duplicate Error", MessageBoxIcon.Warning);
                     txtCategoryName.Focus();
                     return;
                 }
@@ -399,6 +443,82 @@ namespace Vape_Store
             // This appears to be a generic button click handler
             // Implementation depends on which button this refers to
             MessageBox.Show("Button clicked", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void Categories_KeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                // Handle keyboard shortcuts
+                if (e.Control)
+                {
+                    switch (e.KeyCode)
+                    {
+                        case Keys.N:
+                            // Ctrl+N: New Category
+                            AddCategoryBtn_Click(sender, e);
+                            e.Handled = true;
+                            break;
+                        case Keys.S:
+                            // Ctrl+S: Save
+                            SaveBtn_Click(sender, e);
+                            e.Handled = true;
+                            break;
+                        case Keys.Delete:
+                            // Ctrl+Delete: Delete selected category
+                            if (selectedCategoryId != -1)
+                            {
+                                DeleteBtn_Click(sender, e);
+                                e.Handled = true;
+                            }
+                            break;
+                    }
+                }
+                else if (e.KeyCode == Keys.Escape)
+                {
+                    // Escape: Clear form and exit edit mode
+                    ClearForm();
+                    SetEditMode(false);
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.F5)
+                {
+                    // F5: Refresh data
+                    LoadCategories();
+                    e.Handled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error handling keyboard shortcut: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        // Additional utility methods for enhanced functionality
+        private void RefreshData()
+        {
+            try
+            {
+                LoadCategories();
+                ShowMessage("Data refreshed successfully!", "Success", MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error refreshing data: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportCategories()
+        {
+            try
+            {
+                // This could be implemented to export categories to CSV or Excel
+                ShowMessage("Export functionality will be implemented in future updates.", "Info", MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error exporting categories: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
         }
     }
 }

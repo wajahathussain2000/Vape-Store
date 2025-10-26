@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +11,8 @@ using System.Windows.Forms;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
 
 namespace Vape_Store
 {
@@ -114,7 +117,7 @@ namespace Vape_Store
                     HeaderText = "Amount",
                     DataPropertyName = "Amount",
                     Width = 120,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvExpenseReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -254,9 +257,9 @@ namespace Vape_Store
                 var averageExpense = totalCount > 0 ? totalExpenses / totalCount : 0;
                 var uniqueCategories = _expenseReportItems.Select(item => item.CategoryName).Distinct().Count();
                 
-                lblTotalExpenses.Text = $"Total Expenses: ${totalExpenses:F2}";
+                lblTotalExpenses.Text = $"Total Expenses: {totalExpenses:F2}";
                 lblTotalCount.Text = $"Total Records: {totalCount}";
-                lblAverageExpense.Text = $"Average Expense: ${averageExpense:F2}";
+                lblAverageExpense.Text = $"Average Expense: {averageExpense:F2}";
                 lblUniqueCategories.Text = $"Categories: {uniqueCategories}";
             }
             catch (Exception ex)
@@ -314,8 +317,15 @@ namespace Vape_Store
                     return;
                 }
 
-                // TODO: Implement PDF export functionality
-                ShowMessage("PDF export functionality will be implemented in the next version.", "Feature Coming Soon", MessageBoxIcon.Information);
+                SaveFileDialog saveFileDialog = new SaveFileDialog();
+                saveFileDialog.Filter = "PDF files (*.pdf)|*.pdf";
+                saveFileDialog.FileName = $"ExpenseReport_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    ExportToPDF(saveFileDialog.FileName);
+                    ShowMessage("Report exported to PDF successfully!", "Export Complete", MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -333,8 +343,23 @@ namespace Vape_Store
                     return;
                 }
 
-                // TODO: Implement print functionality
-                ShowMessage("Print functionality will be implemented in the next version.", "Feature Coming Soon", MessageBoxIcon.Information);
+                try
+                {
+                    if (_expenseReportItems == null || _expenseReportItems.Count == 0)
+                    {
+                        ShowMessage("No data to print. Please generate a report first.", "No Data", MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    var htmlContent = GenerateHTMLReport();
+                    var htmlViewer = new HTMLReportViewerForm();
+                    htmlViewer.LoadReport(htmlContent);
+                    htmlViewer.ShowDialog();
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage($"Error printing report: {ex.Message}", "Error", MessageBoxIcon.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -393,14 +418,165 @@ namespace Vape_Store
             }
         }
 
+        private void ExportToPDF(string filePath)
+        {
+            try
+            {
+                // Create PDF document
+                Document document = new Document(PageSize.A4, 50, 50, 25, 25);
+                PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(filePath, FileMode.Create));
+                document.Open();
+
+                // Set up fonts
+                BaseFont baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+                iTextSharp.text.Font titleFont = new iTextSharp.text.Font(baseFont, 18, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font headerFont = new iTextSharp.text.Font(baseFont, 12, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font normalFont = new iTextSharp.text.Font(baseFont, 10, iTextSharp.text.Font.NORMAL);
+                iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
+
+                // Title
+                Paragraph title = new Paragraph("VAPE STORE - EXPENSE REPORT", titleFont);
+                title.Alignment = Element.ALIGN_CENTER;
+                title.SpacingAfter = 20f;
+                document.Add(title);
+
+                // Report info
+                Paragraph reportInfo = new Paragraph($"Report Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nDate Range: {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}", normalFont);
+                reportInfo.SpacingAfter = 15f;
+                document.Add(reportInfo);
+
+                // Create table for report data
+                PdfPTable table = new PdfPTable(8);
+                table.WidthPercentage = 100;
+                table.SetWidths(new float[] { 1f, 1f, 1.5f, 2f, 1f, 1.5f, 1f, 1f });
+
+                // Table headers
+                string[] headers = { "Code", "Date", "Category", "Description", "Amount", "Payment", "Reference", "Status" };
+                foreach (string header in headers)
+                {
+                    PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
+                    cell.BackgroundColor = BaseColor.LIGHT_GRAY;
+                    cell.HorizontalAlignment = Element.ALIGN_CENTER;
+                    cell.Padding = 5f;
+                    table.AddCell(cell);
+                }
+
+                // Add data rows
+                foreach (var item in _expenseReportItems)
+                {
+                    table.AddCell(new PdfPCell(new Phrase(item.ExpenseCode, normalFont)) { Padding = 3f });
+                    table.AddCell(new PdfPCell(new Phrase(item.ExpenseDate.ToString("MM/dd/yyyy"), normalFont)) { Padding = 3f });
+                    table.AddCell(new PdfPCell(new Phrase(item.CategoryName, normalFont)) { Padding = 3f });
+                    table.AddCell(new PdfPCell(new Phrase(item.Description, normalFont)) { Padding = 3f });
+                    
+                    PdfPCell amountCell = new PdfPCell(new Phrase(item.Amount.ToString("F2"), normalFont));
+                    amountCell.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    amountCell.Padding = 3f;
+                    table.AddCell(amountCell);
+                    
+                    table.AddCell(new PdfPCell(new Phrase(item.PaymentMethod, normalFont)) { Padding = 3f });
+                    table.AddCell(new PdfPCell(new Phrase(item.ReferenceNumber, normalFont)) { Padding = 3f });
+                    table.AddCell(new PdfPCell(new Phrase(item.Status, normalFont)) { Padding = 3f });
+                }
+
+                document.Add(table);
+
+                // Add summary section
+                document.Add(new Paragraph("\n", normalFont));
+                
+                Paragraph summaryTitle = new Paragraph("SUMMARY", headerFont);
+                summaryTitle.SpacingAfter = 10f;
+                document.Add(summaryTitle);
+
+                // Calculate totals
+                var totalAmount = _expenseReportItems.Sum(x => x.Amount);
+                var categoryTotals = _expenseReportItems.GroupBy(x => x.CategoryName)
+                    .Select(g => new { Category = g.Key, Total = g.Sum(x => x.Amount) })
+                    .OrderByDescending(x => x.Total);
+
+                document.Add(new Paragraph($"Total Expenses: {totalAmount:F2}", normalFont));
+                document.Add(new Paragraph("\nBy Category:", headerFont));
+                
+                foreach (var category in categoryTotals)
+                {
+                    document.Add(new Paragraph($"  {category.Category}: {category.Total:F2}", normalFont));
+                }
+
+                document.Close();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating PDF: {ex.Message}");
+            }
+        }
+
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
         }
 
+        private string GenerateHTMLReport()
+        {
+            try
+            {
+                var html = new StringBuilder();
+                html.AppendLine("<!DOCTYPE html>");
+                html.AppendLine("<html><head>");
+                html.AppendLine("<title>Expense Report</title>");
+                html.AppendLine("<style>");
+                html.AppendLine("body { font-family: Arial, sans-serif; margin: 20px; }");
+                html.AppendLine("h1 { color: #2c3e50; text-align: center; }");
+                html.AppendLine("table { width: 100%; border-collapse: collapse; margin-top: 20px; }");
+                html.AppendLine("th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }");
+                html.AppendLine("th { background-color: #f2f2f2; font-weight: bold; }");
+                html.AppendLine("tr:nth-child(even) { background-color: #f9f9f9; }");
+                html.AppendLine(".summary { background-color: #e8f4f8; padding: 15px; margin: 20px 0; border-radius: 5px; }");
+                html.AppendLine("</style>");
+                html.AppendLine("</head><body>");
+                
+                html.AppendLine("<h1>VAPE STORE - EXPENSE REPORT</h1>");
+                html.AppendLine($"<p><strong>Report Period:</strong> {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}</p>");
+                html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
+                
+                // Summary
+                html.AppendLine("<div class='summary'>");
+                html.AppendLine("<h2>Summary</h2>");
+                var totalExpenses = _expenseReportItems.Sum(x => x.Amount);
+                html.AppendLine($"<p><strong>Total Expenses:</strong> {_expenseReportItems.Count}</p>");
+                html.AppendLine($"<p><strong>Total Amount:</strong> {totalExpenses:F2}</p>");
+                html.AppendLine("</div>");
+                
+                // Table
+                html.AppendLine("<table>");
+                html.AppendLine("<tr><th>Expense Code</th><th>Date</th><th>Category</th><th>Amount</th><th>Payment Method</th><th>Description</th></tr>");
+                
+                foreach (var item in _expenseReportItems)
+                {
+                    html.AppendLine("<tr>");
+                    html.AppendLine($"<td>{item.ExpenseCode}</td>");
+                    html.AppendLine($"<td>{item.ExpenseDate:yyyy-MM-dd}</td>");
+                    html.AppendLine($"<td>{item.CategoryName}</td>");
+                    html.AppendLine($"<td>{item.Amount:F2}</td>");
+                    html.AppendLine($"<td>{item.PaymentMethod}</td>");
+                    html.AppendLine($"<td>{item.Description}</td>");
+                    html.AppendLine("</tr>");
+                }
+                
+                html.AppendLine("</table>");
+                html.AppendLine("</body></html>");
+                
+                return html.ToString();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error generating HTML report: {ex.Message}");
+            }
+        }
+
         private void ExpenseReportForm_Load(object sender, EventArgs e)
         {
             SetInitialState();
+            LoadExpenseData(); // Automatically load data when form opens
         }
     }
 

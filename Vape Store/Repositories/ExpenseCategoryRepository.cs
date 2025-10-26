@@ -38,13 +38,13 @@ namespace Vape_Store.Repositories
                                 categories.Add(new ExpenseCategory
                                 {
                                     CategoryID = Convert.ToInt32(reader["CategoryID"]),
-                                    CategoryCode = reader["CategoryCode"].ToString(),
+                                    CategoryCode = reader["CategoryCode"]?.ToString() ?? "",
                                     CategoryName = reader["CategoryName"].ToString(),
                                     Description = reader["Description"]?.ToString(),
                                     IsActive = Convert.ToBoolean(reader["IsActive"]),
                                     CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
                                     LastModifiedDate = reader["LastModifiedDate"] != DBNull.Value ? Convert.ToDateTime(reader["LastModifiedDate"]) : (DateTime?)null,
-                                    UserID = Convert.ToInt32(reader["UserID"]),
+                                    UserID = reader["UserID"] != DBNull.Value ? Convert.ToInt32(reader["UserID"]) : 0,
                                     UserName = reader["UserName"]?.ToString()
                                 });
                             }
@@ -84,13 +84,13 @@ namespace Vape_Store.Repositories
                                 return new ExpenseCategory
                                 {
                                     CategoryID = Convert.ToInt32(reader["CategoryID"]),
-                                    CategoryCode = reader["CategoryCode"].ToString(),
+                                    CategoryCode = reader["CategoryCode"]?.ToString() ?? "",
                                     CategoryName = reader["CategoryName"].ToString(),
                                     Description = reader["Description"]?.ToString(),
                                     IsActive = Convert.ToBoolean(reader["IsActive"]),
                                     CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
                                     LastModifiedDate = reader["LastModifiedDate"] != DBNull.Value ? Convert.ToDateTime(reader["LastModifiedDate"]) : (DateTime?)null,
-                                    UserID = Convert.ToInt32(reader["UserID"]),
+                                    UserID = reader["UserID"] != DBNull.Value ? Convert.ToInt32(reader["UserID"]) : 0,
                                     UserName = reader["UserName"]?.ToString()
                                 };
                             }
@@ -297,13 +297,13 @@ namespace Vape_Store.Repositories
                                 categories.Add(new ExpenseCategory
                                 {
                                     CategoryID = Convert.ToInt32(reader["CategoryID"]),
-                                    CategoryCode = reader["CategoryCode"].ToString(),
+                                    CategoryCode = reader["CategoryCode"]?.ToString() ?? "",
                                     CategoryName = reader["CategoryName"].ToString(),
                                     Description = reader["Description"]?.ToString(),
                                     IsActive = Convert.ToBoolean(reader["IsActive"]),
                                     CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
                                     LastModifiedDate = reader["LastModifiedDate"] != DBNull.Value ? Convert.ToDateTime(reader["LastModifiedDate"]) : (DateTime?)null,
-                                    UserID = Convert.ToInt32(reader["UserID"]),
+                                    UserID = reader["UserID"] != DBNull.Value ? Convert.ToInt32(reader["UserID"]) : 0,
                                     UserName = reader["UserName"]?.ToString()
                                 });
                             }

@@ -75,6 +75,10 @@ namespace Vape_Store
             
             // Search event handler
             txtSearch.TextChanged += TxtSearch_TextChanged;
+            
+            // Form event handlers
+            this.KeyPreview = true;
+            this.KeyDown += Brands_KeyDown;
         }
 
         private void LoadBrands()
@@ -83,10 +87,30 @@ namespace Vape_Store
             {
                 _brands = _brandRepository.GetAllBrands();
                 RefreshDataGridView();
+                
+                // Update status information
+                UpdateStatusInfo();
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error loading brands: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateStatusInfo()
+        {
+            try
+            {
+                int totalBrands = _brandRepository.GetBrandCount();
+                int activeBrands = _brands.Count;
+                
+                // You can add a status label to show this information
+                // lblStatus.Text = $"Total Brands: {totalBrands} | Active: {activeBrands}";
+            }
+            catch (Exception ex)
+            {
+                // Silently handle status update errors
+                System.Diagnostics.Debug.WriteLine($"Status update error: {ex.Message}");
             }
         }
 
@@ -129,7 +153,7 @@ namespace Vape_Store
         {
             try
             {
-                // Validate input
+                // Enhanced input validation
                 if (string.IsNullOrWhiteSpace(txtCategoryName.Text))
                 {
                     ShowMessage("Please enter a brand name.", "Validation Error", MessageBoxIcon.Warning);
@@ -137,14 +161,34 @@ namespace Vape_Store
                     return;
                 }
 
-                // Check for duplicate brand name
-                var existingBrand = _brands.FirstOrDefault(b => 
-                    b.BrandName.ToLower() == txtCategoryName.Text.ToLower() && 
-                    b.BrandID != selectedBrandId);
-
-                if (existingBrand != null)
+                // Validate brand name length
+                if (txtCategoryName.Text.Trim().Length < 2)
                 {
-                    ShowMessage("A brand with this name already exists.", "Duplicate Error", MessageBoxIcon.Warning);
+                    ShowMessage("Brand name must be at least 2 characters long.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                if (txtCategoryName.Text.Trim().Length > 100)
+                {
+                    ShowMessage("Brand name cannot exceed 100 characters.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                // Validate description length
+                if (txtCategoryDesc.Text.Trim().Length > 500)
+                {
+                    ShowMessage("Description cannot exceed 500 characters.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryDesc.Focus();
+                    return;
+                }
+
+                // Check for duplicate brand name using database validation
+                bool brandExists = _brandRepository.BrandExists(txtCategoryName.Text.Trim(), selectedBrandId);
+                if (brandExists)
+                {
+                    ShowMessage($"A brand with the name '{txtCategoryName.Text.Trim()}' already exists.", "Duplicate Error", MessageBoxIcon.Warning);
                     txtCategoryName.Focus();
                     return;
                 }
@@ -378,6 +422,82 @@ namespace Vape_Store
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
+        }
+
+        private void Brands_KeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                // Handle keyboard shortcuts
+                if (e.Control)
+                {
+                    switch (e.KeyCode)
+                    {
+                        case Keys.N:
+                            // Ctrl+N: New Brand
+                            AddBrandBtn_Click(sender, e);
+                            e.Handled = true;
+                            break;
+                        case Keys.S:
+                            // Ctrl+S: Save
+                            SaveBtn_Click(sender, e);
+                            e.Handled = true;
+                            break;
+                        case Keys.Delete:
+                            // Ctrl+Delete: Delete selected brand
+                            if (selectedBrandId != -1)
+                            {
+                                DeleteBtn_Click(sender, e);
+                                e.Handled = true;
+                            }
+                            break;
+                    }
+                }
+                else if (e.KeyCode == Keys.Escape)
+                {
+                    // Escape: Clear form and exit edit mode
+                    ClearForm();
+                    SetEditMode(false);
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.F5)
+                {
+                    // F5: Refresh data
+                    LoadBrands();
+                    e.Handled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error handling keyboard shortcut: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        // Additional utility methods for enhanced functionality
+        private void RefreshData()
+        {
+            try
+            {
+                LoadBrands();
+                ShowMessage("Data refreshed successfully!", "Success", MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error refreshing data: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportBrands()
+        {
+            try
+            {
+                // This could be implemented to export brands to CSV or Excel
+                ShowMessage("Export functionality will be implemented in future updates.", "Info", MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error exporting brands: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
         }
     }
 }

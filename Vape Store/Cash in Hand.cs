@@ -104,18 +104,36 @@ namespace Vape_Store
         {
             try
             {
-                decimal openingCash = Convert.ToDecimal(txtopeningcash.Text ?? "0");
-                decimal cashIn = Convert.ToDecimal(txtCashIn.Text ?? "0");
-                decimal cashOut = Convert.ToDecimal(textBox2.Text ?? "0");
-                decimal expenses = Convert.ToDecimal(txtexpense.Text ?? "0");
+                decimal openingCash = ParseDecimal(txtopeningcash.Text);
+                decimal cashIn = ParseDecimal(txtCashIn.Text);
+                decimal cashOut = ParseDecimal(textBox2.Text);
+                decimal expenses = ParseDecimal(txtexpense.Text);
                 
                 decimal closingCash = openingCash + cashIn - cashOut - expenses;
                 txtclosingbalance.Text = closingCash.ToString("F2");
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error calculating closing cash: {ex.Message}", "Error", MessageBoxIcon.Error);
+                // Don't show error message for calculation, just set to 0
+                txtclosingbalance.Text = "0.00";
             }
+        }
+
+        private decimal ParseDecimal(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return 0;
+            
+            // Remove any non-numeric characters except decimal point and minus sign
+            string cleanValue = System.Text.RegularExpressions.Regex.Replace(value, @"[^\d.-]", "");
+            
+            if (string.IsNullOrWhiteSpace(cleanValue))
+                return 0;
+            
+            if (decimal.TryParse(cleanValue, out decimal result))
+                return result;
+            
+            return 0;
         }
 
         private void BtnSave_Click(object sender, EventArgs e)
@@ -158,11 +176,11 @@ namespace Vape_Store
                 var transaction = new CashInHand
                 {
                     TransactionDate = dateTimePicker1.Value,
-                    OpeningCash = Convert.ToDecimal(txtopeningcash.Text),
-                    CashIn = Convert.ToDecimal(txtCashIn.Text),
-                    CashOut = Convert.ToDecimal(textBox2.Text),
-                    Expenses = Convert.ToDecimal(txtexpense.Text),
-                    ClosingCash = Convert.ToDecimal(txtclosingbalance.Text),
+                    OpeningCash = ParseDecimal(txtopeningcash.Text),
+                    CashIn = ParseDecimal(txtCashIn.Text),
+                    CashOut = ParseDecimal(textBox2.Text),
+                    Expenses = ParseDecimal(txtexpense.Text),
+                    ClosingCash = ParseDecimal(txtclosingbalance.Text),
                     Description = txtDescription.Text.Trim(),
                     CreatedBy = txtCreatedBy.Text.Trim(),
                     UserID = 1, // TODO: Get from current user session
@@ -203,11 +221,11 @@ namespace Vape_Store
                 }
 
                 _currentTransaction.TransactionDate = dateTimePicker1.Value;
-                _currentTransaction.OpeningCash = Convert.ToDecimal(txtopeningcash.Text);
-                _currentTransaction.CashIn = Convert.ToDecimal(txtCashIn.Text);
-                _currentTransaction.CashOut = Convert.ToDecimal(textBox2.Text);
-                _currentTransaction.Expenses = Convert.ToDecimal(txtexpense.Text);
-                _currentTransaction.ClosingCash = Convert.ToDecimal(txtclosingbalance.Text);
+                _currentTransaction.OpeningCash = ParseDecimal(txtopeningcash.Text);
+                _currentTransaction.CashIn = ParseDecimal(txtCashIn.Text);
+                _currentTransaction.CashOut = ParseDecimal(textBox2.Text);
+                _currentTransaction.Expenses = ParseDecimal(txtexpense.Text);
+                _currentTransaction.ClosingCash = ParseDecimal(txtclosingbalance.Text);
                 _currentTransaction.Description = txtDescription.Text.Trim();
                 _currentTransaction.CreatedBy = txtCreatedBy.Text.Trim();
 
@@ -268,28 +286,32 @@ namespace Vape_Store
 
         private bool ValidateForm()
         {
-            if (string.IsNullOrWhiteSpace(txtopeningcash.Text) || Convert.ToDecimal(txtopeningcash.Text) < 0)
+            decimal openingCash = ParseDecimal(txtopeningcash.Text);
+            if (openingCash < 0)
             {
                 ShowMessage("Please enter a valid opening cash amount.", "Validation Error", MessageBoxIcon.Warning);
                 txtopeningcash.Focus();
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(txtCashIn.Text) || Convert.ToDecimal(txtCashIn.Text) < 0)
+            decimal cashIn = ParseDecimal(txtCashIn.Text);
+            if (cashIn < 0)
             {
                 ShowMessage("Please enter a valid cash in amount.", "Validation Error", MessageBoxIcon.Warning);
                 txtCashIn.Focus();
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(textBox2.Text) || Convert.ToDecimal(textBox2.Text) < 0)
+            decimal cashOut = ParseDecimal(textBox2.Text);
+            if (cashOut < 0)
             {
                 ShowMessage("Please enter a valid cash out amount.", "Validation Error", MessageBoxIcon.Warning);
                 textBox2.Focus();
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(txtexpense.Text) || Convert.ToDecimal(txtexpense.Text) < 0)
+            decimal expenses = ParseDecimal(txtexpense.Text);
+            if (expenses < 0)
             {
                 ShowMessage("Please enter a valid expenses amount.", "Validation Error", MessageBoxIcon.Warning);
                 txtexpense.Focus();
@@ -327,6 +349,58 @@ namespace Vape_Store
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
+        }
+
+        private void LoadCashInHandTransactions()
+        {
+            try
+            {
+                var transactions = _cashInHandRepository.GetAllCashInHandTransactions();
+                
+                // If there's a DataGridView, populate it
+                if (this.Controls.Find("dgvTransactions", true).FirstOrDefault() is DataGridView dgv)
+                {
+                    dgv.DataSource = transactions;
+                    dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error loading transactions: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void LoadTransactionForEdit(int transactionId)
+        {
+            try
+            {
+                var transaction = _cashInHandRepository.GetCashInHandById(transactionId);
+                if (transaction != null)
+                {
+                    _currentTransaction = transaction;
+                    selectedTransactionId = transactionId;
+                    isEditMode = true;
+                    
+                    // Populate form fields
+                    dateTimePicker1.Value = transaction.TransactionDate;
+                    txtopeningcash.Text = transaction.OpeningCash.ToString("F2");
+                    txtCashIn.Text = transaction.CashIn.ToString("F2");
+                    textBox2.Text = transaction.CashOut.ToString("F2");
+                    txtexpense.Text = transaction.Expenses.ToString("F2");
+                    txtclosingbalance.Text = transaction.ClosingCash.ToString("F2");
+                    txtDescription.Text = transaction.Description;
+                    txtCreatedBy.Text = transaction.CreatedBy;
+                    
+                    // Update button states
+                    btnSave.Enabled = false;
+                    btnUpdate.Enabled = true;
+                    btnDelete.Enabled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error loading transaction: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
         }
 
         private void Cash_in_Hand_Load(object sender, EventArgs e)

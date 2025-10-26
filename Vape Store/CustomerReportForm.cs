@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,6 +13,8 @@ using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
 using Vape_Store.DataAccess;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
 
 namespace Vape_Store
 {
@@ -97,7 +100,7 @@ namespace Vape_Store
                     HeaderText = "Total Purchases",
                     DataPropertyName = "TotalPurchases",
                     Width = 120,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvCustomerReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -114,7 +117,7 @@ namespace Vape_Store
                     HeaderText = "Avg Order Value",
                     DataPropertyName = "AverageOrderValue",
                     Width = 120,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvCustomerReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -123,7 +126,7 @@ namespace Vape_Store
                     HeaderText = "Total Paid",
                     DataPropertyName = "TotalPaid",
                     Width = 100,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvCustomerReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -132,7 +135,7 @@ namespace Vape_Store
                     HeaderText = "Total Due",
                     DataPropertyName = "TotalDue",
                     Width = 100,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvCustomerReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -283,11 +286,9 @@ namespace Vape_Store
                 var avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
                 
                 lblTotalCustomers.Text = $"Total Customers: {totalCustomers}";
-                lblTotalSales.Text = $"Total Sales: ${totalSales:F2}";
-                lblTotalOrders.Text = $"Total Orders: {totalOrders}";
-                lblTotalPaid.Text = $"Total Paid: ${totalPaid:F2}";
-                lblTotalDue.Text = $"Total Due: ${totalDue:F2}";
-                lblAvgOrderValue.Text = $"Avg Order Value: ${avgOrderValue:F2}";
+                lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
+                lblActiveCustomers.Text = $"Active Customers: {totalCustomers}";
+                lblAverageSale.Text = $"Average Sale: {avgOrderValue:F2}";
             }
             catch (Exception ex)
             {
@@ -314,7 +315,28 @@ namespace Vape_Store
 
         private void BtnExportPDF_Click(object sender, EventArgs e)
         {
-            ShowMessage("PDF export functionality will be implemented.", "Info", MessageBoxIcon.Information);
+            try
+            {
+                if (_customerReportData == null || _customerReportData.Count == 0)
+                {
+                    ShowMessage("No data to export. Please generate a report first.", "No Data", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                SaveFileDialog saveFileDialog = new SaveFileDialog();
+                saveFileDialog.Filter = "PDF files (*.pdf)|*.pdf";
+                saveFileDialog.FileName = $"CustomerReport_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    ExportToPDF(saveFileDialog.FileName);
+                    ShowMessage("Report exported to PDF successfully!", "Export Complete", MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error exporting to PDF: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
         }
 
         private void BtnPrint_Click(object sender, EventArgs e)
@@ -351,6 +373,117 @@ namespace Vape_Store
             UpdateSummaryLabels();
         }
 
+        private void ExportToPDF(string filePath)
+        {
+            try
+            {
+                // Create PDF document
+                Document document = new Document(PageSize.A4, 50, 50, 25, 25);
+                PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(filePath, FileMode.Create));
+                document.Open();
+
+                // Set up fonts
+                BaseFont baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+                iTextSharp.text.Font titleFont = new iTextSharp.text.Font(baseFont, 18, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font headerFont = new iTextSharp.text.Font(baseFont, 12, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font normalFont = new iTextSharp.text.Font(baseFont, 10, iTextSharp.text.Font.NORMAL);
+                iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
+
+                // Title
+                Paragraph title = new Paragraph("VAPE STORE - CUSTOMER REPORT", titleFont);
+                title.Alignment = Element.ALIGN_CENTER;
+                title.SpacingAfter = 20f;
+                document.Add(title);
+
+                // Report info
+                Paragraph reportInfo = new Paragraph($"Report Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nDate Range: {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}", normalFont);
+                reportInfo.SpacingAfter = 15f;
+                document.Add(reportInfo);
+
+                // Create table for report data
+                PdfPTable table = new PdfPTable(9);
+                table.WidthPercentage = 100;
+                table.SetWidths(new float[] { 1f, 2f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f });
+
+                // Table headers
+                string[] headers = { "Code", "Customer Name", "Phone", "Total Purchases", "Total Orders", "Avg Order Value", "Total Paid", "Total Due", "Last Purchase" };
+                foreach (string header in headers)
+                {
+                    PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
+                    cell.BackgroundColor = BaseColor.LIGHT_GRAY;
+                    cell.HorizontalAlignment = Element.ALIGN_CENTER;
+                    cell.Padding = 5f;
+                    table.AddCell(cell);
+                }
+
+                // Add data rows
+                foreach (var item in _customerReportData)
+                {
+                    table.AddCell(new PdfPCell(new Phrase(item.CustomerCode, normalFont)) { Padding = 3f });
+                    table.AddCell(new PdfPCell(new Phrase(item.CustomerName, normalFont)) { Padding = 3f });
+                    table.AddCell(new PdfPCell(new Phrase(item.Phone, normalFont)) { Padding = 3f });
+                    
+                    PdfPCell purchasesCell = new PdfPCell(new Phrase(item.TotalPurchases.ToString("F2"), normalFont));
+                    purchasesCell.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    purchasesCell.Padding = 3f;
+                    table.AddCell(purchasesCell);
+                    
+                    PdfPCell ordersCell = new PdfPCell(new Phrase(item.TotalOrders.ToString(), normalFont));
+                    ordersCell.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    ordersCell.Padding = 3f;
+                    table.AddCell(ordersCell);
+                    
+                    PdfPCell avgCell = new PdfPCell(new Phrase(item.AverageOrderValue.ToString("F2"), normalFont));
+                    avgCell.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    avgCell.Padding = 3f;
+                    table.AddCell(avgCell);
+                    
+                    PdfPCell paidCell = new PdfPCell(new Phrase(item.TotalPaid.ToString("F2"), normalFont));
+                    paidCell.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    paidCell.Padding = 3f;
+                    table.AddCell(paidCell);
+                    
+                    PdfPCell dueCell = new PdfPCell(new Phrase(item.TotalDue.ToString("F2"), normalFont));
+                    dueCell.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    dueCell.Padding = 3f;
+                    table.AddCell(dueCell);
+                    
+                    string lastPurchase = item.LastPurchaseDate?.ToString("MM/dd/yyyy") ?? "N/A";
+                    table.AddCell(new PdfPCell(new Phrase(lastPurchase, normalFont)) { Padding = 3f });
+                }
+
+                document.Add(table);
+
+                // Add summary section
+                document.Add(new Paragraph("\n", normalFont));
+                
+                Paragraph summaryTitle = new Paragraph("SUMMARY", headerFont);
+                summaryTitle.SpacingAfter = 10f;
+                document.Add(summaryTitle);
+
+                // Calculate totals
+                var totalCustomers = _customerReportData.Count;
+                var totalSales = _customerReportData.Sum(x => x.TotalPurchases);
+                var totalOrders = _customerReportData.Sum(x => x.TotalOrders);
+                var totalPaid = _customerReportData.Sum(x => x.TotalPaid);
+                var totalDue = _customerReportData.Sum(x => x.TotalDue);
+                var avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+
+                document.Add(new Paragraph($"Total Customers: {totalCustomers}", normalFont));
+                document.Add(new Paragraph($"Total Sales: {totalSales:F2}", normalFont));
+                document.Add(new Paragraph($"Total Orders: {totalOrders}", normalFont));
+                document.Add(new Paragraph($"Total Paid: {totalPaid:F2}", normalFont));
+                document.Add(new Paragraph($"Total Due: {totalDue:F2}", normalFont));
+                document.Add(new Paragraph($"Average Order Value: {avgOrderValue:F2}", normalFont));
+
+                document.Close();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating PDF: {ex.Message}");
+            }
+        }
+
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
@@ -359,6 +492,7 @@ namespace Vape_Store
         private void CustomerReportForm_Load(object sender, EventArgs e)
         {
             SetInitialState();
+            LoadCustomerReportData(); // Automatically load data when form opens
         }
     }
 

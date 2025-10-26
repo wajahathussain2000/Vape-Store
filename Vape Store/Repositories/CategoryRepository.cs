@@ -71,55 +71,122 @@ namespace Vape_Store.Repositories
         
         public bool AddCategory(Category category)
         {
-            string query = @"INSERT INTO Categories (CategoryName, Description, IsActive) 
-                           VALUES (@CategoryName, @Description, @IsActive)";
-            
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                string query = @"INSERT INTO Categories (CategoryName, Description, IsActive, CreatedDate) 
+                               VALUES (@CategoryName, @Description, @IsActive, @CreatedDate)";
+                
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    command.Parameters.AddWithValue("@CategoryName", category.CategoryName);
-                    command.Parameters.AddWithValue("@Description", category.Description ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@IsActive", category.IsActive);
-                    
-                    connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@CategoryName", category.CategoryName.Trim());
+                        command.Parameters.AddWithValue("@Description", string.IsNullOrWhiteSpace(category.Description) ? (object)DBNull.Value : category.Description.Trim());
+                        command.Parameters.AddWithValue("@IsActive", category.IsActive);
+                        command.Parameters.AddWithValue("@CreatedDate", category.CreatedDate);
+                        
+                        connection.Open();
+                        return command.ExecuteNonQuery() > 0;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error adding category: {ex.Message}", ex);
             }
         }
         
         public bool UpdateCategory(Category category)
         {
-            string query = @"UPDATE Categories SET CategoryName = @CategoryName, Description = @Description, 
-                           IsActive = @IsActive WHERE CategoryID = @CategoryID";
-            
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                string query = @"UPDATE Categories SET CategoryName = @CategoryName, Description = @Description, 
+                               IsActive = @IsActive WHERE CategoryID = @CategoryID";
+                
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    command.Parameters.AddWithValue("@CategoryID", category.CategoryID);
-                    command.Parameters.AddWithValue("@CategoryName", category.CategoryName);
-                    command.Parameters.AddWithValue("@Description", category.Description ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@IsActive", category.IsActive);
-                    
-                    connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@CategoryID", category.CategoryID);
+                        command.Parameters.AddWithValue("@CategoryName", category.CategoryName.Trim());
+                        command.Parameters.AddWithValue("@Description", string.IsNullOrWhiteSpace(category.Description) ? (object)DBNull.Value : category.Description.Trim());
+                        command.Parameters.AddWithValue("@IsActive", category.IsActive);
+                        
+                        connection.Open();
+                        return command.ExecuteNonQuery() > 0;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error updating category: {ex.Message}", ex);
             }
         }
         
         public bool DeleteCategory(int categoryID)
         {
-            string query = "UPDATE Categories SET IsActive = 0 WHERE CategoryID = @CategoryID";
-            
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                string query = "UPDATE Categories SET IsActive = 0 WHERE CategoryID = @CategoryID";
+                
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    command.Parameters.AddWithValue("@CategoryID", categoryID);
-                    connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@CategoryID", categoryID);
+                        connection.Open();
+                        return command.ExecuteNonQuery() > 0;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error deleting category: {ex.Message}", ex);
+            }
+        }
+
+        // Additional methods for enhanced functionality
+        public bool CategoryExists(string categoryName, int excludeCategoryId = -1)
+        {
+            try
+            {
+                string query = "SELECT COUNT(*) FROM Categories WHERE CategoryName = @CategoryName AND CategoryID != @ExcludeCategoryId AND IsActive = 1";
+                
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@CategoryName", categoryName.Trim());
+                        command.Parameters.AddWithValue("@ExcludeCategoryId", excludeCategoryId);
+                        connection.Open();
+                        return Convert.ToInt32(command.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking category existence: {ex.Message}", ex);
+            }
+        }
+
+        public int GetCategoryCount()
+        {
+            try
+            {
+                string query = "SELECT COUNT(*) FROM Categories WHERE IsActive = 1";
+                
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        connection.Open();
+                        return Convert.ToInt32(command.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting category count: {ex.Message}", ex);
             }
         }
     }

@@ -33,6 +33,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BouncyCastle.Cryptography, Version=2.0.0.0, Culture=neutral, PublicKeyToken=072edcf4a5328938, processorArchitecture=MSIL">
+      <HintPath>..\packages\BouncyCastle.Cryptography.2.4.0\lib\net461\BouncyCastle.Cryptography.dll</HintPath>
+    </Reference>
     <Reference Include="FontAwesome.Sharp, Version=6.6.0.0, Culture=neutral, PublicKeyToken=d16d1e4e568ec10f, processorArchitecture=MSIL">
       <HintPath>..\packages\FontAwesome.Sharp.6.6.0\lib\net472\FontAwesome.Sharp.dll</HintPath>
     </Reference>
@@ -41,6 +44,9 @@
     </Reference>
     <Reference Include="Guna.UI2, Version=2.0.4.7, Culture=neutral, PublicKeyToken=8b9d14aa5142e261, processorArchitecture=MSIL">
       <HintPath>..\packages\Guna.UI2.WinForms.2.0.4.7\lib\net472\Guna.UI2.dll</HintPath>
+    </Reference>
+    <Reference Include="itextsharp, Version=5.5.13.4, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
+      <HintPath>..\packages\iTextSharp.5.5.13.4\lib\net461\itextsharp.dll</HintPath>
     </Reference>
     <Reference Include="NavigationMenu, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Kimtoo.NavigationMenu.1.0.2\lib\net40\NavigationMenu.dll</HintPath>
@@ -109,12 +115,6 @@
     <Compile Include="Dashboard.Designer.cs">
       <DependentUpon>Dashboard.cs</DependentUpon>
     </Compile>
-    <Compile Include="EditPurchase.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="EditPurchase.Designer.cs">
-      <DependentUpon>EditPurchase.cs</DependentUpon>
-    </Compile>
     <Compile Include="EditSale.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -144,6 +144,9 @@
     </Compile>
     <Compile Include="NewPurchase.Designer.cs">
       <DependentUpon>NewPurchase.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ProductEntryForm.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="NewSale.cs">
       <SubType>Form</SubType>
@@ -194,6 +197,12 @@
     </Compile>
     <Compile Include="SalesReportForm.Designer.cs">
       <DependentUpon>SalesReportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="HTMLReportViewerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HTMLReportViewerForm.Designer.cs">
+      <DependentUpon>HTMLReportViewerForm.cs</DependentUpon>
     </Compile>
     <Compile Include="StockReportForm.cs">
       <SubType>Form</SubType>
@@ -270,6 +279,8 @@
     <Compile Include="Services\ReportingService.cs" />
     <Compile Include="Services\DashboardService.cs" />
     <Compile Include="Services\ThermalReceiptService.cs" />
+    <Compile Include="Services\SalesReturnService.cs" />
+    <Compile Include="Services\BarcodeService.cs" />
     <Compile Include="ThermalInvoiceForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -278,6 +289,12 @@
     </Compile>
     <Compile Include="InvoicePreviewForm.Designer.cs">
       <DependentUpon>ThermalInvoiceForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PurchaseReceiptPreviewForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PurchaseReceiptPreviewForm.Designer.cs">
+      <DependentUpon>PurchaseReceiptPreviewForm.cs</DependentUpon>
     </Compile>
     <Compile Include="DatabaseStatisticsReport.cs">
       <SubType>Form</SubType>
@@ -306,6 +323,27 @@
     <Compile Include="ReceiptPreviewForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ReportViewerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SalesLedgerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SalesLedgerForm.Designer.cs">
+      <DependentUpon>SalesLedgerForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SalesReturnReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SalesReturnReportForm.Designer.cs">
+      <DependentUpon>SalesReturnReportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PurchaseReturnReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PurchaseReturnReportForm.Designer.cs">
+      <DependentUpon>PurchaseReturnReportForm.cs</DependentUpon>
+    </Compile>
     <EmbeddedResource Include="Brands.resx">
       <DependentUpon>Brands.cs</DependentUpon>
     </EmbeddedResource>
@@ -323,9 +361,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Dashboard.resx">
       <DependentUpon>Dashboard.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="EditPurchase.resx">
-      <DependentUpon>EditPurchase.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="EditSale.resx">
       <DependentUpon>EditSale.cs</DependentUpon>
@@ -372,6 +407,18 @@
     <EmbeddedResource Include="Users.resx">
       <DependentUpon>Users.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="SalesLedgerForm.resx">
+      <DependentUpon>SalesLedgerForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SalesReturnReportForm.resx">
+      <DependentUpon>SalesReturnReportForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PurchaseReturnReportForm.resx">
+      <DependentUpon>PurchaseReturnReportForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="Reports\SalesReport.rdlc">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

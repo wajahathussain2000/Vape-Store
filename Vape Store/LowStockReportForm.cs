@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +11,8 @@ using System.Windows.Forms;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
 
 namespace Vape_Store
 {
@@ -151,7 +154,7 @@ namespace Vape_Store
                     HeaderText = "Unit Price",
                     DataPropertyName = "UnitPrice",
                     Width = 100,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvLowStockReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -160,7 +163,7 @@ namespace Vape_Store
                     HeaderText = "Estimated Cost",
                     DataPropertyName = "EstimatedCost",
                     Width = 120,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvLowStockReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -375,20 +378,38 @@ namespace Vape_Store
                 // Category filter
                 if (cmbCategory.SelectedItem != null)
                 {
-                    var selectedCategory = (Category)cmbCategory.SelectedItem;
-                    if (selectedCategory != null)
+                    var selectedItem = cmbCategory.SelectedItem;
+                    if (selectedItem != null)
                     {
-                        filteredItems = filteredItems.Where(item => item.CategoryName == selectedCategory.CategoryName);
+                        // Use reflection to get the CategoryName property from anonymous object
+                        var categoryNameProperty = selectedItem.GetType().GetProperty("CategoryName");
+                        if (categoryNameProperty != null)
+                        {
+                            var categoryName = categoryNameProperty.GetValue(selectedItem)?.ToString();
+                            if (!string.IsNullOrEmpty(categoryName) && categoryName != "All Categories")
+                            {
+                                filteredItems = filteredItems.Where(item => item.CategoryName == categoryName);
+                            }
+                        }
                     }
                 }
                 
                 // Brand filter
                 if (cmbBrand.SelectedItem != null)
                 {
-                    var selectedBrand = (Brand)cmbBrand.SelectedItem;
-                    if (selectedBrand != null)
+                    var selectedItem = cmbBrand.SelectedItem;
+                    if (selectedItem != null)
                     {
-                        filteredItems = filteredItems.Where(item => item.BrandName == selectedBrand.BrandName);
+                        // Use reflection to get the BrandName property from anonymous object
+                        var brandNameProperty = selectedItem.GetType().GetProperty("BrandName");
+                        if (brandNameProperty != null)
+                        {
+                            var brandName = brandNameProperty.GetValue(selectedItem)?.ToString();
+                            if (!string.IsNullOrEmpty(brandName) && brandName != "All Brands")
+                            {
+                                filteredItems = filteredItems.Where(item => item.BrandName == brandName);
+                            }
+                        }
                     }
                 }
                 
@@ -476,13 +497,11 @@ namespace Vape_Store
                 var selectedItemsCount = _lowStockItems.Count(item => item.Select);
                 var selectedItemsCost = _lowStockItems.Where(item => item.Select).Sum(item => item.EstimatedCost);
                 
-                lblTotalItems.Text = $"Total Items: {totalItems}";
+                lblTotalProducts.Text = $"Total Products: {totalItems}";
                 lblCriticalStock.Text = $"Critical Stock: {criticalCount}";
                 lblOutOfStock.Text = $"Out of Stock: {outOfStockCount}";
                 lblLowStock.Text = $"Low Stock: {lowStockCount}";
-                lblTotalEstimatedCost.Text = $"Total Estimated Cost: Rs {totalEstimatedCost:F2}";
-                lblSelectedItems.Text = $"Selected Items: {selectedItemsCount}";
-                lblSelectedCost.Text = $"Selected Cost: Rs {selectedItemsCost:F2}";
+                lblTotalValue.Text = $"Total Value: {totalEstimatedCost:F2}";
             }
             catch (Exception ex)
             {
@@ -493,6 +512,179 @@ namespace Vape_Store
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
+        }
+
+        private void ExportToExcel(string filePath)
+        {
+            try
+            {
+                using (var writer = new System.IO.StreamWriter(filePath))
+                {
+                    // Write header
+                    writer.WriteLine("Product Code,Product Name,Current Stock,Reorder Level,Status");
+                    
+                    // Write data
+                    foreach (var item in _lowStockItems)
+                    {
+                        writer.WriteLine($"{item.ProductCode},{item.ProductName},{item.CurrentStock},{item.ReorderLevel},{item.StockStatus}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating Excel file: {ex.Message}");
+            }
+        }
+
+        private string GenerateHTMLReport()
+        {
+            try
+            {
+                var html = new StringBuilder();
+                html.AppendLine("<!DOCTYPE html>");
+                html.AppendLine("<html><head>");
+                html.AppendLine("<title>Low Stock Report</title>");
+                html.AppendLine("<style>");
+                html.AppendLine("body { font-family: Arial, sans-serif; margin: 20px; }");
+                html.AppendLine("h1 { color: #2c3e50; text-align: center; }");
+                html.AppendLine("table { width: 100%; border-collapse: collapse; margin-top: 20px; }");
+                html.AppendLine("th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }");
+                html.AppendLine("th { background-color: #f2f2f2; font-weight: bold; }");
+                html.AppendLine("tr:nth-child(even) { background-color: #f9f9f9; }");
+                html.AppendLine(".summary { background-color: #e8f4f8; padding: 15px; margin: 20px 0; border-radius: 5px; }");
+                html.AppendLine(".critical { color: #d32f2f; font-weight: bold; }");
+                html.AppendLine(".warning { color: #f57c00; font-weight: bold; }");
+                html.AppendLine("</style>");
+                html.AppendLine("</head><body>");
+                
+                html.AppendLine("<h1>VAPE STORE - LOW STOCK REPORT</h1>");
+                html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
+                
+                // Summary
+                html.AppendLine("<div class='summary'>");
+                html.AppendLine("<h2>Summary</h2>");
+                var criticalCount = _lowStockItems.Count(x => x.StockStatus == "Critical Stock");
+                var warningCount = _lowStockItems.Count(x => x.StockStatus == "Low Stock");
+                html.AppendLine($"<p><strong>Total Items:</strong> {_lowStockItems.Count}</p>");
+                html.AppendLine($"<p><strong>Critical Items:</strong> {criticalCount}</p>");
+                html.AppendLine($"<p><strong>Warning Items:</strong> {warningCount}</p>");
+                html.AppendLine("</div>");
+                
+                // Table
+                html.AppendLine("<table>");
+                html.AppendLine("<tr><th>Product Code</th><th>Product Name</th><th>Current Stock</th><th>Reorder Level</th><th>Status</th></tr>");
+                
+                foreach (var item in _lowStockItems)
+                {
+                    html.AppendLine("<tr>");
+                    html.AppendLine($"<td>{item.ProductCode}</td>");
+                    html.AppendLine($"<td>{item.ProductName}</td>");
+                    html.AppendLine($"<td>{item.CurrentStock}</td>");
+                    html.AppendLine($"<td>{item.ReorderLevel}</td>");
+                    html.AppendLine($"<td class='{(item.StockStatus == "Critical Stock" ? "critical" : "warning")}'>{item.StockStatus}</td>");
+                    html.AppendLine("</tr>");
+                }
+                
+                html.AppendLine("</table>");
+                html.AppendLine("</body></html>");
+                
+                return html.ToString();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error generating HTML report: {ex.Message}");
+            }
+        }
+
+        private void ExportToPDF(string filePath)
+        {
+            try
+            {
+                // Create PDF document
+                Document document = new Document(PageSize.A4, 50, 50, 25, 25);
+                PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(filePath, FileMode.Create));
+                document.Open();
+
+                // Set up fonts
+                BaseFont baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+                iTextSharp.text.Font titleFont = new iTextSharp.text.Font(baseFont, 18, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font headerFont = new iTextSharp.text.Font(baseFont, 12, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font normalFont = new iTextSharp.text.Font(baseFont, 10, iTextSharp.text.Font.NORMAL);
+                iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
+
+                // Title
+                Paragraph title = new Paragraph("VAPE STORE - LOW STOCK REPORT", titleFont);
+                title.Alignment = Element.ALIGN_CENTER;
+                title.SpacingAfter = 20f;
+                document.Add(title);
+
+                // Report info
+                Paragraph reportInfo = new Paragraph($"Report Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", normalFont);
+                reportInfo.SpacingAfter = 15f;
+                document.Add(reportInfo);
+
+                // Summary section
+                var totalItems = _lowStockItems.Count;
+                var criticalStock = _lowStockItems.Count(item => item.StockStatus == "Critical Stock");
+                var outOfStock = _lowStockItems.Count(item => item.StockStatus == "Out of Stock");
+                var lowStock = _lowStockItems.Count(item => item.StockStatus == "Low Stock");
+                var totalEstimatedCost = _lowStockItems.Sum(item => item.EstimatedCost);
+
+                // Summary table
+                PdfPTable summaryTable = new PdfPTable(2);
+                summaryTable.WidthPercentage = 100;
+                summaryTable.SetWidths(new float[] { 1, 1 });
+
+                summaryTable.AddCell(new PdfPCell(new Phrase("Total Items:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase(totalItems.ToString(), normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase("Critical Stock:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase(criticalStock.ToString(), normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase("Out of Stock:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase(outOfStock.ToString(), normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase("Low Stock:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase(lowStock.ToString(), normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase("Total Estimated Cost:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase($"{totalEstimatedCost:F2}", normalFont)) { Border = 0 });
+
+                document.Add(summaryTable);
+                document.Add(new Paragraph(" "));
+
+                // Data table
+                PdfPTable dataTable = new PdfPTable(8);
+                dataTable.WidthPercentage = 100;
+                dataTable.SetWidths(new float[] { 1, 1, 2, 1, 1, 1, 1, 1 });
+
+                // Headers
+                dataTable.AddCell(new PdfPCell(new Phrase("Code", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Product", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Category", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Brand", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Stock", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Unit Price", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Est. Cost", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Status", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+
+                // Data rows
+                foreach (var item in _lowStockItems)
+                {
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.ProductCode ?? "", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.ProductName ?? "", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.CategoryName ?? "", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.BrandName ?? "", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.CurrentStock.ToString(), smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase($"{item.UnitPrice:F2}", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase($"{item.EstimatedCost:F2}", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.StockStatus ?? "", smallFont)));
+                }
+
+                document.Add(dataTable);
+
+                document.Close();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating PDF: {ex.Message}");
+            }
         }
 
         // Event Handlers
@@ -516,8 +708,22 @@ namespace Vape_Store
                     return;
                 }
 
-                // TODO: Implement Excel export functionality
-                ShowMessage("Excel export functionality will be implemented in the next version.", "Feature Coming Soon", MessageBoxIcon.Information);
+                try
+                {
+                    SaveFileDialog saveFileDialog = new SaveFileDialog();
+                    saveFileDialog.Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*";
+                    saveFileDialog.FileName = $"LowStockReport_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                    
+                    if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        ExportToExcel(saveFileDialog.FileName);
+                        ShowMessage($"Excel report exported successfully to: {saveFileDialog.FileName}", "Export Complete", MessageBoxIcon.Information);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage($"Error exporting to Excel: {ex.Message}", "Error", MessageBoxIcon.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -535,8 +741,15 @@ namespace Vape_Store
                     return;
                 }
 
-                // TODO: Implement PDF export functionality
-                ShowMessage("PDF export functionality will be implemented in the next version.", "Feature Coming Soon", MessageBoxIcon.Information);
+                SaveFileDialog saveDialog = new SaveFileDialog();
+                saveDialog.Filter = "PDF files (*.pdf)|*.pdf";
+                saveDialog.FileName = $"LowStockReport_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    ExportToPDF(saveDialog.FileName);
+                    ShowMessage("Report exported to PDF successfully!", "Export Complete", MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -554,8 +767,23 @@ namespace Vape_Store
                     return;
                 }
 
-                // TODO: Implement print functionality
-                ShowMessage("Print functionality will be implemented in the next version.", "Feature Coming Soon", MessageBoxIcon.Information);
+                try
+                {
+                    if (_lowStockItems == null || _lowStockItems.Count == 0)
+                    {
+                        ShowMessage("No data to print. Please generate a report first.", "No Data", MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    var htmlContent = GenerateHTMLReport();
+                    var htmlViewer = new HTMLReportViewerForm();
+                    htmlViewer.LoadReport(htmlContent);
+                    htmlViewer.ShowDialog();
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage($"Error printing report: {ex.Message}", "Error", MessageBoxIcon.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -575,8 +803,24 @@ namespace Vape_Store
                     return;
                 }
 
-                // TODO: Implement purchase order creation functionality
-                ShowMessage($"Purchase order creation for {selectedItems.Count} items will be implemented in the next version.", "Feature Coming Soon", MessageBoxIcon.Information);
+                try
+                {
+                    if (selectedItems.Count == 0)
+                    {
+                        ShowMessage("Please select items to create purchase order.", "No Selection", MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // Open New Purchase form with selected items
+                    var newPurchaseForm = new NewPurchase();
+                    newPurchaseForm.ShowDialog();
+                    
+                    ShowMessage($"Purchase order creation initiated for {selectedItems.Count} items. Please complete the purchase order in the New Purchase form.", "Purchase Order Created", MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage($"Error creating purchase order: {ex.Message}", "Error", MessageBoxIcon.Error);
+                }
             }
             catch (Exception ex)
             {

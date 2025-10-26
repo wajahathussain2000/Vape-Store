@@ -46,6 +46,12 @@ namespace Vape_Store
             btnClear.Click += BtnClear_Click;
             btncategory.Click += Btncategory_Click;
             
+            // Add delete functionality if delete button exists
+            if (this.Controls.Find("btnDelete", true).FirstOrDefault() is Button btnDelete)
+            {
+                btnDelete.Click += BtnDelete_Click;
+            }
+            
             // DataGridView event handlers
             dgvExpenses.CellDoubleClick += DgvExpenses_CellDoubleClick;
             dgvExpenses.SelectionChanged += DgvExpenses_SelectionChanged;
@@ -100,7 +106,7 @@ namespace Vape_Store
                     Name = "Amount",
                     HeaderText = "Amount",
                     DataPropertyName = "Amount",
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" },
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" },
                     Width = 100
                 });
                 
@@ -252,7 +258,7 @@ namespace Vape_Store
                     ExpenseCode = txtExpenseCode.Text.Trim(),
                     CategoryID = cmbCategory.SelectedItem != null ? ((ExpenseCategory)cmbCategory.SelectedItem).CategoryID : 0,
                     Description = txtDescription.Text.Trim(),
-                    Amount = Convert.ToDecimal(txtAmount.Text),
+                    Amount = ParseDecimal(txtAmount.Text),
                     ExpenseDate = dtpExpenseDate.Value,
                     PaymentMethod = cmbPaymentMethod.SelectedItem?.ToString(),
                     ReferenceNumber = txtReferenceNumber.Text.Trim(),
@@ -306,7 +312,8 @@ namespace Vape_Store
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(txtAmount.Text) || Convert.ToDecimal(txtAmount.Text) <= 0)
+            decimal amount = ParseDecimal(txtAmount.Text);
+            if (amount <= 0)
             {
                 ShowMessage("Please enter a valid amount.", "Validation Error", MessageBoxIcon.Warning);
                 txtAmount.Focus();
@@ -426,6 +433,58 @@ namespace Vape_Store
         private void btnexpensecategory_Click(object sender, EventArgs e)
         {
             Btncategory_Click(sender, e);
+        }
+
+        private void BtnDelete_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (selectedExpenseId <= 0)
+                {
+                    ShowMessage("Please select an expense to delete.", "Validation Error", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var result = MessageBox.Show("Are you sure you want to delete this expense?", "Confirm Delete", 
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    bool success = _expenseRepository.DeleteExpense(selectedExpenseId);
+                    
+                    if (success)
+                    {
+                        ShowMessage("Expense deleted successfully!", "Success", MessageBoxIcon.Information);
+                        LoadExpenses();
+                        ClearForm();
+                    }
+                    else
+                    {
+                        ShowMessage("Failed to delete expense.", "Error", MessageBoxIcon.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error deleting expense: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private decimal ParseDecimal(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return 0;
+            
+            // Remove any non-numeric characters except decimal point and minus sign
+            string cleanValue = System.Text.RegularExpressions.Regex.Replace(value, @"[^\d.-]", "");
+            
+            if (string.IsNullOrWhiteSpace(cleanValue))
+                return 0;
+            
+            if (decimal.TryParse(cleanValue, out decimal result))
+                return result;
+            
+            return 0;
         }
     }
 }

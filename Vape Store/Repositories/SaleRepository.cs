@@ -265,13 +265,15 @@ namespace Vape_Store.Repositories
                     {
                         try
                         {
-                            // Update sale
+                            // Update sale with new fields
                             var saleQuery = @"
                                 UPDATE Sales 
                                 SET CustomerID = @CustomerID, SaleDate = @SaleDate, SubTotal = @SubTotal, 
+                                    DiscountAmount = @DiscountAmount, DiscountPercent = @DiscountPercent,
                                     TaxAmount = @TaxAmount, TaxPercent = @TaxPercent, TotalAmount = @TotalAmount, 
                                     PaymentMethod = @PaymentMethod, PaidAmount = @PaidAmount, ChangeAmount = @ChangeAmount, 
-                                    UserID = @UserID
+                                    UserID = @UserID, Status = @Status, Notes = @Notes,
+                                    LastModified = GETDATE(), ModifiedBy = @ModifiedBy
                                 WHERE SaleID = @SaleID";
 
                             using (var saleCommand = new SqlCommand(saleQuery, connection, transaction))
@@ -280,6 +282,8 @@ namespace Vape_Store.Repositories
                                 saleCommand.Parameters.AddWithValue("@CustomerID", sale.CustomerID);
                                 saleCommand.Parameters.AddWithValue("@SaleDate", sale.SaleDate);
                                 saleCommand.Parameters.AddWithValue("@SubTotal", sale.SubTotal);
+                                saleCommand.Parameters.AddWithValue("@DiscountAmount", sale.DiscountAmount);
+                                saleCommand.Parameters.AddWithValue("@DiscountPercent", sale.DiscountPercent);
                                 saleCommand.Parameters.AddWithValue("@TaxAmount", sale.TaxAmount);
                                 saleCommand.Parameters.AddWithValue("@TaxPercent", sale.TaxPercent);
                                 saleCommand.Parameters.AddWithValue("@TotalAmount", sale.TotalAmount);
@@ -287,6 +291,9 @@ namespace Vape_Store.Repositories
                                 saleCommand.Parameters.AddWithValue("@PaidAmount", sale.PaidAmount);
                                 saleCommand.Parameters.AddWithValue("@ChangeAmount", sale.ChangeAmount);
                                 saleCommand.Parameters.AddWithValue("@UserID", sale.UserID);
+                                saleCommand.Parameters.AddWithValue("@Status", sale.Status ?? "Active");
+                                saleCommand.Parameters.AddWithValue("@Notes", sale.Notes ?? (object)DBNull.Value);
+                                saleCommand.Parameters.AddWithValue("@ModifiedBy", sale.ModifiedBy ?? sale.UserID);
 
                                 saleCommand.ExecuteNonQuery();
                             }
@@ -436,7 +443,7 @@ namespace Vape_Store.Repositories
             {
                 throw new Exception($"Error retrieving sales by date range: {ex.Message}", ex);
             }
-
+            
             return sales;
         }
 
@@ -498,6 +505,75 @@ namespace Vape_Store.Repositories
             }
 
             return sales;
+        }
+
+        public List<SalesReportItem> GetSalesReportData(DateTime fromDate, DateTime toDate)
+        {
+            var salesReportItems = new List<SalesReportItem>();
+            
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = @"
+                        SELECT 
+                            s.SaleID,
+                            s.InvoiceNumber,
+                            s.SaleDate,
+                            c.CustomerName,
+                            p.ProductName,
+                            si.Quantity,
+                            si.UnitPrice,
+                            si.SubTotal,
+                            s.TaxAmount,
+                            s.TotalAmount,
+                            s.PaymentMethod,
+                            s.PaidAmount,
+                            (s.TotalAmount - s.PaidAmount) as BalanceAmount
+                        FROM Sales s
+                        INNER JOIN SaleItems si ON s.SaleID = si.SaleID
+                        INNER JOIN Products p ON si.ProductID = p.ProductID
+                        LEFT JOIN Customers c ON s.CustomerID = c.CustomerID
+                        WHERE s.SaleDate >= @FromDate AND s.SaleDate <= @ToDate
+                        ORDER BY s.SaleDate DESC, s.InvoiceNumber";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@FromDate", fromDate.Date);
+                        command.Parameters.AddWithValue("@ToDate", toDate.Date.AddDays(1).AddTicks(-1));
+                        
+                        connection.Open();
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                salesReportItems.Add(new SalesReportItem
+                                {
+                                    SaleID = Convert.ToInt32(reader["SaleID"]),
+                                    InvoiceNumber = reader["InvoiceNumber"].ToString(),
+                                    SaleDate = Convert.ToDateTime(reader["SaleDate"]),
+                                    CustomerName = reader["CustomerName"]?.ToString() ?? "Walk-in Customer",
+                                    ProductName = reader["ProductName"].ToString(),
+                                    Quantity = Convert.ToInt32(reader["Quantity"]),
+                                    UnitPrice = Convert.ToDecimal(reader["UnitPrice"]),
+                                    SubTotal = Convert.ToDecimal(reader["SubTotal"]),
+                                    TaxAmount = Convert.ToDecimal(reader["TaxAmount"]),
+                                    TotalAmount = Convert.ToDecimal(reader["TotalAmount"]),
+                                    PaymentMethod = reader["PaymentMethod"]?.ToString(),
+                                    PaidAmount = Convert.ToDecimal(reader["PaidAmount"]),
+                                    BalanceAmount = Convert.ToDecimal(reader["BalanceAmount"])
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving sales report data: {ex.Message}", ex);
+            }
+
+            return salesReportItems;
         }
     }
 }

@@ -20,6 +20,9 @@ namespace Vape_Store.Services
                 // Get monthly sales
                 stats.MonthlySales = GetMonthlySales();
                 
+                // Get monthly purchases
+                stats.MonthlyPurchases = GetMonthlyPurchases();
+                
                 // Get total products
                 stats.TotalProducts = GetTotalProducts();
                 
@@ -114,7 +117,7 @@ namespace Vape_Store.Services
                                 salesData.Add(new SalesDataPoint
                                 {
                                     Date = Convert.ToDateTime(reader["SaleDate"]),
-                                    Amount = Convert.ToDecimal(reader["TotalSales"])
+                                    Amount = ParseDecimal(reader["TotalSales"])
                                 });
                             }
                         }
@@ -157,7 +160,7 @@ namespace Vape_Store.Services
                                 purchaseData.Add(new PurchaseDataPoint
                                 {
                                     Date = Convert.ToDateTime(reader["PurchaseDate"]),
-                                    Amount = Convert.ToDecimal(reader["TotalPurchases"])
+                                    Amount = ParseDecimal(reader["TotalPurchases"])
                                 });
                             }
                         }
@@ -205,7 +208,7 @@ namespace Vape_Store.Services
                                     ProductName = reader["ProductName"].ToString(),
                                     ProductCode = reader["ProductCode"].ToString(),
                                     TotalSold = Convert.ToInt32(reader["TotalSold"]),
-                                    TotalRevenue = Convert.ToDecimal(reader["TotalRevenue"])
+                                    TotalRevenue = ParseDecimal(reader["TotalRevenue"])
                                 });
                             }
                         }
@@ -273,7 +276,7 @@ namespace Vape_Store.Services
                 {
                     connection.Open();
                     var result = command.ExecuteScalar();
-                    return Convert.ToDecimal(result);
+                    return ParseDecimal(result);
                 }
             }
         }
@@ -288,7 +291,7 @@ namespace Vape_Store.Services
                 {
                     connection.Open();
                     var result = command.ExecuteScalar();
-                    return Convert.ToDecimal(result);
+                    return ParseDecimal(result);
                 }
             }
         }
@@ -380,7 +383,7 @@ namespace Vape_Store.Services
                 {
                     connection.Open();
                     var result = command.ExecuteScalar();
-                    return Convert.ToDecimal(result);
+                    return ParseDecimal(result);
                 }
             }
         }
@@ -410,7 +413,7 @@ namespace Vape_Store.Services
                 {
                     connection.Open();
                     var result = command.ExecuteScalar();
-                    return Convert.ToDecimal(result);
+                    return ParseDecimal(result);
                 }
             }
         }
@@ -425,7 +428,7 @@ namespace Vape_Store.Services
                 {
                     connection.Open();
                     var result = command.ExecuteScalar();
-                    return Convert.ToDecimal(result);
+                    return ParseDecimal(result);
                 }
             }
         }
@@ -440,7 +443,7 @@ namespace Vape_Store.Services
                 {
                     connection.Open();
                     var result = command.ExecuteScalar();
-                    return Convert.ToDecimal(result);
+                    return ParseDecimal(result);
                 }
             }
         }
@@ -484,7 +487,7 @@ namespace Vape_Store.Services
                             activities.Add(new RecentActivity
                             {
                                 Time = Convert.ToDateTime(reader["SaleDate"]),
-                                Description = $"Sale completed: ${Convert.ToDecimal(reader["TotalAmount"]):F2} - {reader["CustomerName"]}",
+                                Description = $"Sale completed: ${ParseDecimal(reader["TotalAmount"]):F2} - {reader["CustomerName"]}",
                                 Type = "Sale"
                             });
                         }
@@ -519,7 +522,7 @@ namespace Vape_Store.Services
                             activities.Add(new RecentActivity
                             {
                                 Time = Convert.ToDateTime(reader["PurchaseDate"]),
-                                Description = $"Purchase completed: ${Convert.ToDecimal(reader["TotalAmount"]):F2} - {reader["SupplierName"]}",
+                                Description = $"Purchase completed: ${ParseDecimal(reader["TotalAmount"]):F2} - {reader["SupplierName"]}",
                                 Type = "Purchase"
                             });
                         }
@@ -562,6 +565,17 @@ namespace Vape_Store.Services
             }
             
             return activities;
+        }
+        
+        private decimal ParseDecimal(object value)
+        {
+            if (value == null || value == DBNull.Value)
+                return 0;
+            
+            if (decimal.TryParse(value.ToString(), out decimal result))
+                return result;
+            
+            return 0;
         }
     }
     

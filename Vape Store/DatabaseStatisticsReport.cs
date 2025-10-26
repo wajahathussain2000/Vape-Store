@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,6 +13,8 @@ using Vape_Store.DataAccess;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
 
 namespace Vape_Store
 {
@@ -359,7 +362,7 @@ namespace Vape_Store
                 {
                     // Total inventory value
                     var totalInventoryValue = GetDecimal(connection, 
-                        "SELECT ISNULL(SUM(StockQuantity * UnitPrice), 0) FROM Products WHERE IsActive = 1");
+                        "SELECT ISNULL(SUM(StockQuantity * PurchasePrice), 0) FROM Products WHERE IsActive = 1");
                     
                     statistics.Add(new DatabaseStatistic
                     {
@@ -667,8 +670,15 @@ namespace Vape_Store
                     return;
                 }
 
-                // TODO: Implement PDF export functionality
-                ShowMessage("PDF export functionality will be implemented in the next version.", "Feature Coming Soon", MessageBoxIcon.Information);
+                SaveFileDialog saveFileDialog = new SaveFileDialog();
+                saveFileDialog.Filter = "PDF files (*.pdf)|*.pdf";
+                saveFileDialog.FileName = $"DatabaseStatisticsReport_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    ExportToPDF(saveFileDialog.FileName);
+                    ShowMessage("Report exported to PDF successfully!", "Export Complete", MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -686,8 +696,17 @@ namespace Vape_Store
                     return;
                 }
 
-                // TODO: Implement print functionality
-                ShowMessage("Print functionality will be implemented in the next version.", "Feature Coming Soon", MessageBoxIcon.Information);
+                try
+                {
+                    var htmlContent = GenerateHTMLReport();
+                    var htmlViewer = new HTMLReportViewerForm();
+                    htmlViewer.LoadReport(htmlContent);
+                    htmlViewer.ShowDialog();
+                }
+                catch (Exception ex)
+                {
+                    ShowMessage($"Error printing report: {ex.Message}", "Error", MessageBoxIcon.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -724,14 +743,139 @@ namespace Vape_Store
             }
         }
 
+        private void ExportToPDF(string filePath)
+        {
+            try
+            {
+                // Create PDF document
+                Document document = new Document(PageSize.A4, 50, 50, 25, 25);
+                PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(filePath, FileMode.Create));
+                document.Open();
+
+                // Set up fonts
+                BaseFont baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+                iTextSharp.text.Font titleFont = new iTextSharp.text.Font(baseFont, 18, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font headerFont = new iTextSharp.text.Font(baseFont, 12, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font normalFont = new iTextSharp.text.Font(baseFont, 10, iTextSharp.text.Font.NORMAL);
+                iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
+
+                // Title
+                Paragraph title = new Paragraph("VAPE STORE - DATABASE STATISTICS REPORT", titleFont);
+                title.Alignment = Element.ALIGN_CENTER;
+                title.SpacingAfter = 20f;
+                document.Add(title);
+
+                // Report info
+                Paragraph reportInfo = new Paragraph($"Report Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", normalFont);
+                reportInfo.SpacingAfter = 15f;
+                document.Add(reportInfo);
+
+                // Get data from DataGridView
+                var dataTable = dgvStatistics.DataSource as DataTable;
+                if (dataTable != null)
+                {
+                    // Create table for report data
+                    PdfPTable table = new PdfPTable(dataTable.Columns.Count);
+                    table.WidthPercentage = 100;
+
+                    // Table headers
+                    foreach (DataColumn column in dataTable.Columns)
+                    {
+                        PdfPCell cell = new PdfPCell(new Phrase(column.ColumnName, headerFont));
+                        cell.BackgroundColor = BaseColor.LIGHT_GRAY;
+                        cell.HorizontalAlignment = Element.ALIGN_CENTER;
+                        cell.Padding = 5f;
+                        table.AddCell(cell);
+                    }
+
+                    // Add data rows
+                    foreach (DataRow row in dataTable.Rows)
+                    {
+                        foreach (var item in row.ItemArray)
+                        {
+                            PdfPCell cell = new PdfPCell(new Phrase(item?.ToString() ?? "", normalFont));
+                            cell.Padding = 3f;
+                            table.AddCell(cell);
+                        }
+                    }
+
+                    document.Add(table);
+                }
+
+                document.Close();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating PDF: {ex.Message}");
+            }
+        }
+
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
         }
 
+        private string GenerateHTMLReport()
+        {
+            try
+            {
+                var html = new StringBuilder();
+                html.AppendLine("<!DOCTYPE html>");
+                html.AppendLine("<html><head>");
+                html.AppendLine("<title>Database Statistics Report</title>");
+                html.AppendLine("<style>");
+                html.AppendLine("body { font-family: Arial, sans-serif; margin: 20px; }");
+                html.AppendLine("h1 { color: #2c3e50; text-align: center; }");
+                html.AppendLine("table { width: 100%; border-collapse: collapse; margin-top: 20px; }");
+                html.AppendLine("th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }");
+                html.AppendLine("th { background-color: #f2f2f2; font-weight: bold; }");
+                html.AppendLine("tr:nth-child(even) { background-color: #f9f9f9; }");
+                html.AppendLine(".summary { background-color: #e8f4f8; padding: 15px; margin: 20px 0; border-radius: 5px; }");
+                html.AppendLine("</style>");
+                html.AppendLine("</head><body>");
+                
+                html.AppendLine("<h1>VAPE STORE - DATABASE STATISTICS REPORT</h1>");
+                html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
+                
+                // Summary
+                html.AppendLine("<div class='summary'>");
+                html.AppendLine("<h2>Database Statistics</h2>");
+                // Get statistics from DataGridView
+                var statistics = dgvStatistics.DataSource as List<DatabaseStatistic>;
+                if (statistics != null)
+                {
+                    var totalProducts = statistics.FirstOrDefault(x => x.Metric == "Total Products")?.Value ?? "0";
+                    var totalCustomers = statistics.FirstOrDefault(x => x.Metric == "Total Customers")?.Value ?? "0";
+                    var totalSuppliers = statistics.FirstOrDefault(x => x.Metric == "Total Suppliers")?.Value ?? "0";
+                    var totalSales = statistics.FirstOrDefault(x => x.Metric == "Total Sales")?.Value ?? "0";
+                    var totalPurchases = statistics.FirstOrDefault(x => x.Metric == "Total Purchases")?.Value ?? "0";
+                    var totalExpenses = statistics.FirstOrDefault(x => x.Metric == "Total Expenses")?.Value ?? "0";
+                    var lowStockItems = statistics.FirstOrDefault(x => x.Metric == "Low Stock Items")?.Value ?? "0";
+                    
+                    html.AppendLine($"<p><strong>Total Products:</strong> {totalProducts}</p>");
+                    html.AppendLine($"<p><strong>Total Customers:</strong> {totalCustomers}</p>");
+                    html.AppendLine($"<p><strong>Total Suppliers:</strong> {totalSuppliers}</p>");
+                    html.AppendLine($"<p><strong>Total Sales:</strong> {totalSales}</p>");
+                    html.AppendLine($"<p><strong>Total Purchases:</strong> {totalPurchases}</p>");
+                    html.AppendLine($"<p><strong>Total Expenses:</strong> {totalExpenses}</p>");
+                    html.AppendLine($"<p><strong>Low Stock Items:</strong> {lowStockItems}</p>");
+                }
+                html.AppendLine("</div>");
+                
+                html.AppendLine("</body></html>");
+                
+                return html.ToString();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error generating HTML report: {ex.Message}");
+            }
+        }
+
         private void DatabaseStatisticsReport_Load(object sender, EventArgs e)
         {
             SetInitialState();
+            GenerateDatabaseStatistics(); // Automatically load data when form opens
         }
     }
 

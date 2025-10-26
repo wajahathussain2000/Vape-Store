@@ -69,7 +69,6 @@
             this.txtCustomerName = new System.Windows.Forms.TextBox();
             this.lblCustomer = new System.Windows.Forms.Label();
             this.cmbCustomer = new System.Windows.Forms.ComboBox();
-            this.cmbSupplier = new System.Windows.Forms.ComboBox();
             this.lblTitle = new System.Windows.Forms.Label();
             this.pnlReturnInfo = new System.Windows.Forms.Panel();
             this.lblReturnNumber = new System.Windows.Forms.Label();
@@ -509,17 +508,7 @@
             this.cmbCustomer.Name = "cmbCustomer";
             this.cmbCustomer.Size = new System.Drawing.Size(200, 28);
             this.cmbCustomer.TabIndex = 1;
-            this.cmbCustomer.SelectedIndexChanged += new System.EventHandler(this.cmbCustomer_SelectedIndexChanged);
-            // 
-            // cmbSupplier
-            // 
-            this.cmbSupplier.BackColor = System.Drawing.Color.White;
-            this.cmbSupplier.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbSupplier.FormattingEnabled = true;
-            this.cmbSupplier.Location = new System.Drawing.Point(102, 50);
-            this.cmbSupplier.Name = "cmbSupplier";
-            this.cmbSupplier.Size = new System.Drawing.Size(200, 28);
-            this.cmbSupplier.TabIndex = 2;
+            this.cmbCustomer.SelectedIndexChanged += new System.EventHandler(this.CmbCustomer_SelectedIndexChanged);
             // 
             // lblTitle
             // 
@@ -528,7 +517,7 @@
             this.lblTitle.ForeColor = System.Drawing.Color.White;
             this.lblTitle.Location = new System.Drawing.Point(30, 28);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(534, 68);
+            this.lblTitle.Size = new System.Drawing.Size(356, 45);
             this.lblTitle.TabIndex = 1;
             this.lblTitle.Text = "Purchase Return - POS";
             // 
@@ -635,7 +624,7 @@
             this.panel1.Size = new System.Drawing.Size(1665, 93);
             this.panel1.TabIndex = 38;
             // 
-            // PurchaseReturn
+            // PurchaseReturnForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -645,7 +634,6 @@
             this.Controls.Add(this.label2);
             this.Controls.Add(this.txtdescription);
             this.Controls.Add(this.cmbreturnreason);
-            this.Controls.Add(this.cmbSupplier);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.dataGridView1);
             this.Controls.Add(this.CancelBtn);
@@ -654,9 +642,7 @@
             this.Controls.Add(this.pnlReturnInfo);
             this.Controls.Add(this.pnlInvoiceSelection);
             this.Controls.Add(this.panel1);
-            this.MaximizeBox = true;
-            this.MinimizeBox = true;
-            this.Name = "PurchaseReturn";
+            this.Name = "PurchaseReturnForm";
             this.Text = "Vape Store - Purchase Return";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel2.ResumeLayout(false);
@@ -720,7 +706,6 @@
         private System.Windows.Forms.TextBox txtCustomerName;
         private System.Windows.Forms.Label lblCustomer;
         private System.Windows.Forms.ComboBox cmbCustomer;
-        private System.Windows.Forms.ComboBox cmbSupplier;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Panel pnlReturnInfo;
         private System.Windows.Forms.Label lblReturnNumber;

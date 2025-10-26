@@ -16,6 +16,13 @@ namespace Vape_Store.Models
         public int UserID { get; set; }
         public DateTime CreatedDate { get; set; }
         
+        // Original invoice details
+        public string OriginalInvoiceNumber { get; set; }
+        public DateTime? OriginalInvoiceDate { get; set; }
+        public decimal? OriginalInvoiceTotal { get; set; }
+        public bool IsFullyReturned { get; set; }
+        public string ReturnStatus { get; set; }
+        
         // Navigation properties
         public string CustomerName { get; set; }
         public string UserName { get; set; }

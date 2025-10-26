@@ -30,7 +30,6 @@
         {
             this.txtRemainingBalance = new System.Windows.Forms.TextBox();
             this.cmbCustomer = new System.Windows.Forms.ComboBox();
-            this.cmbSupplier = new System.Windows.Forms.ComboBox();
             this.label11 = new System.Windows.Forms.Label();
             this.label10 = new System.Windows.Forms.Label();
             this.actionsGroup = new System.Windows.Forms.GroupBox();
@@ -41,7 +40,6 @@
             this.headerPanel = new System.Windows.Forms.Panel();
             this.headerLabel = new System.Windows.Forms.Label();
             this.label12 = new System.Windows.Forms.Label();
-            this.txtVoucherNo = new System.Windows.Forms.TextBox();
             this.label9 = new System.Windows.Forms.Label();
             this.txtDescription = new System.Windows.Forms.TextBox();
             this.label8 = new System.Windows.Forms.Label();
@@ -59,6 +57,8 @@
             this.txtTotalDue = new System.Windows.Forms.TextBox();
             this.txtPreviousBalance = new System.Windows.Forms.TextBox();
             this.txtmobileNo = new System.Windows.Forms.TextBox();
+            this.txtVoucherNo = new System.Windows.Forms.TextBox();
+            this.cmbSupplier = new System.Windows.Forms.ComboBox();
             this.actionsGroup.SuspendLayout();
             this.headerPanel.SuspendLayout();
             this.contentPanel.SuspendLayout();
@@ -81,19 +81,8 @@
             this.cmbCustomer.Location = new System.Drawing.Point(183, 119);
             this.cmbCustomer.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.cmbCustomer.Name = "cmbCustomer";
-            this.cmbCustomer.Size = new System.Drawing.Size(370, 33);
+            this.cmbCustomer.Size = new System.Drawing.Size(10, 33);
             this.cmbCustomer.TabIndex = 18;
-            // 
-            // cmbSupplier
-            // 
-            this.cmbSupplier.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbSupplier.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.cmbSupplier.FormattingEnabled = true;
-            this.cmbSupplier.Location = new System.Drawing.Point(183, 170);
-            this.cmbSupplier.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.cmbSupplier.Name = "cmbSupplier";
-            this.cmbSupplier.Size = new System.Drawing.Size(370, 33);
-            this.cmbSupplier.TabIndex = 19;
             // 
             // label11
             // 
@@ -109,7 +98,7 @@
             // 
             this.label10.AutoSize = true;
             this.label10.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.label10.Location = new System.Drawing.Point(43, 41);
+            this.label10.Location = new System.Drawing.Point(31, 47);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(128, 28);
             this.label10.TabIndex = 16;
@@ -199,7 +188,7 @@
             this.headerLabel.ForeColor = System.Drawing.Color.White;
             this.headerLabel.Location = new System.Drawing.Point(20, 20);
             this.headerLabel.Name = "headerLabel";
-            this.headerLabel.Size = new System.Drawing.Size(536, 81);
+            this.headerLabel.Size = new System.Drawing.Size(357, 54);
             this.headerLabel.TabIndex = 0;
             this.headerLabel.Text = "Supplier Payment";
             // 
@@ -212,14 +201,6 @@
             this.label12.Size = new System.Drawing.Size(200, 28);
             this.label12.TabIndex = 20;
             this.label12.Text = "Remaining Amount:";
-            // 
-            // txtVoucherNo
-            // 
-            this.txtVoucherNo.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtVoucherNo.Location = new System.Drawing.Point(190, 38);
-            this.txtVoucherNo.Name = "txtVoucherNo";
-            this.txtVoucherNo.Size = new System.Drawing.Size(363, 34);
-            this.txtVoucherNo.TabIndex = 15;
             // 
             // label9
             // 
@@ -299,6 +280,7 @@
             this.leftPanel.BackColor = System.Drawing.Color.White;
             this.leftPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.leftPanel.Controls.Add(this.label12);
+            this.leftPanel.Controls.Add(this.cmbSupplier);
             this.leftPanel.Controls.Add(this.txtRemainingBalance);
             this.leftPanel.Controls.Add(this.cmbCustomer);
             this.leftPanel.Controls.Add(this.label11);
@@ -404,17 +386,33 @@
             this.txtmobileNo.Size = new System.Drawing.Size(296, 34);
             this.txtmobileNo.TabIndex = 1;
             // 
-            // SupplierPayment
+            // txtVoucherNo
+            // 
+            this.txtVoucherNo.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.txtVoucherNo.Location = new System.Drawing.Point(165, 44);
+            this.txtVoucherNo.Name = "txtVoucherNo";
+            this.txtVoucherNo.Size = new System.Drawing.Size(349, 34);
+            this.txtVoucherNo.TabIndex = 15;
+            // 
+            // cmbSupplier
+            // 
+            this.cmbSupplier.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbSupplier.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cmbSupplier.FormattingEnabled = true;
+            this.cmbSupplier.Location = new System.Drawing.Point(165, 116);
+            this.cmbSupplier.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.cmbSupplier.Name = "cmbSupplier";
+            this.cmbSupplier.Size = new System.Drawing.Size(349, 33);
+            this.cmbSupplier.TabIndex = 19;
+            // 
+            // SupplierPaymentForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1457, 1036);
             this.Controls.Add(this.headerPanel);
-            this.Controls.Add(this.cmbSupplier);
             this.Controls.Add(this.contentPanel);
-            this.MaximizeBox = true;
-            this.MinimizeBox = true;
-            this.Name = "SupplierPayment";
+            this.Name = "SupplierPaymentForm";
             this.Text = "Vape Store - Supplier Payment";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.actionsGroup.ResumeLayout(false);
@@ -431,7 +429,6 @@
 
         private System.Windows.Forms.TextBox txtRemainingBalance;
         private System.Windows.Forms.ComboBox cmbCustomer;
-        private System.Windows.Forms.ComboBox cmbSupplier;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.GroupBox actionsGroup;
@@ -442,7 +439,6 @@
         private System.Windows.Forms.Panel headerPanel;
         private System.Windows.Forms.Label headerLabel;
         private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.TextBox txtVoucherNo;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.TextBox txtDescription;
         private System.Windows.Forms.Label label8;
@@ -460,5 +456,7 @@
         private System.Windows.Forms.TextBox txtTotalDue;
         private System.Windows.Forms.TextBox txtPreviousBalance;
         private System.Windows.Forms.TextBox txtmobileNo;
+        private System.Windows.Forms.TextBox txtVoucherNo;
+        private System.Windows.Forms.ComboBox cmbSupplier;
     }
 }

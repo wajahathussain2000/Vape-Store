@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +11,8 @@ using System.Windows.Forms;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
 
 namespace Vape_Store
 {
@@ -135,7 +138,7 @@ namespace Vape_Store
                     HeaderText = "Unit Price",
                     DataPropertyName = "UnitPrice",
                     Width = 100,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvStockReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -144,7 +147,7 @@ namespace Vape_Store
                     HeaderText = "Total Value",
                     DataPropertyName = "TotalValue",
                     Width = 120,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "C2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvStockReport.Columns.Add(new DataGridViewTextBoxColumn
@@ -267,20 +270,38 @@ namespace Vape_Store
                 // Category filter
                 if (cmbCategory.SelectedItem != null)
                 {
-                    var selectedCategory = (Category)cmbCategory.SelectedItem;
-                    if (selectedCategory != null)
+                    var selectedItem = cmbCategory.SelectedItem;
+                    if (selectedItem != null)
                     {
-                        filteredItems = filteredItems.Where(item => item.CategoryName == selectedCategory.CategoryName);
+                        // Use reflection to get the CategoryName property from anonymous object
+                        var categoryNameProperty = selectedItem.GetType().GetProperty("CategoryName");
+                        if (categoryNameProperty != null)
+                        {
+                            var categoryName = categoryNameProperty.GetValue(selectedItem)?.ToString();
+                            if (!string.IsNullOrEmpty(categoryName) && categoryName != "All Categories")
+                            {
+                                filteredItems = filteredItems.Where(item => item.CategoryName == categoryName);
+                            }
+                        }
                     }
                 }
                 
                 // Brand filter
                 if (cmbBrand.SelectedItem != null)
                 {
-                    var selectedBrand = (Brand)cmbBrand.SelectedItem;
-                    if (selectedBrand != null)
+                    var selectedItem = cmbBrand.SelectedItem;
+                    if (selectedItem != null)
                     {
-                        filteredItems = filteredItems.Where(item => item.BrandName == selectedBrand.BrandName);
+                        // Use reflection to get the BrandName property from anonymous object
+                        var brandNameProperty = selectedItem.GetType().GetProperty("BrandName");
+                        if (brandNameProperty != null)
+                        {
+                            var brandName = brandNameProperty.GetValue(selectedItem)?.ToString();
+                            if (!string.IsNullOrEmpty(brandName) && brandName != "All Brands")
+                            {
+                                filteredItems = filteredItems.Where(item => item.BrandName == brandName);
+                            }
+                        }
                     }
                 }
                 
@@ -368,7 +389,7 @@ namespace Vape_Store
                 var inStockCount = _stockReportItems.Count(item => item.StockStatus == "In Stock");
                 
                 lblTotalProducts.Text = $"Total Products: {totalProducts}";
-                lblTotalValue.Text = $"Total Value: ${totalValue:F2}";
+                lblTotalValue.Text = $"Total Value: {totalValue:F2}";
                 lblLowStock.Text = $"Low Stock: {lowStockCount}";
                 lblOutOfStock.Text = $"Out of Stock: {outOfStockCount}";
                 lblInStock.Text = $"In Stock: {inStockCount}";
@@ -418,8 +439,21 @@ namespace Vape_Store
         {
             try
             {
-                // TODO: Implement PDF export functionality
-                ShowMessage("PDF export functionality will be implemented with iTextSharp package.", "Info", MessageBoxIcon.Information);
+                if (_stockReportItems == null || _stockReportItems.Count == 0)
+                {
+                    ShowMessage("No data to export. Please generate a report first.", "No Data", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                SaveFileDialog saveDialog = new SaveFileDialog();
+                saveDialog.Filter = "PDF files (*.pdf)|*.pdf";
+                saveDialog.FileName = $"StockReport_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    ExportToPDF(saveDialog.FileName);
+                    ShowMessage("Report exported to PDF successfully!", "Export Complete", MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -496,6 +530,97 @@ namespace Vape_Store
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
+        }
+
+        private void ExportToPDF(string filePath)
+        {
+            try
+            {
+                // Create PDF document
+                Document document = new Document(PageSize.A4, 50, 50, 25, 25);
+                PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(filePath, FileMode.Create));
+                document.Open();
+
+                // Set up fonts
+                BaseFont baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+                iTextSharp.text.Font titleFont = new iTextSharp.text.Font(baseFont, 18, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font headerFont = new iTextSharp.text.Font(baseFont, 12, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font normalFont = new iTextSharp.text.Font(baseFont, 10, iTextSharp.text.Font.NORMAL);
+                iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
+
+                // Title
+                Paragraph title = new Paragraph("VAPE STORE - STOCK REPORT", titleFont);
+                title.Alignment = Element.ALIGN_CENTER;
+                title.SpacingAfter = 20f;
+                document.Add(title);
+
+                // Report info
+                Paragraph reportInfo = new Paragraph($"Report Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", normalFont);
+                reportInfo.SpacingAfter = 15f;
+                document.Add(reportInfo);
+
+                // Summary section
+                var totalItems = _stockReportItems.Count;
+                var inStock = _stockReportItems.Count(item => item.StockStatus == "In Stock");
+                var lowStock = _stockReportItems.Count(item => item.StockStatus == "Low Stock");
+                var outOfStock = _stockReportItems.Count(item => item.StockStatus == "Out of Stock");
+                var totalValue = _stockReportItems.Sum(item => item.StockQuantity * item.UnitPrice);
+
+                // Summary table
+                PdfPTable summaryTable = new PdfPTable(2);
+                summaryTable.WidthPercentage = 100;
+                summaryTable.SetWidths(new float[] { 1, 1 });
+
+                summaryTable.AddCell(new PdfPCell(new Phrase("Total Items:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase(totalItems.ToString(), normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase("In Stock:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase(inStock.ToString(), normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase("Low Stock:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase(lowStock.ToString(), normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase("Out of Stock:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase(outOfStock.ToString(), normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase("Total Value:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase($"{totalValue:F2}", normalFont)) { Border = 0 });
+
+                document.Add(summaryTable);
+                document.Add(new Paragraph(" "));
+
+                // Data table
+                PdfPTable dataTable = new PdfPTable(8);
+                dataTable.WidthPercentage = 100;
+                dataTable.SetWidths(new float[] { 1, 1, 2, 1, 1, 1, 1, 1 });
+
+                // Headers
+                dataTable.AddCell(new PdfPCell(new Phrase("Code", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Product", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Category", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Brand", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Stock", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Unit Price", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Total Value", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Status", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+
+                // Data rows
+                foreach (var item in _stockReportItems)
+                {
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.ProductCode ?? "", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.ProductName ?? "", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.CategoryName ?? "", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.BrandName ?? "", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.StockQuantity.ToString(), smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase($"{item.UnitPrice:F2}", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase($"{(item.StockQuantity * item.UnitPrice):F2}", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase(item.StockStatus ?? "", smallFont)));
+                }
+
+                document.Add(dataTable);
+
+                document.Close();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating PDF: {ex.Message}");
+            }
         }
 
         private void StockReportForm_Load(object sender, EventArgs e)

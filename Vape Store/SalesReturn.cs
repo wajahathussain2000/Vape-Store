@@ -15,6 +15,7 @@ namespace Vape_Store
 {
     public partial class SalesReturnForm : Form
     {
+        private SalesReturnService _salesReturnService;
         private SalesReturnRepository _salesReturnRepository;
         private SaleRepository _saleRepository;
         private CustomerRepository _customerRepository;
@@ -33,6 +34,7 @@ namespace Vape_Store
         public SalesReturnForm()
         {
             InitializeComponent();
+            _salesReturnService = new SalesReturnService();
             _salesReturnRepository = new SalesReturnRepository();
             _saleRepository = new SaleRepository();
             _customerRepository = new CustomerRepository();
@@ -63,6 +65,7 @@ namespace Vape_Store
             
             // Add columns
             dataGridView1.Columns.Add("Select", "Select");
+            dataGridView1.Columns.Add("ProductID", "ProductID"); // Hidden column for data binding
             dataGridView1.Columns.Add("ItemCode", "Item Code");
             dataGridView1.Columns.Add("ItemName", "Item Name");
             dataGridView1.Columns.Add("OrignalQty", "Original Qty");
@@ -72,6 +75,8 @@ namespace Vape_Store
             
             // Configure column properties
             dataGridView1.Columns["Select"].Width = 80;
+            dataGridView1.Columns["ProductID"].Width = 0; // Hidden column
+            dataGridView1.Columns["ProductID"].Visible = false; // Hide the ProductID column
             dataGridView1.Columns["ItemCode"].Width = 120;
             dataGridView1.Columns["ItemName"].Width = 200;
             dataGridView1.Columns["OrignalQty"].Width = 100;
@@ -80,8 +85,8 @@ namespace Vape_Store
             dataGridView1.Columns["Total"].Width = 100;
             
             // Format currency columns
-            dataGridView1.Columns["Price"].DefaultCellStyle.Format = "C2";
-            dataGridView1.Columns["Total"].DefaultCellStyle.Format = "C2";
+            dataGridView1.Columns["Price"].DefaultCellStyle.Format = "F2";
+            dataGridView1.Columns["Total"].DefaultCellStyle.Format = "F2";
             
             // Make ReturnQty column editable
             dataGridView1.Columns["ReturnQty"].ReadOnly = false;
@@ -106,6 +111,9 @@ namespace Vape_Store
             
             // TextBox event handlers
             txtTaxPercent.TextChanged += TxtTaxPercent_TextChanged;
+            
+            // Add event handlers for financial field changes
+            // Note: txtTaxPercent is used for discount percentage in this form
         }
 
         private void LoadCustomers()
@@ -128,7 +136,7 @@ namespace Vape_Store
         {
             try
             {
-                _sales = _salesReturnRepository.GetSalesForReturn();
+                _sales = _salesReturnService.GetAvailableSalesForReturn();
                 cmbInvoiceNumber.DataSource = _sales;
                 cmbInvoiceNumber.DisplayMember = "InvoiceNumber";
                 cmbInvoiceNumber.ValueMember = "SaleID";
@@ -158,13 +166,8 @@ namespace Vape_Store
             try
             {
                 cmbreturnreason.Items.Clear();
-                cmbreturnreason.Items.Add("Defective Product");
-                cmbreturnreason.Items.Add("Wrong Item");
-                cmbreturnreason.Items.Add("Customer Changed Mind");
-                cmbreturnreason.Items.Add("Quality Issue");
-                cmbreturnreason.Items.Add("Damaged in Transit");
-                cmbreturnreason.Items.Add("Not as Described");
-                cmbreturnreason.Items.Add("Other");
+                var reasons = _salesReturnService.GetCommonReturnReasons();
+                cmbreturnreason.Items.AddRange(reasons.ToArray());
                 cmbreturnreason.SelectedIndex = 0;
             }
             catch (Exception ex)
@@ -200,7 +203,7 @@ namespace Vape_Store
                 // Populate original invoice details
                 txtOriginalInvoiceNumber.Text = _selectedSale.InvoiceNumber;
                 txtOriginalInvoiceDate.Text = _selectedSale.SaleDate.ToString("dd/MM/yyyy");
-                txtOriginalInvoiceTotal.Text = _selectedSale.TotalAmount.ToString("C2");
+                txtOriginalInvoiceTotal.Text = _selectedSale.TotalAmount.ToString("F2");
 
                 // Populate customer details
                 cmbCustomer.SelectedValue = _selectedSale.CustomerID;
@@ -242,6 +245,7 @@ namespace Vape_Store
                     // Add row to DataGridView
                     int rowIndex = dataGridView1.Rows.Add();
                     dataGridView1.Rows[rowIndex].Cells["Select"].Value = false;
+                    dataGridView1.Rows[rowIndex].Cells["ProductID"].Value = saleItem.ProductID; // Add ProductID
                     dataGridView1.Rows[rowIndex].Cells["ItemCode"].Value = saleItem.ProductCode;
                     dataGridView1.Rows[rowIndex].Cells["ItemName"].Value = saleItem.ProductName;
                     dataGridView1.Rows[rowIndex].Cells["OrignalQty"].Value = saleItem.Quantity;
@@ -298,6 +302,7 @@ namespace Vape_Store
                     {
                         int returnQty = Convert.ToInt32(dataGridView1.Rows[e.RowIndex].Cells["ReturnQty"].Value ?? 0);
                         int originalQty = Convert.ToInt32(dataGridView1.Rows[e.RowIndex].Cells["OrignalQty"].Value ?? 0);
+                        int productId = Convert.ToInt32(dataGridView1.Rows[e.RowIndex].Cells["ProductID"].Value);
                         
                         // Validate return quantity
                         if (returnQty < 0)
@@ -309,6 +314,15 @@ namespace Vape_Store
                         {
                             dataGridView1.Rows[e.RowIndex].Cells["ReturnQty"].Value = originalQty;
                             ShowMessage($"Return quantity cannot exceed original quantity ({originalQty}).", "Validation Error", MessageBoxIcon.Warning);
+                        }
+                        else if (returnQty > 0 && _selectedSale != null)
+                        {
+                            // Validate return eligibility using the service
+                            if (!_salesReturnService.ValidateReturnEligibility(_selectedSale.SaleID, productId, returnQty))
+                            {
+                                dataGridView1.Rows[e.RowIndex].Cells["ReturnQty"].Value = 0;
+                                ShowMessage($"Cannot return {returnQty} units. Exceeds available quantity for return.", "Validation Error", MessageBoxIcon.Warning);
+                            }
                         }
                     }
                 }
@@ -324,10 +338,26 @@ namespace Vape_Store
             try
             {
                 decimal subtotal = _returnItems.Sum(item => item.SubTotal);
-                decimal discount = Convert.ToDecimal(txtTaxPercent.Text ?? "0");
-                decimal discountAmount = subtotal * (discount / 100);
+                
+                // Calculate discount amount
+                decimal discountAmount = 0;
+                
+                // Check if discount is entered as percentage
+                if (!string.IsNullOrEmpty(txtTaxPercent.Text))
+                {
+                    decimal discountPercent = 0;
+                    if (decimal.TryParse(txtTaxPercent.Text, out discountPercent))
+                    {
+                        discountAmount = subtotal * (discountPercent / 100);
+                    }
+                }
+                
+                // Note: In this form, discount is only handled as percentage through txtTaxPercent
+                // No separate discount amount field exists
+                
                 decimal taxableAmount = subtotal - discountAmount;
                 
+                // Calculate tax
                 decimal taxPercent = 0;
                 if (cmbTax.SelectedItem != null)
                 {
@@ -342,7 +372,11 @@ namespace Vape_Store
                 decimal taxAmount = taxableAmount * (taxPercent / 100);
                 decimal total = taxableAmount + taxAmount;
                 
+                // Populate all financial fields
                 txtsubTotal.Text = subtotal.ToString("F2");
+                // Note: Discount amount is calculated and stored but not displayed in a separate field
+                // The discount percentage is shown in txtTaxPercent
+                // If you need to show discount amount, you could add a label or tooltip
                 txtTax.Text = taxAmount.ToString("F2");
                 txtTotal.Text = total.ToString("F2");
             }
@@ -404,6 +438,7 @@ namespace Vape_Store
             CalculateTotals();
         }
 
+
         private void NewItemBtn_Click(object sender, EventArgs e)
         {
             SaveSalesReturn();
@@ -454,25 +489,23 @@ namespace Vape_Store
                     ReturnDate = dtpReturnDate.Value,
                     ReturnReason = cmbreturnreason.SelectedItem?.ToString(),
                     Description = txtdescription.Text.Trim(),
-                    TotalAmount = Convert.ToDecimal(txtTotal.Text ?? "0"),
+                    TotalAmount = ParseDecimal(txtTotal.Text),
                     UserID = 1, // TODO: Get from current user session
                     CreatedDate = DateTime.Now,
                     ReturnItems = selectedItems
                 };
 
-                // Save to database
-                bool success = _salesReturnRepository.AddSalesReturn(salesReturn);
+                // Populate original invoice details
+                _salesReturnService.PopulateOriginalInvoiceDetails(salesReturn, _selectedSale);
+
+                // Save to database using service
+                bool success = _salesReturnService.ProcessSalesReturn(salesReturn);
                 
                 if (success)
                 {
-                    // Update inventory
-                    foreach (var item in selectedItems)
-                    {
-                        _inventoryService.UpdateStock(item.ProductID, item.Quantity, 0);
-                    }
-
                     ShowMessage("Sales return processed successfully!", "Success", MessageBoxIcon.Information);
                     ClearForm();
+                    LoadSales(); // Refresh the sales list to remove returned invoices
                 }
                 else
                 {
@@ -531,6 +564,34 @@ namespace Vape_Store
             cmbTax.Items.Add("15%");
             cmbTax.Items.Add("20%");
             cmbTax.SelectedIndex = 0;
+            
+            // Initialize financial fields
+            InitializeFinancialFields();
+        }
+
+        private void InitializeFinancialFields()
+        {
+            txtsubTotal.Text = "0.00";
+            txtTaxPercent.Text = "0";
+            txtTax.Text = "0.00";
+            txtTotal.Text = "0.00";
+        }
+
+        private decimal ParseDecimal(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return 0;
+            
+            // Remove any non-numeric characters except decimal point and minus sign
+            string cleanValue = System.Text.RegularExpressions.Regex.Replace(value, @"[^\d.-]", "");
+            
+            if (string.IsNullOrWhiteSpace(cleanValue))
+                return 0;
+            
+            if (decimal.TryParse(cleanValue, out decimal result))
+                return result;
+            
+            return 0;
         }
     }
 }

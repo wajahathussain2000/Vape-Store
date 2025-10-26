@@ -19,6 +19,7 @@ namespace Vape_Store.Models
         public int ReorderLevel { get; set; }
         public string Barcode { get; set; }
         public bool IsActive { get; set; }
+        public bool IsAvailableForSale { get; set; }
         public DateTime CreatedDate { get; set; }
         
         // Navigation properties
