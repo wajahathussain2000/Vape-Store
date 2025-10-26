@@ -132,34 +132,57 @@ namespace Vape_Store.Repositories
                            VALUES (@ProductCode, @ProductName, @Description, @CategoryID, @BrandID, 
                            @PurchasePrice, @CostPrice, @RetailPrice, @StockQuantity, @ReorderLevel, @Barcode, @IsActive)";
             
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    command.Parameters.AddWithValue("@ProductCode", product.ProductCode);
-                    command.Parameters.AddWithValue("@ProductName", product.ProductName);
-                    command.Parameters.AddWithValue("@Description", product.Description ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@CategoryID", product.CategoryID);
-                    command.Parameters.AddWithValue("@BrandID", product.BrandID);
-                    command.Parameters.AddWithValue("@PurchasePrice", product.PurchasePrice);
-                    command.Parameters.AddWithValue("@CostPrice", product.CostPrice > 0 ? product.CostPrice : product.PurchasePrice);
-                    command.Parameters.AddWithValue("@RetailPrice", product.RetailPrice);
-                    command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
-                    command.Parameters.AddWithValue("@ReorderLevel", product.ReorderLevel);
-                    command.Parameters.AddWithValue("@Barcode", product.Barcode ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@IsActive", product.IsActive);
-                    
-                    connection.Open();
-                    bool success = command.ExecuteNonQuery() > 0;
-                    
-                    // Trigger event if product was added successfully
-                    if (success)
+                    using (var command = new SqlCommand(query, connection))
                     {
-                        OnProductsUpdated();
+                        command.Parameters.AddWithValue("@ProductCode", product.ProductCode);
+                        command.Parameters.AddWithValue("@ProductName", product.ProductName);
+                        command.Parameters.AddWithValue("@Description", product.Description ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@CategoryID", product.CategoryID);
+                        command.Parameters.AddWithValue("@BrandID", product.BrandID);
+                        command.Parameters.AddWithValue("@PurchasePrice", product.PurchasePrice);
+                        command.Parameters.AddWithValue("@CostPrice", product.CostPrice > 0 ? product.CostPrice : product.PurchasePrice);
+                        command.Parameters.AddWithValue("@RetailPrice", product.RetailPrice);
+                        command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+                        command.Parameters.AddWithValue("@ReorderLevel", product.ReorderLevel);
+                        command.Parameters.AddWithValue("@Barcode", product.Barcode ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@IsActive", product.IsActive);
+                        
+                        connection.Open();
+                        bool success = command.ExecuteNonQuery() > 0;
+                        
+                        // Trigger event if product was added successfully
+                        if (success)
+                        {
+                            OnProductsUpdated();
+                        }
+                        
+                        return success;
                     }
-                    
-                    return success;
                 }
+            }
+            catch (SqlException ex)
+            {
+                // Handle database constraint violations
+                if (ex.Number == 2627) // Unique constraint violation
+                {
+                    throw new Exception($"Barcode '{product.Barcode}' already exists in the database. Please use a different barcode.", ex);
+                }
+                else if (ex.Number == 2601) // Unique index violation
+                {
+                    throw new Exception($"Barcode '{product.Barcode}' already exists in the database. Please use a different barcode.", ex);
+                }
+                else
+                {
+                    throw new Exception($"Database error adding product: {ex.Message}", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error adding product: {ex.Message}", ex);
             }
         }
         
@@ -171,34 +194,57 @@ namespace Vape_Store.Repositories
                            ReorderLevel = @ReorderLevel, Barcode = @Barcode, IsActive = @IsActive 
                            WHERE ProductID = @ProductID";
             
-            using (var connection = DatabaseConnection.GetConnection())
+            try
             {
-                using (var command = new SqlCommand(query, connection))
+                using (var connection = DatabaseConnection.GetConnection())
                 {
-                    command.Parameters.AddWithValue("@ProductID", product.ProductID);
-                    command.Parameters.AddWithValue("@ProductName", product.ProductName);
-                    command.Parameters.AddWithValue("@Description", product.Description ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@CategoryID", product.CategoryID);
-                    command.Parameters.AddWithValue("@BrandID", product.BrandID);
-                    command.Parameters.AddWithValue("@PurchasePrice", product.PurchasePrice);
-                    command.Parameters.AddWithValue("@CostPrice", product.CostPrice > 0 ? product.CostPrice : product.PurchasePrice);
-                    command.Parameters.AddWithValue("@RetailPrice", product.RetailPrice);
-                    command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
-                    command.Parameters.AddWithValue("@ReorderLevel", product.ReorderLevel);
-                    command.Parameters.AddWithValue("@Barcode", product.Barcode ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@IsActive", product.IsActive);
-                    
-                    connection.Open();
-                    bool success = command.ExecuteNonQuery() > 0;
-                    
-                    // Trigger event if product was updated successfully
-                    if (success)
+                    using (var command = new SqlCommand(query, connection))
                     {
-                        OnProductsUpdated();
+                        command.Parameters.AddWithValue("@ProductID", product.ProductID);
+                        command.Parameters.AddWithValue("@ProductName", product.ProductName);
+                        command.Parameters.AddWithValue("@Description", product.Description ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@CategoryID", product.CategoryID);
+                        command.Parameters.AddWithValue("@BrandID", product.BrandID);
+                        command.Parameters.AddWithValue("@PurchasePrice", product.PurchasePrice);
+                        command.Parameters.AddWithValue("@CostPrice", product.CostPrice > 0 ? product.CostPrice : product.PurchasePrice);
+                        command.Parameters.AddWithValue("@RetailPrice", product.RetailPrice);
+                        command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+                        command.Parameters.AddWithValue("@ReorderLevel", product.ReorderLevel);
+                        command.Parameters.AddWithValue("@Barcode", product.Barcode ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@IsActive", product.IsActive);
+                        
+                        connection.Open();
+                        bool success = command.ExecuteNonQuery() > 0;
+                        
+                        // Trigger event if product was updated successfully
+                        if (success)
+                        {
+                            OnProductsUpdated();
+                        }
+                        
+                        return success;
                     }
-                    
-                    return success;
                 }
+            }
+            catch (SqlException ex)
+            {
+                // Handle database constraint violations
+                if (ex.Number == 2627) // Unique constraint violation
+                {
+                    throw new Exception($"Barcode '{product.Barcode}' already exists in the database. Please use a different barcode.", ex);
+                }
+                else if (ex.Number == 2601) // Unique index violation
+                {
+                    throw new Exception($"Barcode '{product.Barcode}' already exists in the database. Please use a different barcode.", ex);
+                }
+                else
+                {
+                    throw new Exception($"Database error updating product: {ex.Message}", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error updating product: {ex.Message}", ex);
             }
         }
         
@@ -325,6 +371,95 @@ namespace Vape_Store.Repositories
             }
 
             return nextCode;
+        }
+
+        public bool IsBarcodeExists(string barcode, int? excludeProductId = null)
+        {
+            if (string.IsNullOrWhiteSpace(barcode))
+                return false;
+
+            string query = "SELECT COUNT(*) FROM Products WHERE Barcode = @Barcode AND IsActive = 1";
+            
+            if (excludeProductId.HasValue)
+            {
+                query += " AND ProductID != @ExcludeProductId";
+            }
+
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Barcode", barcode.Trim());
+                        
+                        if (excludeProductId.HasValue)
+                        {
+                            command.Parameters.AddWithValue("@ExcludeProductId", excludeProductId.Value);
+                        }
+                        
+                        connection.Open();
+                        int count = Convert.ToInt32(command.ExecuteScalar());
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking barcode existence: {ex.Message}", ex);
+            }
+        }
+
+        public Product GetProductByBarcode(string barcode)
+        {
+            if (string.IsNullOrWhiteSpace(barcode))
+                return null;
+
+            Product product = null;
+            string query = @"SELECT p.ProductID, p.ProductCode, p.ProductName, p.Description, p.CategoryID, p.BrandID,
+                           p.PurchasePrice, p.CostPrice, p.RetailPrice, p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, p.CreatedDate,
+                           c.CategoryName, b.BrandName
+                           FROM Products p
+                           LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
+                           LEFT JOIN Brands b ON p.BrandID = b.BrandID
+                           WHERE p.Barcode = @Barcode AND p.IsActive = 1";
+            
+            using (var connection = DatabaseConnection.GetConnection())
+            {
+                using (var command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@Barcode", barcode.Trim());
+                    connection.Open();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            product = new Product
+                            {
+                                ProductID = Convert.ToInt32(reader["ProductID"]),
+                                ProductCode = reader["ProductCode"]?.ToString() ?? "",
+                                ProductName = reader["ProductName"]?.ToString() ?? "",
+                                Description = reader["Description"]?.ToString() ?? "",
+                                CategoryID = reader["CategoryID"] == DBNull.Value ? 0 : Convert.ToInt32(reader["CategoryID"]),
+                                BrandID = reader["BrandID"] == DBNull.Value ? 0 : Convert.ToInt32(reader["BrandID"]),
+                                PurchasePrice = reader["PurchasePrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["PurchasePrice"]),
+                                CostPrice = reader["CostPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["CostPrice"]),
+                                RetailPrice = reader["RetailPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["RetailPrice"]),
+                                UnitPrice = reader["RetailPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["RetailPrice"]),
+                                StockQuantity = reader["StockQuantity"] == DBNull.Value ? 0 : Convert.ToInt32(reader["StockQuantity"]),
+                                ReorderLevel = reader["ReorderLevel"] == DBNull.Value ? 0 : Convert.ToInt32(reader["ReorderLevel"]),
+                                Barcode = reader["Barcode"]?.ToString() ?? "",
+                                IsActive = reader["IsActive"] == DBNull.Value ? true : Convert.ToBoolean(reader["IsActive"]),
+                                CreatedDate = reader["CreatedDate"] == DBNull.Value ? DateTime.Now : Convert.ToDateTime(reader["CreatedDate"]),
+                                CategoryName = reader["CategoryName"]?.ToString() ?? "",
+                                BrandName = reader["BrandName"]?.ToString() ?? ""
+                            };
+                        }
+                    }
+                }
+            }
+            
+            return product;
         }
     }
 }

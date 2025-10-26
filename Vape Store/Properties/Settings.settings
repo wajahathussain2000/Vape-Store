@@ -10,5 +10,8 @@
 &lt;/SerializableConnectionString&gt;</DesignTimeValue>
       <Value Profile="(Default)">Data Source=DESKTOP-M9PB9GT;Initial Catalog=VapeStoreDB;Integrated Security=True;Encrypt=False;TrustServerCertificate=True</Value>
     </Setting>
+    <Setting Name="BackupLocation" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

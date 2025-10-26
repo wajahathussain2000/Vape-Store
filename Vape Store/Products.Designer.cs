@@ -486,7 +486,7 @@
             this.generateBtn.Name = "generateBtn";
             this.generateBtn.Size = new System.Drawing.Size(180, 38);
             this.generateBtn.TabIndex = 2;
-            this.generateBtn.Text = "Generate";
+            this.generateBtn.Text = "Generate/Validate";
             this.generateBtn.UseVisualStyleBackColor = false;
             // 
             // txtBarcode
@@ -507,7 +507,7 @@
             this.barcodeLabel.Name = "barcodeLabel";
             this.barcodeLabel.Size = new System.Drawing.Size(94, 28);
             this.barcodeLabel.TabIndex = 0;
-            this.barcodeLabel.Text = "Barcode:";
+            this.barcodeLabel.Text = "Barcode (Custom or Auto):";
             // 
             // txtSearch
             // 

@@ -336,9 +336,9 @@ namespace Vape_Store
         {
             try
             {
-                // Open Database Statistics form for backup information
-                var databaseStatsForm = new DatabaseStatisticsReport();
-                databaseStatsForm.ShowDialog();
+                // Open Database Backup Manager form
+                var databaseBackupForm = new DatabaseBackupForm();
+                databaseBackupForm.ShowDialog();
             }
             catch (Exception ex)
             {
@@ -691,6 +691,69 @@ namespace Vape_Store
                 UtilitiesDropdown.Show(utilitiesBtn, new Point(0, utilitiesBtn.Height));
         }
 
+
+        private void backupBtn_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var backupService = new Services.DatabaseBackupService();
+                
+                // Show backup options
+                var result = MessageBox.Show(
+                    $"This will create a backup of your database.\n\nCurrent location: {backupService.GetBackupLocationInfo()}\n\nContinue with backup?",
+                    "Confirm Backup",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    // Show progress
+                    var progressForm = new Form
+                    {
+                        Text = "Creating Backup...",
+                        Size = new Size(300, 100),
+                        StartPosition = FormStartPosition.CenterParent,
+                        FormBorderStyle = FormBorderStyle.FixedDialog,
+                        MaximizeBox = false,
+                        MinimizeBox = false
+                    };
+
+                    var progressLabel = new Label
+                    {
+                        Text = "Creating database backup, please wait...",
+                        Dock = DockStyle.Fill,
+                        TextAlign = ContentAlignment.MiddleCenter
+                    };
+
+                    progressForm.Controls.Add(progressLabel);
+                    progressForm.Show();
+
+                    Application.DoEvents();
+
+                    // Create backup
+                    string backupPath = backupService.BackupDatabase();
+                    
+                    progressForm.Close();
+
+                    var openManager = MessageBox.Show(
+                        $"Backup created successfully!\n\nFile: {System.IO.Path.GetFileName(backupPath)}\n\n{backupService.GetBackupLocationInfo()}\n\nOpen Backup Manager for more options?",
+                        "Backup Complete",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Information);
+
+                    if (openManager == DialogResult.Yes)
+                    {
+                        var backupManager = new DatabaseBackupForm();
+                        backupManager.ShowDialog();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Backup failed: {ex.Message}\n\nTry opening Backup Manager to change the backup location.", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
         private void logoutBtn_Click(object sender, EventArgs e)
         {

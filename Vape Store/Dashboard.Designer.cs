@@ -31,6 +31,7 @@
             this.components = new System.ComponentModel.Container();
             this.logoutBtn = new System.Windows.Forms.Button();
             this.usersBtn = new System.Windows.Forms.Button();
+            this.backupBtn = new System.Windows.Forms.Button();
             this.utilitiesBtn = new System.Windows.Forms.Button();
             this.reportsBtn = new System.Windows.Forms.Button();
             this.accountsBtn = new System.Windows.Forms.Button();
@@ -101,6 +102,21 @@
             this.logoutBtn.Text = "Logout";
             this.logoutBtn.UseVisualStyleBackColor = false;
             this.logoutBtn.Click += new System.EventHandler(this.logoutBtn_Click);
+            // 
+            // backupBtn
+            // 
+            this.backupBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(46)))), ((int)(((byte)(204)))), ((int)(((byte)(113)))));
+            this.backupBtn.FlatAppearance.BorderSize = 0;
+            this.backupBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.backupBtn.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.backupBtn.ForeColor = System.Drawing.Color.White;
+            this.backupBtn.Location = new System.Drawing.Point(1036, 140);
+            this.backupBtn.Name = "backupBtn";
+            this.backupBtn.Size = new System.Drawing.Size(120, 50);
+            this.backupBtn.TabIndex = 37;
+            this.backupBtn.Text = "🔄 Backup";
+            this.backupBtn.UseVisualStyleBackColor = false;
+            this.backupBtn.Click += new System.EventHandler(this.backupBtn_Click);
             // 
             // usersBtn
             // 
@@ -369,6 +385,7 @@
             this.panel9.Controls.Add(this.reportsBtn);
             this.panel9.Controls.Add(this.utilitiesBtn);
             this.panel9.Controls.Add(this.usersBtn);
+            this.panel9.Controls.Add(this.backupBtn);
             this.panel9.Controls.Add(this.logoutBtn);
             this.panel9.Location = new System.Drawing.Point(-2, -3);
             this.panel9.Name = "panel9";
@@ -636,6 +653,7 @@
 
         private System.Windows.Forms.Button logoutBtn;
         private System.Windows.Forms.Button usersBtn;
+        private System.Windows.Forms.Button backupBtn;
         private System.Windows.Forms.Button utilitiesBtn;
         private System.Windows.Forms.Button reportsBtn;
         private System.Windows.Forms.Button accountsBtn;

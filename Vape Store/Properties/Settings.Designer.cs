@@ -33,5 +33,17 @@ namespace Vape_Store.Properties {
                 return ((string)(this["Setting"]));
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string BackupLocation {
+            get {
+                return ((string)(this["BackupLocation"]));
+            }
+            set {
+                this["BackupLocation"] = value;
+            }
+        }
     }
 }

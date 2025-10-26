@@ -111,6 +111,13 @@ namespace Vape_Store
             
             // Search event handler
             txtSearch.TextChanged += TxtSearch_TextChanged;
+            
+            // Barcode validation event handler
+            txtBarcode.TextChanged += TxtBarcode_TextChanged;
+            
+            // Add tooltip for barcode field
+            var tooltip = new ToolTip();
+            tooltip.SetToolTip(txtBarcode, "Enter custom barcode (e.g., apple001) or leave empty for auto-generation");
         }
 
         private void LoadCategories()
@@ -295,6 +302,29 @@ namespace Vape_Store
                     return;
                 }
 
+                // Validate barcode if provided
+                string barcodeText = txtBarcode.Text.Trim();
+                if (!string.IsNullOrEmpty(barcodeText))
+                {
+                    // Validate barcode format
+                    if (!_barcodeService.ValidateBarcode(barcodeText))
+                    {
+                        ShowMessage("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.", "Validation Error", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        return;
+                    }
+
+                    // Check for duplicate barcode
+                    bool isDuplicate = _productRepository.IsBarcodeExists(barcodeText, isEditMode ? selectedProductId : (int?)null);
+                    if (isDuplicate)
+                    {
+                        ShowMessage($"Barcode '{barcodeText}' already exists! Please use a different barcode.", "Duplicate Barcode", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        txtBarcode.SelectAll();
+                        return;
+                    }
+                }
+
                 if (isEditMode)
                 {
                     // Update existing product
@@ -310,7 +340,7 @@ namespace Vape_Store
                         RetailPrice = retailPrice,
                         StockQuantity = _products.First(p => p.ProductID == selectedProductId).StockQuantity,
                         ReorderLevel = reorderLevel,
-                        Barcode = !string.IsNullOrEmpty(txtBarcode.Text.Trim()) ? txtBarcode.Text.Trim() : GenerateUniqueBarcode(),
+                        Barcode = !string.IsNullOrEmpty(barcodeText) ? barcodeText : GenerateUniqueBarcode(),
                         IsActive = checkBox1.Checked,
                         CreatedDate = _products.First(p => p.ProductID == selectedProductId).CreatedDate
                     };
@@ -343,7 +373,7 @@ namespace Vape_Store
                         RetailPrice = retailPrice,
                         StockQuantity = 0, // New products start with 0 stock
                         ReorderLevel = reorderLevel,
-                        Barcode = !string.IsNullOrEmpty(txtBarcode.Text.Trim()) ? txtBarcode.Text.Trim() : GenerateUniqueBarcode(),
+                        Barcode = !string.IsNullOrEmpty(barcodeText) ? barcodeText : GenerateUniqueBarcode(),
                         IsActive = checkBox1.Checked,
                         CreatedDate = DateTime.Now
                     };
@@ -482,20 +512,60 @@ namespace Vape_Store
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(txtProductCode.Text))
+                // Check if user has entered custom barcode text
+                if (!string.IsNullOrWhiteSpace(txtBarcode.Text))
                 {
-                    ShowMessage("Please generate a product code first.", "Validation Error", MessageBoxIcon.Warning);
-                    return;
+                    // User wants to use custom barcode
+                    string customBarcode = txtBarcode.Text.Trim();
+                    
+                    // Validate custom barcode
+                    if (!_barcodeService.ValidateBarcode(customBarcode))
+                    {
+                        ShowMessage("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.", "Validation Error", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        return;
+                    }
+                    
+                    // Check for duplicates
+                    bool isDuplicate = _productRepository.IsBarcodeExists(customBarcode, isEditMode ? selectedProductId : (int?)null);
+                    if (isDuplicate)
+                    {
+                        ShowMessage($"Barcode '{customBarcode}' already exists! Please use a different barcode.", "Duplicate Barcode", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        txtBarcode.SelectAll();
+                        return;
+                    }
+                    
+                    // Test barcode generation
+                    if (!_barcodeService.TestBarcodeGeneration(customBarcode))
+                    {
+                        ShowMessage("Invalid barcode format! Cannot generate barcode with this text.", "Barcode Error", MessageBoxIcon.Error);
+                        txtBarcode.Focus();
+                        return;
+                    }
+                    
+                    // Display the custom barcode
+                    DisplayBarcodeImage(customBarcode);
+                    ShowMessage($"Custom barcode '{customBarcode}' generated successfully!", "Success", MessageBoxIcon.Information);
                 }
+                else
+                {
+                    // Generate automatic barcode
+                    if (string.IsNullOrWhiteSpace(txtProductCode.Text))
+                    {
+                        ShowMessage("Please generate a product code first.", "Validation Error", MessageBoxIcon.Warning);
+                        return;
+                    }
 
-                // Generate barcode text
-                string barcodeText = GenerateBarcodeFromCode(txtProductCode.Text);
-                txtBarcode.Text = barcodeText;
-                
-                // Generate and display barcode image
-                DisplayBarcodeImage(barcodeText);
-                
-                ShowMessage("Barcode generated successfully!", "Success", MessageBoxIcon.Information);
+                    // Generate barcode text
+                    string barcodeText = GenerateBarcodeFromCode(txtProductCode.Text);
+                    txtBarcode.Text = barcodeText;
+                    
+                    // Generate and display barcode image
+                    DisplayBarcodeImage(barcodeText);
+                    
+                    ShowMessage("Barcode generated successfully!", "Success", MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -736,6 +806,49 @@ namespace Vape_Store
         {
             // Handle text box change event
             // Implementation depends on what this text box controls
+        }
+
+        private void TxtBarcode_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                string barcodeText = txtBarcode.Text.Trim();
+                
+                if (string.IsNullOrEmpty(barcodeText))
+                {
+                    // Clear barcode display if text is empty
+                    pnlBarcode.Controls.Clear();
+                    return;
+                }
+
+                // Validate barcode format in real-time
+                if (!_barcodeService.ValidateBarcode(barcodeText))
+                {
+                    // Don't show error message on every keystroke, just clear the display
+                    pnlBarcode.Controls.Clear();
+                    return;
+                }
+
+                // Check for duplicates (but don't show error on every keystroke)
+                bool isDuplicate = _productRepository.IsBarcodeExists(barcodeText, isEditMode ? selectedProductId : (int?)null);
+                if (isDuplicate)
+                {
+                    // Clear display for duplicate barcodes
+                    pnlBarcode.Controls.Clear();
+                    return;
+                }
+
+                // If validation passes, generate and display the barcode
+                if (_barcodeService.TestBarcodeGeneration(barcodeText))
+                {
+                    DisplayBarcodeImage(barcodeText);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Silently handle errors during real-time validation
+                System.Diagnostics.Debug.WriteLine($"Barcode validation error: {ex.Message}");
+            }
         }
     }
 }

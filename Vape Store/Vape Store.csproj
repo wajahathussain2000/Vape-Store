@@ -281,6 +281,10 @@
     <Compile Include="Services\ThermalReceiptService.cs" />
     <Compile Include="Services\SalesReturnService.cs" />
     <Compile Include="Services\BarcodeService.cs" />
+    <Compile Include="Services\DatabaseBackupService.cs" />
+    <Compile Include="DatabaseBackupForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="ThermalInvoiceForm.cs">
       <SubType>Form</SubType>
     </Compile>
