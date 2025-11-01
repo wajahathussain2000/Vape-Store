@@ -26,10 +26,14 @@ namespace Vape_Store
         private List<Models.SaleItem> saleItems;
         private List<Customer> _customers;
         private List<Product> _products;
+        private List<Product> _filteredProducts; // For category/brand filtering
         private List<Category> _categories;
         private List<Brand> _brands;
         private CategoryRepository _categoryRepository;
         private BrandRepository _brandRepository;
+        // New tax UI controls (runtime)
+        private TextBox taxPercentTextBox; // user enters percent
+        private TextBox taxAmountTextBox;  // readonly amount
         
         private decimal subtotal = 0;
         private decimal discount = 0;
@@ -62,7 +66,6 @@ namespace Vape_Store
             LoadBrands();
             GenerateInvoiceNumber();
             InitializePaymentMethods();
-            InitializeTaxOptions();
             
             // Ensure barcode is displayed after form is fully loaded
             this.Load += (s, e) => {
@@ -87,7 +90,7 @@ namespace Vape_Store
             dataGridView1.AllowUserToDeleteRows = false;
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView1.MultiSelect = false;
-            dataGridView1.ReadOnly = true;
+            dataGridView1.ReadOnly = false; // Allow editing
             
             // Configure columns
             SrNo.Width = 80;
@@ -103,9 +106,19 @@ namespace Vape_Store
             Price.HeaderText = "Unit Price";
             SubTotal.HeaderText = "Sub Total";
             
+            // Make specific columns editable/readonly
+            SrNo.ReadOnly = true;        // Serial number - not editable
+            ItemName.ReadOnly = false;    // Product name - editable
+            Qty.ReadOnly = false;         // Quantity - editable
+            Price.ReadOnly = true;        // Unit price - not editable
+            SubTotal.ReadOnly = true;     // Sub total - not editable (calculated)
+            
             // Format currency columns
             Price.DefaultCellStyle.Format = "F2";
             SubTotal.DefaultCellStyle.Format = "F2";
+            
+            // Set up cell editing
+            dataGridView1.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
         }
 
         private void SetupEventHandlers()
@@ -124,21 +137,59 @@ namespace Vape_Store
             
             // Payment calculation event handlers
             txtPaid.TextChanged += TxtPaid_TextChanged;
-            txtTaxPercent.TextChanged += TxtTaxPercent_TextChanged;
-            cmbTax.SelectedIndexChanged += CmbTax_SelectedIndexChanged;
+            txtTaxPercent.TextChanged += TxtTaxPercent_TextChanged; // now used for tax percent
             
             // DataGridView event handlers
             dataGridView1.CellDoubleClick += DataGridView1_CellDoubleClick;
             dataGridView1.KeyDown += DataGridView1_KeyDown;
             dataGridView1.CellValueChanged += DataGridView1_CellValueChanged;
             dataGridView1.CellEndEdit += DataGridView1_CellEndEdit;
+            dataGridView1.CellClick += DataGridView1_CellClick;
             
-            // Add Item button event handler
-            btnAddItem.Click += BtnAddItem_Click;
+            // Add Item button event handler - REMOVED (already handled in SetupEventHandlers)
             
-            // Product search functionality
-            txtProductName.TextChanged += TxtProductName_TextChanged;
+            // Product search functionality - REMOVED (already handled in SetupEventHandlers)
             txtProductName.Leave += TxtProductName_Leave;
+            
+            // Form events
+            this.Activated += NewSale_Activated;
+
+            // Build tax percent and amount controls at runtime, replacing dropdown
+            try
+            {
+                if (cmbTax != null)
+                {
+                    // Create percent input textbox where the dropdown was
+                    taxPercentTextBox = new TextBox();
+                    taxPercentTextBox.Name = "txtTaxPercentInput";
+                    taxPercentTextBox.Text = "0";
+                    taxPercentTextBox.Width = cmbTax.Width;
+                    taxPercentTextBox.Height = cmbTax.Height;
+                    taxPercentTextBox.Location = cmbTax.Location;
+                    taxPercentTextBox.Anchor = cmbTax.Anchor;
+                    taxPercentTextBox.TextChanged += (sender, args) => { CalculateTotals(); };
+
+                    // Create amount textbox to the right of percent control
+                    taxAmountTextBox = new TextBox();
+                    taxAmountTextBox.Name = "txtTaxAmount";
+                    taxAmountTextBox.ReadOnly = true;
+                    taxAmountTextBox.Width = cmbTax.Width;
+                    taxAmountTextBox.Height = cmbTax.Height;
+                    taxAmountTextBox.Location = new Point(cmbTax.Right + 10, cmbTax.Top);
+                    taxAmountTextBox.Anchor = cmbTax.Anchor;
+                    taxAmountTextBox.Text = "0.00";
+
+                    // Add to same parent container as cmbTax
+                    var parent = cmbTax.Parent ?? this;
+                    parent.Controls.Add(taxPercentTextBox);
+                    parent.Controls.Add(taxAmountTextBox);
+
+                    // Hide original dropdown
+                    cmbTax.Visible = false;
+                    cmbTax.Enabled = false;
+                }
+            }
+            catch { }
         }
 
         private void LoadCustomers()
@@ -150,8 +201,11 @@ namespace Vape_Store
                 cmbCustomer.DisplayMember = "CustomerName";
                 cmbCustomer.ValueMember = "CustomerID";
                 
-                // Set "Walk-in Customer" as default
-                var walkInCustomer = _customers.FirstOrDefault(c => c.CustomerName.Contains("Walk-in") || c.CustomerName.Contains("Walk in"));
+                // Set "Walk-in Customer" as default (case-insensitive, tolerant to spacing)
+                var walkInCustomer = _customers.FirstOrDefault(c =>
+                    (c.CustomerName ?? string.Empty).Trim().ToLower().Contains("walk-in") ||
+                    (c.CustomerName ?? string.Empty).Trim().ToLower().Contains("walk in") ||
+                    (c.CustomerName ?? string.Empty).Trim().ToLower().Contains("walkin"));
                 if (walkInCustomer != null)
                 {
                     cmbCustomer.SelectedValue = walkInCustomer.CustomerID;
@@ -171,9 +225,15 @@ namespace Vape_Store
         {
             try
             {
-                // Load products from PurchaseItems (products that have been purchased)
-                _products = GetProductsFromPurchases();
-                System.Diagnostics.Debug.WriteLine($"Loaded {_products?.Count ?? 0} products from purchases");
+                // Load ALL products from Products table (not just those with stock > 0)
+                _products = _productRepository.GetAllProducts();
+                _filteredProducts = _products; // Initialize filtered products with all products
+                
+                System.Diagnostics.Debug.WriteLine($"Loaded {_products?.Count ?? 0} products from Products table");
+                
+                // Update stock quantities from purchase/inventory data
+                UpdateStockQuantitiesFromInventory();
+                
                 if (_products != null)
                 {
                     foreach (var product in _products)
@@ -181,8 +241,9 @@ namespace Vape_Store
                         System.Diagnostics.Debug.WriteLine($"Product: {product.ProductName} - Stock: {product.StockQuantity}");
                     }
                 }
+                
                 // Setup autocomplete after loading products
-                SetupProductAutoComplete();
+                UpdateProductAutoComplete();
             }
             catch (Exception ex)
             {
@@ -190,59 +251,82 @@ namespace Vape_Store
             }
         }
         
-        private List<Product> GetProductsFromPurchases()
+        private void UpdateStockQuantitiesFromInventory()
         {
-            var products = new List<Product>();
             try
             {
+                if (_products == null || _products.Count == 0)
+                    return;
+
                 using (var connection = DataAccess.DatabaseConnection.GetConnection())
                 {
-                    // Modified query to show ALL products with stock > 0
+                    connection.Open();
+                    
+                    // Get current stock quantities from Products table (which gets updated from purchases)
+                    // This ensures we get the most up-to-date stock information from SQL Express
                     string query = @"
-                        SELECT 
-                            p.ProductID,
-                            p.ProductCode,
-                            p.ProductName,
-                            p.RetailPrice,
-                            p.PurchasePrice,
-                            p.CostPrice,
-                            p.StockQuantity,
-                            p.ReorderLevel,
-                            p.IsActive
-                        FROM Products p
-                        WHERE p.IsActive = 1 
-                        AND p.StockQuantity > 0
-                        ORDER BY p.ProductName";
+                        SELECT ProductID, StockQuantity 
+                        FROM Products 
+                        WHERE IsActive = 1";
                     
                     using (var command = new System.Data.SqlClient.SqlCommand(query, connection))
                     {
-                        connection.Open();
+                        command.CommandTimeout = 30; // Set timeout for SQL Express
+                        
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
-                                products.Add(new Product
+                                int productId = Convert.ToInt32(reader["ProductID"]);
+                                int stockQuantity = Convert.ToInt32(reader["StockQuantity"]);
+                                
+                                // Update the stock quantity in our local product list
+                                var product = _products.FirstOrDefault(p => p.ProductID == productId);
+                                if (product != null)
                                 {
-                                    ProductID = Convert.ToInt32(reader["ProductID"]),
-                                    ProductCode = reader["ProductCode"].ToString(),
-                                    ProductName = reader["ProductName"].ToString(),
-                                    RetailPrice = Convert.ToDecimal(reader["RetailPrice"]),
-                                    PurchasePrice = Convert.ToDecimal(reader["PurchasePrice"]),
-                                    CostPrice = Convert.ToDecimal(reader["CostPrice"]),
-                                    StockQuantity = Convert.ToInt32(reader["StockQuantity"]),
-                                    ReorderLevel = Convert.ToInt32(reader["ReorderLevel"]),
-                                    IsActive = Convert.ToBoolean(reader["IsActive"])
-                                });
+                                    product.StockQuantity = stockQuantity;
+                                }
                             }
+                        }
+                    }
+                }
+                
+                // Also update filtered products if they exist
+                if (_filteredProducts != null)
+                {
+                    foreach (var filteredProduct in _filteredProducts)
+                    {
+                        var mainProduct = _products.FirstOrDefault(p => p.ProductID == filteredProduct.ProductID);
+                        if (mainProduct != null)
+                        {
+                            filteredProduct.StockQuantity = mainProduct.StockQuantity;
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading products from purchases: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error updating stock quantities: {ex.Message}");
+                ShowMessage($"Warning: Could not update stock quantities: {ex.Message}", "Warning", MessageBoxIcon.Warning);
             }
-            return products;
+        }
+
+        /// <summary>
+        /// Refreshes stock quantities from the database
+        /// Call this method when you need to get the latest stock information
+        /// </summary>
+        public void RefreshStockQuantities()
+        {
+            try
+            {
+                UpdateStockQuantitiesFromInventory();
+                System.Diagnostics.Debug.WriteLine("Stock quantities refreshed successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error refreshing stock quantities: {ex.Message}");
+                ShowMessage($"Error refreshing stock quantities: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
         }
 
         private void LoadCategories()
@@ -250,10 +334,24 @@ namespace Vape_Store
             try
             {
                 _categories = _categoryRepository.GetAllCategories();
-                cmbCategory.DataSource = _categories;
+                
+                // Create a list with "All" option at the beginning
+                var categoryList = new List<Category>();
+                
+                // Add "All" option as a special category
+                categoryList.Add(new Category 
+                { 
+                    CategoryID = -1, 
+                    CategoryName = "All" 
+                });
+                
+                // Add actual categories
+                categoryList.AddRange(_categories);
+                
+                cmbCategory.DataSource = categoryList;
                 cmbCategory.DisplayMember = "CategoryName";
                 cmbCategory.ValueMember = "CategoryID";
-                cmbCategory.SelectedIndex = -1; // No default selection
+                cmbCategory.SelectedIndex = 0; // Select "All" by default
             }
             catch (Exception ex)
             {
@@ -266,10 +364,24 @@ namespace Vape_Store
             try
             {
                 _brands = _brandRepository.GetAllBrands();
-                cmbBrand.DataSource = _brands;
+                
+                // Create a list with "All" option at the beginning
+                var brandList = new List<Brand>();
+                
+                // Add "All" option as a special brand
+                brandList.Add(new Brand 
+                { 
+                    BrandID = -1, 
+                    BrandName = "All" 
+                });
+                
+                // Add actual brands
+                brandList.AddRange(_brands);
+                
+                cmbBrand.DataSource = brandList;
                 cmbBrand.DisplayMember = "BrandName";
                 cmbBrand.ValueMember = "BrandID";
-                cmbBrand.SelectedIndex = -1; // No default selection
+                cmbBrand.SelectedIndex = 0; // Select "All" by default
             }
             catch (Exception ex)
             {
@@ -520,7 +632,7 @@ namespace Vape_Store
                 // Validate product name
                 if (string.IsNullOrWhiteSpace(txtProductName.Text))
                 {
-                    ShowMessage("Please enter a product name.", "Validation Error", MessageBoxIcon.Warning);
+                    ShowMessage("Please enter a product name to add to the cart.", "Add Product", MessageBoxIcon.Information);
                     txtProductName.Focus();
                     return;
                 }
@@ -528,19 +640,20 @@ namespace Vape_Store
                 // Validate quantity
                 if (string.IsNullOrWhiteSpace(txtQuantity.Text) || !int.TryParse(txtQuantity.Text, out int requestedQuantity) || requestedQuantity <= 0)
                 {
-                    ShowMessage("Please enter a valid quantity (greater than 0).", "Validation Error", MessageBoxIcon.Warning);
+                    ShowMessage("Please enter a valid quantity (must be greater than 0).", "Add Product", MessageBoxIcon.Information);
                     txtQuantity.Focus();
                     return;
                 }
 
                 // Find product by name
-                var product = _products.FirstOrDefault(p => 
+                var productsToSearch = _filteredProducts ?? _products;
+                var product = productsToSearch.FirstOrDefault(p => 
                     p.ProductName.ToLower().Contains(txtProductName.Text.ToLower()) ||
                     p.ProductCode.ToLower().Contains(txtProductName.Text.ToLower()));
 
                 if (product == null)
                 {
-                    ShowMessage("Product not found. Please check the name.", "Error", MessageBoxIcon.Warning);
+                    ShowMessage("Product not found. Please check the product name or try selecting a different category/brand.", "Product Not Found", MessageBoxIcon.Information);
                     txtProductName.Focus();
                     return;
                 }
@@ -595,6 +708,9 @@ namespace Vape_Store
                 RefreshCartDisplay();
                 CalculateTotals();
                 
+                // Show success message
+                ShowMessage($"'{product.ProductName}' added to cart successfully!", "Product Added", MessageBoxIcon.Information);
+                
                 // Clear product search and quantity
                 txtProductName.Clear();
                 txtQuantity.Text = "1";
@@ -630,29 +746,32 @@ namespace Vape_Store
                 subtotal = saleItems.Sum(item => item.SubTotal);
                 txtsubTotal.Text = subtotal.ToString("F2");
 
-                // Calculate discount (if any)
-                if (decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent))
-                {
-                    discount = subtotal * (discountPercent / 100);
-                    // Update discount amount field immediately
-                    txtTax.Text = discount.ToString("F2");
-                }
-                else
-                {
-                    discount = 0;
-                    txtTax.Text = "0.00";
-                }
+            // Discount percent (UI textbox named txtTaxPercent is used for discount in this form)
+            if (decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent))
+            {
+                discount = subtotal * (discountPercent / 100);
+            }
+            else
+            {
+                discount = 0;
+            }
 
-                // Calculate tax
-                if (cmbTax.SelectedItem != null)
+            // Tax percent from textbox; compute tax amount and display to a readonly label
+            string taxPercentText = taxPercentTextBox != null ? taxPercentTextBox.Text : txtTaxPercent.Text;
+            if (decimal.TryParse(taxPercentText, out decimal taxPercent))
+            {
+                tax = (subtotal - discount) * (taxPercent / 100);
+            }
+            else
+            {
+                tax = 0;
+            }
+            // Update readonly tax amount textbox if present
+            try { if (taxAmountTextBox != null) taxAmountTextBox.Text = tax.ToString("F2"); } catch { }
+                string tp2 = taxPercentTextBox != null ? taxPercentText : txtTaxPercent.Text;
+                if (decimal.TryParse(tp2, out decimal taxPercent2))
                 {
-                    string taxText = cmbTax.SelectedItem.ToString().Replace("%", "");
-                    if (decimal.TryParse(taxText, out decimal taxPercent))
-                    {
-                        tax = (subtotal - discount) * (taxPercent / 100);
-                        // Update tax field with calculated tax amount
-                        txtTax.Text = tax.ToString("F2");
-                    }
+                    tax = (subtotal - discount) * (taxPercent2 / 100);
                 }
 
                 // Calculate total
@@ -661,10 +780,14 @@ namespace Vape_Store
 
                 // Calculate change
                 CalculateChange();
+                
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"Totals Updated: Subtotal={subtotal}, Discount={discount}, Tax={tax}, Total={total}");
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error calculating totals: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"CalculateTotals Error: {ex.Message}");
             }
         }
 
@@ -677,6 +800,9 @@ namespace Vape_Store
         {
             try
             {
+                // Ensure totals are calculated before saving
+                CalculateTotals();
+                
                 // Validate cart
                 if (saleItems.Count == 0)
                 {
@@ -705,17 +831,28 @@ namespace Vape_Store
                     return;
                 }
 
-                // Get current paid amount from text field
-                if (!decimal.TryParse(txtPaid.Text, out decimal currentPaidAmount))
+                // Handle payment amount based on payment method
+                decimal currentPaidAmount;
+                if (cmbPaymentMethod.Text.Equals("Card", StringComparison.OrdinalIgnoreCase))
                 {
-                    ShowMessage("Please enter a valid paid amount.", "Validation Error", MessageBoxIcon.Warning);
-                    return;
+                    // For card payments, paid amount equals total amount
+                    currentPaidAmount = total;
+                    txtPaid.Text = currentPaidAmount.ToString("F2");
                 }
-
-                if (currentPaidAmount < total)
+                else
                 {
-                    ShowMessage($"Paid amount (${currentPaidAmount:F2}) is less than total amount (${total:F2}).", "Payment Error", MessageBoxIcon.Warning);
-                    return;
+                    // For cash and other payment methods, validate paid amount input
+                    if (!decimal.TryParse(txtPaid.Text, out currentPaidAmount))
+                    {
+                        ShowMessage("Please enter a valid paid amount.", "Validation Error", MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    if (currentPaidAmount < total)
+                    {
+                        ShowMessage($"Paid amount (${currentPaidAmount:F2}) is less than total amount (${total:F2}).", "Payment Error", MessageBoxIcon.Warning);
+                        return;
+                    }
                 }
 
                 // Generate barcode data for the sale
@@ -725,15 +862,15 @@ namespace Vape_Store
                     barcodeImageBytes = _barcodeService.GenerateBarcodeImage(invoiceNumber, 300, 100);
                 }
 
-                // Create sale object
+                // Create sale object with current calculated values
                 var sale = new Sale
                 {
                     InvoiceNumber = invoiceNumber,
                     CustomerID = cmbCustomer.SelectedItem != null ? ((Customer)cmbCustomer.SelectedItem).CustomerID : 0,
                     SaleDate = guna2DateTimePicker1.Value,
                     SubTotal = subtotal,
-                    TaxAmount = tax,
-                    TaxPercent = decimal.Parse(cmbTax.SelectedItem.ToString().Replace("%", "")),
+                TaxAmount = tax,
+                    TaxPercent = decimal.TryParse(taxPercentTextBox != null ? taxPercentTextBox.Text : txtTaxPercent.Text, out decimal tp) ? tp : 0,
                     TotalAmount = total,
                     PaymentMethod = cmbPaymentMethod.Text,
                     PaidAmount = currentPaidAmount,
@@ -745,6 +882,9 @@ namespace Vape_Store
                     BarcodeData = invoiceNumber,
                     SaleItems = saleItems
                 };
+
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"Save Sale Data: Subtotal={sale.SubTotal}, TaxAmount={sale.TaxAmount}, TaxPercent={sale.TaxPercent}, Total={sale.TotalAmount}");
 
                 // Process sale
                 bool success = _salesService.ProcessSale(sale);
@@ -767,6 +907,7 @@ namespace Vape_Store
             catch (Exception ex)
             {
                 ShowMessage($"Error saving sale: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"SaveSale Error: {ex.Message}");
             }
         }
 
@@ -794,23 +935,31 @@ namespace Vape_Store
                 // Reset form controls
                 txtsubTotal.Clear();
                 txtTaxPercent.Clear();
-                txtTax.Clear();
                 txtTotal.Clear();
                 txtPaid.Clear();
                 txtChange.Clear();
                 txtProductName.Clear();
                 txtStockQuantity.Clear();
                 txtReorderLevel.Clear();
-                
-                // Reset selections
-                cmbCustomer.SelectedIndex = -1;
-                cmbCategory.SelectedIndex = -1;
-                cmbBrand.SelectedIndex = -1;
+
+                // Reload lookups and set sensible defaults so dropdowns aren't blank
+                LoadCustomers();
+                LoadCategories();
+                LoadBrands();
+                UpdateProductAutoComplete();
+
+                // Reset selections with defaults
                 cmbPaymentMethod.SelectedIndex = 0;
-                cmbTax.SelectedIndex = 2;
+                if (cmbTax != null && cmbTax.Visible && cmbTax.Items != null && cmbTax.Items.Count > 2)
+                {
+                    cmbTax.SelectedIndex = 2;
+                }
+                if (taxPercentTextBox != null) taxPercentTextBox.Text = "0";
+                if (taxAmountTextBox != null) taxAmountTextBox.Text = "0.00";
                 
-                // Generate new invoice number
+                // Generate new invoice number and refresh barcode image
                 GenerateInvoiceNumber();
+                try { GenerateAndDisplayBarcode(); } catch { }
                 
                 // Set current date
                 guna2DateTimePicker1.Value = DateTime.Now;
@@ -839,6 +988,9 @@ namespace Vape_Store
         {
             try
             {
+                // Ensure totals are calculated before creating receipt
+                CalculateTotals();
+                
                 // Generate barcode for receipt
                 byte[] barcodeImageBytes = null;
                 if (!string.IsNullOrEmpty(invoiceNumber))
@@ -846,7 +998,7 @@ namespace Vape_Store
                     barcodeImageBytes = _barcodeService.GenerateBarcodeImage(invoiceNumber, 200, 80);
                 }
 
-                // Create sale object for receipt
+                // Create sale object for receipt with current calculated values
                 var sale = new Sale
                 {
                     InvoiceNumber = invoiceNumber,
@@ -854,11 +1006,11 @@ namespace Vape_Store
                     SaleDate = guna2DateTimePicker1.Value,
                     SubTotal = subtotal,
                     TaxAmount = tax,
-                    TaxPercent = cmbTax.SelectedItem != null ? decimal.Parse(cmbTax.SelectedItem.ToString().Replace("%", "")) : 0,
+                    TaxPercent = decimal.TryParse(taxPercentTextBox != null ? taxPercentTextBox.Text : txtTaxPercent.Text, out decimal tpp) ? tpp : 0,
                     TotalAmount = total,
                     PaymentMethod = cmbPaymentMethod.Text,
-                    PaidAmount = decimal.Parse(txtPaid.Text),
-                    ChangeAmount = decimal.Parse(txtPaid.Text) - total,
+                    PaidAmount = decimal.TryParse(txtPaid.Text, out decimal paid) ? paid : 0,
+                    ChangeAmount = (decimal.TryParse(txtPaid.Text, out decimal paidAmount) ? paidAmount : 0) - total,
                     UserID = currentUserID,
                     DiscountAmount = discount,
                     DiscountPercent = decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent) ? discountPercent : 0,
@@ -867,6 +1019,9 @@ namespace Vape_Store
                     SaleItems = saleItems
                 };
 
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"Receipt Data: Subtotal={sale.SubTotal}, TaxAmount={sale.TaxAmount}, TaxPercent={sale.TaxPercent}, Total={sale.TotalAmount}");
+
                 // Show receipt preview
                 var receiptPreview = new ReceiptPreviewForm(sale);
                 receiptPreview.ShowDialog();
@@ -874,6 +1029,7 @@ namespace Vape_Store
             catch (Exception ex)
             {
                 ShowMessage($"Error printing receipt: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"PrintReceipt Error: {ex.Message}");
             }
         }
 
@@ -893,7 +1049,8 @@ namespace Vape_Store
                 }
 
                 // Find exact match first (for AutoComplete selection)
-                var exactMatch = _products.FirstOrDefault(p => 
+                var productsToSearch = _filteredProducts ?? _products;
+                var exactMatch = productsToSearch.FirstOrDefault(p => 
                     p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase));
 
                 if (exactMatch != null)
@@ -905,7 +1062,7 @@ namespace Vape_Store
                 else
                 {
                     // Search for products that contain the search text
-                    var matchingProducts = _products.Where(p => 
+                    var matchingProducts = productsToSearch.Where(p => 
                         p.ProductName.ToLower().Contains(searchText.ToLower()) ||
                         p.ProductCode.ToLower().Contains(searchText.ToLower())
                     ).ToList();
@@ -938,14 +1095,28 @@ namespace Vape_Store
             {
                 try
                 {
+                    // Get the selected category object
                     Category selectedCategory = (Category)cmbCategory.SelectedItem;
                     int categoryID = selectedCategory.CategoryID;
-                    var filteredProducts = _products.Where(p => p.CategoryID == categoryID).ToList();
-                    // Update product suggestions based on category
+                    
+                    if (categoryID == -1) // "All" selected
+                    {
+                        // Show all products
+                        FilterProductsByBrand();
+                    }
+                    else
+                    {
+                        // Filter by category (include products with CategoryID = 0 for NULL values)
+                        var filteredProducts = _products.Where(p => p.CategoryID == categoryID || p.CategoryID == 0).ToList();
+                        FilterProductsByBrand(filteredProducts);
+                    }
+                    
+                    // Update product autocomplete
+                    UpdateProductAutoComplete();
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error filtering products by category: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowMessage($"Error filtering products by category: {ex.Message}", "Error", MessageBoxIcon.Error);
                 }
             }
         }
@@ -957,95 +1128,248 @@ namespace Vape_Store
             {
                 try
                 {
+                    // Get the selected brand object
                     Brand selectedBrand = (Brand)cmbBrand.SelectedItem;
                     int brandID = selectedBrand.BrandID;
-                    var filteredProducts = _products.Where(p => p.BrandID == brandID).ToList();
-                    // Update product suggestions based on brand
+                    
+                    if (brandID == -1) // "All" selected
+                    {
+                        // Show all products
+                        FilterProductsByCategory();
+                    }
+                    else
+                    {
+                        // Filter by brand (include products with BrandID = 0 for NULL values)
+                        var filteredProducts = _products.Where(p => p.BrandID == brandID || p.BrandID == 0).ToList();
+                        FilterProductsByCategory(filteredProducts);
+                    }
+                    
+                    // Update product autocomplete
+                    UpdateProductAutoComplete();
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error filtering products by brand: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowMessage($"Error filtering products by brand: {ex.Message}", "Error", MessageBoxIcon.Error);
                 }
             }
         }
 
-
         private void CmbTax_SelectedIndexChanged(object sender, EventArgs e)
         {
-            CalculateTotals();
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Tax dropdown changed to: {cmbTax.SelectedItem}");
+                CalculateTotals();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in tax dropdown change: {ex.Message}");
+                ShowMessage($"Error updating tax calculation: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void FilterProductsByCategory(List<Product> productsToFilter = null)
+        {
+            try
+            {
+                var products = productsToFilter ?? _products;
+                
+                // Get current category selection
+                if (cmbCategory.SelectedItem != null)
+                {
+                    Category selectedCategory = (Category)cmbCategory.SelectedItem;
+                    int categoryID = selectedCategory.CategoryID;
+                    
+                    if (categoryID != -1) // Not "All"
+                    {
+                        products = products.Where(p => p.CategoryID == categoryID || p.CategoryID == 0).ToList();
+                    }
+                }
+                
+                // Apply brand filter if needed
+                FilterProductsByBrand(products);
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error filtering products by category: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void FilterProductsByBrand(List<Product> productsToFilter = null)
+        {
+            try
+            {
+                var products = productsToFilter ?? _products;
+                
+                // Get current brand selection
+                if (cmbBrand.SelectedItem != null)
+                {
+                    Brand selectedBrand = (Brand)cmbBrand.SelectedItem;
+                    int brandID = selectedBrand.BrandID;
+                    
+                    if (brandID != -1) // Not "All"
+                    {
+                        products = products.Where(p => p.BrandID == brandID || p.BrandID == 0).ToList();
+                    }
+                }
+                
+                // Update the filtered products list for autocomplete
+                _filteredProducts = products;
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error filtering products by brand: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateProductAutoComplete()
+        {
+            try
+            {
+                var productsToUse = _filteredProducts ?? _products;
+                
+                // Enable AutoComplete for the ProductName TextBox
+                txtProductName.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                txtProductName.AutoCompleteSource = AutoCompleteSource.CustomSource;
+
+                // Create AutoComplete collection
+                AutoCompleteStringCollection productCollection = new AutoCompleteStringCollection();
+
+                // Add filtered product names to the collection
+                if (productsToUse != null)
+                {
+                    foreach (var product in productsToUse)
+                    {
+                        productCollection.Add(product.ProductName);
+                    }
+                }
+
+                // Set the custom source
+                txtProductName.AutoCompleteCustomSource = productCollection;
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error updating product autocomplete: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
         }
 
         private void DataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-            // Remove item on double click
-            if (e.RowIndex >= 0 && e.RowIndex < saleItems.Count)
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
             {
-                saleItems.RemoveAt(e.RowIndex);
-                RefreshCartDisplay();
-                CalculateTotals();
+                dataGridView1.CurrentCell = dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                dataGridView1.BeginEdit(true);
             }
         }
 
         private void DataGridView1_KeyDown(object sender, KeyEventArgs e)
         {
-            // Remove item on Delete key
-            if (e.KeyCode == Keys.Delete && dataGridView1.SelectedRows.Count > 0)
+            // Remove entire row on Delete key
+            if (e.KeyCode == Keys.Delete)
             {
-                int selectedIndex = dataGridView1.SelectedRows[0].Index;
-                if (selectedIndex >= 0 && selectedIndex < saleItems.Count)
+                int rowIndex = -1;
+                if (dataGridView1.SelectedRows.Count > 0)
                 {
-                    saleItems.RemoveAt(selectedIndex);
+                    rowIndex = dataGridView1.SelectedRows[0].Index;
+                }
+                else if (dataGridView1.CurrentCell != null)
+                {
+                    rowIndex = dataGridView1.CurrentCell.RowIndex;
+                }
+
+                if (rowIndex >= 0 && rowIndex < saleItems.Count)
+                {
+                    saleItems.RemoveAt(rowIndex);
                     RefreshCartDisplay();
                     CalculateTotals();
+                    e.Handled = true;
                 }
             }
         }
 
         private void DataGridView1_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            // Handle quantity changes in the DataGridView
-            if (e.RowIndex >= 0 && e.RowIndex < saleItems.Count && e.ColumnIndex == 2) // Qty column
+            if (e.RowIndex >= 0 && e.RowIndex < saleItems.Count)
             {
                 try
                 {
-                    var newQuantityText = dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();
-                    if (int.TryParse(newQuantityText, out int newQuantity) && newQuantity > 0)
+                    var item = saleItems[e.RowIndex];
+                    
+                    // Handle Product Name changes (column index 1)
+                    if (e.ColumnIndex == 1) // Product Name column
                     {
-                        var item = saleItems[e.RowIndex];
-                        var product = _products.FirstOrDefault(p => p.ProductID == item.ProductID);
-                        
-                        if (product != null)
+                        var newProductName = dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();
+                        if (!string.IsNullOrWhiteSpace(newProductName))
                         {
-                            // Check stock availability
-                            if (newQuantity > product.StockQuantity)
+                            // Find the product by name
+                            var productsToSearch = _filteredProducts ?? _products;
+                            var product = productsToSearch.FirstOrDefault(p => 
+                                p.ProductName.Equals(newProductName, StringComparison.OrdinalIgnoreCase));
+                            
+                            if (product != null)
                             {
-                                ShowMessage($"Only {product.StockQuantity} units available in stock. Cannot set quantity to {newQuantity}.", "Stock Error", MessageBoxIcon.Warning);
-                                // Revert to original quantity
-                                dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = item.Quantity;
-                                return;
+                                // Update the item with new product details
+                                item.ProductID = product.ProductID;
+                                item.ProductName = product.ProductName;
+                                item.ProductCode = product.ProductCode;
+                                item.UnitPrice = product.RetailPrice;
+                                item.SubTotal = item.Quantity * item.UnitPrice;
+                                
+                                // Update the grid display
+                                dataGridView1.Rows[e.RowIndex].Cells[3].Value = item.UnitPrice; // Price column
+                                dataGridView1.Rows[e.RowIndex].Cells[4].Value = item.SubTotal; // SubTotal column
+                                
+                                CalculateTotals();
                             }
-                            
-                            // Update quantity and subtotal
-                            item.Quantity = newQuantity;
-                            item.SubTotal = newQuantity * item.UnitPrice;
-                            
-                            // Update subtotal in grid
-                            dataGridView1.Rows[e.RowIndex].Cells[4].Value = item.SubTotal; // SubTotal column
-                            
-                            // Recalculate totals
-                            CalculateTotals();
+                            else
+                            {
+                                ShowMessage($"Product '{newProductName}' not found. Please check the name.", "Product Not Found", MessageBoxIcon.Warning);
+                                // Revert to original product name
+                                dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = item.ProductName;
+                            }
                         }
                     }
-                    else
+                    // Handle Quantity changes (column index 2)
+                    else if (e.ColumnIndex == 2) // Quantity column
                     {
-                        ShowMessage("Please enter a valid quantity (greater than 0).", "Validation Error", MessageBoxIcon.Warning);
-                        // Revert to original quantity
-                        dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = saleItems[e.RowIndex].Quantity;
+                        var newQuantityText = dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();
+                        if (int.TryParse(newQuantityText, out int newQuantity) && newQuantity > 0)
+                        {
+                            var product = _products.FirstOrDefault(p => p.ProductID == item.ProductID);
+                            
+                            if (product != null)
+                            {
+                                // Check stock availability
+                                if (newQuantity > product.StockQuantity)
+                                {
+                                    ShowMessage($"Only {product.StockQuantity} units available in stock. Cannot set quantity to {newQuantity}.", "Stock Error", MessageBoxIcon.Warning);
+                                    // Revert to original quantity
+                                    dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = item.Quantity;
+                                    return;
+                                }
+                                
+                                // Update quantity and subtotal
+                                item.Quantity = newQuantity;
+                                item.SubTotal = newQuantity * item.UnitPrice;
+                                
+                                // Update subtotal in grid
+                                dataGridView1.Rows[e.RowIndex].Cells[4].Value = item.SubTotal; // SubTotal column
+                                
+                                // Recalculate totals
+                                CalculateTotals();
+                            }
+                        }
+                        else
+                        {
+                            ShowMessage("Please enter a valid quantity (greater than 0).", "Validation Error", MessageBoxIcon.Warning);
+                            // Revert to original quantity
+                            dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = item.Quantity;
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    ShowMessage($"Error updating quantity: {ex.Message}", "Error", MessageBoxIcon.Error);
+                    ShowMessage($"Error updating item: {ex.Message}", "Error", MessageBoxIcon.Error);
                 }
             }
         }
@@ -1055,7 +1379,23 @@ namespace Vape_Store
             // Ensure the grid is refreshed after editing
             if (e.RowIndex >= 0 && e.RowIndex < saleItems.Count)
             {
-                RefreshCartDisplay();
+                // Avoid re-entrant grid refresh during edit end to prevent SetCurrentCellAddressCore errors
+                // Just recalculate totals; the grid will reflect edits without a full redraw
+                CalculateTotals();
+            }
+        }
+
+        private void DataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // Provide visual feedback for editable cells
+            if (e.RowIndex >= 0 && e.RowIndex < saleItems.Count)
+            {
+                // Highlight editable columns (Product Name and Quantity)
+                if (e.ColumnIndex == 1 || e.ColumnIndex == 2) // Product Name or Quantity columns
+                {
+                    dataGridView1.CurrentCell = dataGridView1.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                    dataGridView1.BeginEdit(true);
+                }
             }
         }
 
@@ -1066,36 +1406,19 @@ namespace Vape_Store
 
 
 
-        private void SetupProductAutoComplete()
+        // Event handler for form activation - refreshes stock quantities
+        private void NewSale_Activated(object sender, EventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"Setting up autocomplete for {_products?.Count ?? 0} products");
-                
-                // Enable AutoComplete for the ProductName TextBox
-                txtProductName.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                txtProductName.AutoCompleteSource = AutoCompleteSource.CustomSource;
-
-                // Create AutoComplete collection
-                AutoCompleteStringCollection productCollection = new AutoCompleteStringCollection();
-
-                // Add all product names to the collection
-                if (_products != null)
-                {
-                    foreach (var product in _products)
-                    {
-                        productCollection.Add(product.ProductName);
-                        System.Diagnostics.Debug.WriteLine($"Added to autocomplete: {product.ProductName}");
-                    }
-                }
-
-                // Set the custom source
-                txtProductName.AutoCompleteCustomSource = productCollection;
-                System.Diagnostics.Debug.WriteLine($"Autocomplete setup complete with {productCollection.Count} items");
+                // Refresh stock quantities when form becomes active
+                // This ensures we have the latest stock information from SQL Express
+                RefreshStockQuantities();
+                System.Diagnostics.Debug.WriteLine("Sales form activated - stock quantities refreshed");
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error setting up product autocomplete: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Error refreshing stock on form activation: {ex.Message}");
             }
         }
 
@@ -1218,31 +1541,20 @@ namespace Vape_Store
             LoadProducts();
 
             // Set default values
-            cmbTax.SelectedIndex = 0; // Default to first tax rate
+            if (cmbTax != null && cmbTax.Items != null && cmbTax.Items.Count > 0)
+            {
+                cmbTax.SelectedIndex = 0; // Backward-compat if dropdown still exists with items
+            }
             txtQuantity.Text = "1";
 
             // Initialize sale items list
             saleItems = new List<Models.SaleItem>();
 
             // Set up AutoComplete for Product Name
-            SetupProductAutoComplete();
+            UpdateProductAutoComplete();
 
-            // Set up event handlers
-            cmbTax.SelectedIndexChanged += CmbTax_SelectedIndexChanged;
-            
-            // DataGridView event handlers
-            dataGridView1.CellDoubleClick += DataGridView1_CellDoubleClick;
-            dataGridView1.KeyDown += DataGridView1_KeyDown;
-            dataGridView1.CellValueChanged += DataGridView1_CellValueChanged;
-            dataGridView1.CellEndEdit += DataGridView1_CellEndEdit;
-            
-            // Add Item button event handler
-            btnAddItem.Click += BtnAddItem_Click;
-            
-            // Product search functionality
-            txtProductName.TextChanged += TxtProductName_TextChanged;
-            txtProductName.Leave += TxtProductName_Leave;
-            
+            // Payment method change event handler (not in SetupEventHandlers)
+            cmbPaymentMethod.SelectedIndexChanged += CmbPaymentMethod_SelectedIndexChanged;
             
             // Focus on product name field
             txtProductName.Focus();
@@ -1256,6 +1568,39 @@ namespace Vape_Store
         private void label7_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void CmbPaymentMethod_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (cmbPaymentMethod.SelectedItem != null)
+                {
+                    string selectedPaymentMethod = cmbPaymentMethod.SelectedItem.ToString();
+                    
+                    if (selectedPaymentMethod.Equals("Card", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // For card payments, automatically set paid amount to total
+                        if (decimal.TryParse(txtTotal.Text, out decimal totalAmount))
+                        {
+                            txtPaid.Text = totalAmount.ToString("F2");
+                            CalculateChange(); // Update change calculation
+                        }
+                    }
+                    else
+                    {
+                        // For cash and other payment methods, clear paid amount for manual entry
+                        if (string.IsNullOrEmpty(txtPaid.Text) || txtPaid.Text == "0.00")
+                        {
+                            txtPaid.Text = "";
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error handling payment method change: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
         }
     }
 

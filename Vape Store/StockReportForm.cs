@@ -143,6 +143,15 @@ namespace Vape_Store
                 
                 dgvStockReport.Columns.Add(new DataGridViewTextBoxColumn
                 {
+                    Name = "SellingPrice",
+                    HeaderText = "Selling Price",
+                    DataPropertyName = "SellingPrice",
+                    Width = 100,
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
+                });
+                
+                dgvStockReport.Columns.Add(new DataGridViewTextBoxColumn
+                {
                     Name = "TotalValue",
                     HeaderText = "Total Value",
                     DataPropertyName = "TotalValue",
@@ -232,8 +241,9 @@ namespace Vape_Store
                         BrandName = product.BrandName,
                         StockQuantity = product.StockQuantity,
                         ReorderLevel = product.ReorderLevel,
-                        UnitPrice = product.UnitPrice,
-                        TotalValue = product.StockQuantity * product.UnitPrice,
+                        UnitPrice = product.PurchasePrice > 0 ? product.PurchasePrice : product.CostPrice, // Cost price (what store paid)
+                        SellingPrice = product.RetailPrice, // Retail price (selling price to customer)
+                        TotalValue = product.StockQuantity * (product.PurchasePrice > 0 ? product.PurchasePrice : product.CostPrice), // Total value at cost
                         StockStatus = GetStockStatus(product.StockQuantity, product.ReorderLevel),
                         IsActive = product.IsActive
                     };
@@ -351,30 +361,106 @@ namespace Vape_Store
         {
             try
             {
-                dgvStockReport.DataSource = null;
-                dgvStockReport.DataSource = _stockReportItems;
-                
-                // Apply color coding for stock status
-                foreach (DataGridViewRow row in dgvStockReport.Rows)
-                {
-                    var stockStatus = row.Cells["StockStatus"].Value?.ToString();
-                    if (stockStatus == "Out of Stock")
-                    {
-                        row.DefaultCellStyle.BackColor = Color.LightCoral;
-                    }
-                    else if (stockStatus == "Low Stock")
-                    {
-                        row.DefaultCellStyle.BackColor = Color.LightYellow;
-                    }
-                    else if (stockStatus == "In Stock")
-                    {
-                        row.DefaultCellStyle.BackColor = Color.LightGreen;
-                    }
-                }
+                // Clear the grid and manually populate rows (including totals)
+                AddTotalsRow(); // This method now handles everything: clears grid, adds data rows, and adds totals row
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error refreshing DataGridView: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void AddTotalsRow()
+        {
+            try
+            {
+                if (_stockReportItems == null || _stockReportItems.Count == 0)
+                    return;
+
+                // Calculate totals for all numeric columns
+                int totalStockQty = _stockReportItems.Sum(item => item.StockQuantity);
+                decimal totalUnitPrice = _stockReportItems.Sum(item => item.UnitPrice);
+                decimal totalSellingPrice = _stockReportItems.Sum(item => item.SellingPrice);
+                decimal totalValue = _stockReportItems.Sum(item => item.TotalValue);
+
+                // Remove any existing totals rows first
+                for (int i = dgvStockReport.Rows.Count - 1; i >= 0; i--)
+                {
+                    if (dgvStockReport.Rows[i].Tag != null && dgvStockReport.Rows[i].Tag.ToString() == "TOTAL")
+                    {
+                        dgvStockReport.Rows.RemoveAt(i);
+                    }
+                }
+
+                // Temporarily remove DataSource to allow adding unbound row
+                var savedDataSource = dgvStockReport.DataSource;
+                dgvStockReport.DataSource = null;
+                dgvStockReport.Rows.Clear(); // Clear all existing rows
+
+                // IMPORTANT: Don't restore DataSource - keep rows unbound to preserve totals row
+                // Instead, manually populate all rows from the data source
+                foreach (var item in _stockReportItems)
+                {
+                    int newRowIndex = dgvStockReport.Rows.Add();
+                    DataGridViewRow row = dgvStockReport.Rows[newRowIndex];
+                    row.Cells["ProductCode"].Value = item.ProductCode;
+                    row.Cells["ProductName"].Value = item.ProductName;
+                    row.Cells["CategoryName"].Value = item.CategoryName;
+                    row.Cells["BrandName"].Value = item.BrandName;
+                    row.Cells["StockQuantity"].Value = item.StockQuantity;
+                    row.Cells["ReorderLevel"].Value = item.ReorderLevel;
+                    row.Cells["UnitPrice"].Value = item.UnitPrice.ToString("F2");
+                    row.Cells["SellingPrice"].Value = item.SellingPrice.ToString("F2");
+                    row.Cells["TotalValue"].Value = item.TotalValue.ToString("F2");
+                    row.Cells["StockStatus"].Value = item.StockStatus;
+                    row.Cells["IsActive"].Value = item.IsActive;
+                    row.ReadOnly = true;
+
+                    // Apply color coding
+                    if (item.StockStatus == "Out of Stock")
+                        row.DefaultCellStyle.BackColor = Color.LightCoral;
+                    else if (item.StockStatus == "Low Stock")
+                        row.DefaultCellStyle.BackColor = Color.LightYellow;
+                    else if (item.StockStatus == "In Stock")
+                        row.DefaultCellStyle.BackColor = Color.LightGreen;
+                }
+
+                // Now add totals row at the bottom AFTER all data rows
+                int totalsRowIndex = dgvStockReport.Rows.Add();
+                DataGridViewRow totalsRow = dgvStockReport.Rows[totalsRowIndex];
+                totalsRow.Tag = "TOTAL";
+                totalsRow.DefaultCellStyle.Font = new System.Drawing.Font(dgvStockReport.DefaultCellStyle.Font, FontStyle.Bold);
+                totalsRow.DefaultCellStyle.BackColor = Color.FromArgb(240, 240, 240);
+                totalsRow.DefaultCellStyle.ForeColor = Color.FromArgb(41, 128, 185);
+                
+                // Set alignment for numeric columns
+                if (totalsRow.Cells["UnitPrice"] != null)
+                    totalsRow.Cells["UnitPrice"].Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                if (totalsRow.Cells["SellingPrice"] != null)
+                    totalsRow.Cells["SellingPrice"].Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                if (totalsRow.Cells["TotalValue"] != null)
+                    totalsRow.Cells["TotalValue"].Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+
+                // Set values for totals row
+                totalsRow.Cells["ProductCode"].Value = "TOTAL";
+                totalsRow.Cells["ProductName"].Value = "";
+                totalsRow.Cells["CategoryName"].Value = "";
+                totalsRow.Cells["BrandName"].Value = "";
+                totalsRow.Cells["StockQuantity"].Value = totalStockQty;
+                totalsRow.Cells["ReorderLevel"].Value = "";
+                totalsRow.Cells["UnitPrice"].Value = totalUnitPrice.ToString("F2");
+                totalsRow.Cells["SellingPrice"].Value = totalSellingPrice.ToString("F2");
+                totalsRow.Cells["TotalValue"].Value = totalValue.ToString("F2");
+                totalsRow.Cells["StockStatus"].Value = "";
+                totalsRow.Cells["IsActive"].Value = false;
+
+                // Make the totals row read-only
+                totalsRow.ReadOnly = true;
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error adding totals row: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Error adding totals row: {ex.Message}");
             }
         }
 
@@ -586,9 +672,9 @@ namespace Vape_Store
                 document.Add(new Paragraph(" "));
 
                 // Data table
-                PdfPTable dataTable = new PdfPTable(8);
+                PdfPTable dataTable = new PdfPTable(9);
                 dataTable.WidthPercentage = 100;
-                dataTable.SetWidths(new float[] { 1, 1, 2, 1, 1, 1, 1, 1 });
+                dataTable.SetWidths(new float[] { 1, 1, 2, 1, 1, 1, 1, 1, 1 });
 
                 // Headers
                 dataTable.AddCell(new PdfPCell(new Phrase("Code", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
@@ -597,6 +683,7 @@ namespace Vape_Store
                 dataTable.AddCell(new PdfPCell(new Phrase("Brand", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("Stock", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("Unit Price", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Selling Price", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("Total Value", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("Status", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
 
@@ -609,9 +696,26 @@ namespace Vape_Store
                     dataTable.AddCell(new PdfPCell(new Phrase(item.BrandName ?? "", smallFont)));
                     dataTable.AddCell(new PdfPCell(new Phrase(item.StockQuantity.ToString(), smallFont)));
                     dataTable.AddCell(new PdfPCell(new Phrase($"{item.UnitPrice:F2}", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase($"{item.SellingPrice:F2}", smallFont)));
                     dataTable.AddCell(new PdfPCell(new Phrase($"{(item.StockQuantity * item.UnitPrice):F2}", smallFont)));
                     dataTable.AddCell(new PdfPCell(new Phrase(item.StockStatus ?? "", smallFont)));
                 }
+
+                // Add totals row
+                var totalStockQty = _stockReportItems.Sum(item => item.StockQuantity);
+                var totalUnitPrice = _stockReportItems.Sum(item => item.UnitPrice);
+                var totalSellingPrice = _stockReportItems.Sum(item => item.SellingPrice);
+                // Reuse totalValue already calculated above
+                
+                dataTable.AddCell(new PdfPCell(new Phrase("TOTAL", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("", smallFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("", smallFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("", smallFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase(totalStockQty.ToString(), headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase($"{totalUnitPrice:F2}", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase($"{totalSellingPrice:F2}", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase($"{totalValue:F2}", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("", smallFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
 
                 document.Add(dataTable);
 
@@ -634,13 +738,20 @@ namespace Vape_Store
             using (var writer = new System.IO.StreamWriter(filePath))
             {
                 // Write header
-                writer.WriteLine("Product Code,Product Name,Category,Brand,Stock Quantity,Reorder Level,Unit Price,Total Value,Stock Status");
+                writer.WriteLine("Product Code,Product Name,Category,Brand,Stock Quantity,Reorder Level,Unit Price,Selling Price,Total Value,Stock Status");
                 
                 // Write data
                 foreach (var item in _stockReportItems)
                 {
-                    writer.WriteLine($"{item.ProductCode},{item.ProductName},{item.CategoryName},{item.BrandName},{item.StockQuantity},{item.ReorderLevel},{item.UnitPrice:F2},{item.TotalValue:F2},{item.StockStatus}");
+                    writer.WriteLine($"{item.ProductCode},{item.ProductName},{item.CategoryName},{item.BrandName},{item.StockQuantity},{item.ReorderLevel},{item.UnitPrice:F2},{item.SellingPrice:F2},{item.TotalValue:F2},{item.StockStatus}");
                 }
+                
+                // Add totals row
+                var totalStockQty = _stockReportItems.Sum(item => item.StockQuantity);
+                var totalUnitPrice = _stockReportItems.Sum(item => item.UnitPrice);
+                var totalSellingPrice = _stockReportItems.Sum(item => item.SellingPrice);
+                var totalValue = _stockReportItems.Sum(item => item.TotalValue);
+                writer.WriteLine($"TOTAL,,,,{totalStockQty},,{totalUnitPrice:F2},{totalSellingPrice:F2},{totalValue:F2},");
             }
         }
     }
@@ -656,6 +767,7 @@ namespace Vape_Store
         public int StockQuantity { get; set; }
         public int ReorderLevel { get; set; }
         public decimal UnitPrice { get; set; }
+        public decimal SellingPrice { get; set; }
         public decimal TotalValue { get; set; }
         public string StockStatus { get; set; }
         public bool IsActive { get; set; }

@@ -45,6 +45,10 @@ namespace Vape_Store
             LoadBrands();
             GenerateProductCode();
             LoadProducts();
+
+            // Configure buttons: ADD_button acts as dedicated Save; Save_button is Update
+            ADD_button.Text = "Save";
+            Save_button.Text = "Update";
         }
 
         private void InitializeDataGridView()
@@ -233,17 +237,17 @@ namespace Vape_Store
 
         private void AddButton_Click(object sender, EventArgs e)
         {
-            ClearForm();
-            SetEditMode(false);
-            txtProductName.Focus();
+            // Dedicated Save: always add a new product
+            SaveNewProduct();
         }
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            SaveProduct();
+            // Dedicated Update
+            UpdateExistingProduct();
         }
 
-        private void SaveProduct()
+        private void SaveNewProduct()
         {
             try
             {
@@ -325,72 +329,145 @@ namespace Vape_Store
                     }
                 }
 
-                if (isEditMode)
+                // Add new product
+                var product = new Product
                 {
-                    // Update existing product
-                    var product = new Product
-                    {
-                        ProductID = selectedProductId,
-                        ProductCode = txtProductCode.Text.Trim(),
-                        ProductName = txtProductName.Text.Trim(),
-                        Description = txtDescription.Text.Trim(),
-                        CategoryID = ((Category)cmbCategory.SelectedItem).CategoryID,
-                        BrandID = ((Brand)cmbBrand.SelectedItem).BrandID,
-                        CostPrice = costPrice,
-                        RetailPrice = retailPrice,
-                        StockQuantity = _products.First(p => p.ProductID == selectedProductId).StockQuantity,
-                        ReorderLevel = reorderLevel,
-                        Barcode = !string.IsNullOrEmpty(barcodeText) ? barcodeText : GenerateUniqueBarcode(),
-                        IsActive = checkBox1.Checked,
-                        CreatedDate = _products.First(p => p.ProductID == selectedProductId).CreatedDate
-                    };
+                    ProductCode = txtProductCode.Text.Trim(),
+                    ProductName = txtProductName.Text.Trim(),
+                    Description = txtDescription.Text.Trim(),
+                    CategoryID = ((Category)cmbCategory.SelectedItem).CategoryID,
+                    BrandID = ((Brand)cmbBrand.SelectedItem).BrandID,
+                    CostPrice = costPrice,
+                    RetailPrice = retailPrice,
+                    StockQuantity = 0, // New products start with 0 stock
+                    ReorderLevel = reorderLevel,
+                    Barcode = !string.IsNullOrEmpty(barcodeText) ? barcodeText : GenerateUniqueBarcode(),
+                    IsActive = checkBox1.Checked,
+                    CreatedDate = DateTime.Now
+                };
 
-                    bool success = _productRepository.UpdateProduct(product);
-                    
-                    if (success)
-                    {
-                        ShowMessage("Product updated successfully!", "Success", MessageBoxIcon.Information);
-                        LoadProducts();
-                        ClearForm();
-                        SetEditMode(false);
-                    }
-                    else
-                    {
-                        ShowMessage("Failed to update product.", "Error", MessageBoxIcon.Error);
-                    }
+                bool success = _productRepository.AddProduct(product);
+                
+                if (success)
+                {
+                    ShowMessage("Product added successfully!", "Success", MessageBoxIcon.Information);
+                    LoadProducts();
+                    ClearForm();
+                    GenerateProductCode();
                 }
                 else
                 {
-                    // Add new product
-                    var product = new Product
-                    {
-                        ProductCode = txtProductCode.Text.Trim(),
-                        ProductName = txtProductName.Text.Trim(),
-                        Description = txtDescription.Text.Trim(),
-                        CategoryID = ((Category)cmbCategory.SelectedItem).CategoryID,
-                        BrandID = ((Brand)cmbBrand.SelectedItem).BrandID,
-                        CostPrice = costPrice,
-                        RetailPrice = retailPrice,
-                        StockQuantity = 0, // New products start with 0 stock
-                        ReorderLevel = reorderLevel,
-                        Barcode = !string.IsNullOrEmpty(barcodeText) ? barcodeText : GenerateUniqueBarcode(),
-                        IsActive = checkBox1.Checked,
-                        CreatedDate = DateTime.Now
-                    };
+                    ShowMessage("Failed to add product.", "Error", MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error saving product: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
 
-                    bool success = _productRepository.AddProduct(product);
-                    
-                    if (success)
+        private void UpdateExistingProduct()
+        {
+            try
+            {
+                if (selectedProductId == -1)
+                {
+                    ShowMessage("Please select a product to update.", "Selection Error", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Validate input
+                if (string.IsNullOrWhiteSpace(txtProductName.Text))
+                {
+                    ShowMessage("Please enter a product name.", "Validation Error", MessageBoxIcon.Warning);
+                    txtProductName.Focus();
+                    return;
+                }
+
+                if (cmbCategory.SelectedValue == null)
+                {
+                    ShowMessage("Please select a category.", "Validation Error", MessageBoxIcon.Warning);
+                    cmbCategory.Focus();
+                    return;
+                }
+
+                if (cmbBrand.SelectedValue == null)
+                {
+                    ShowMessage("Please select a brand.", "Validation Error", MessageBoxIcon.Warning);
+                    cmbBrand.Focus();
+                    return;
+                }
+
+                if (!decimal.TryParse(txtPrice.Text, out decimal costPrice) || costPrice < 0)
+                {
+                    ShowMessage("Please enter a valid cost price.", "Validation Error", MessageBoxIcon.Warning);
+                    txtPrice.Focus();
+                    return;
+                }
+
+                if (!decimal.TryParse(txtretailprice.Text, out decimal retailPrice) || retailPrice < 0)
+                {
+                    ShowMessage("Please enter a valid retail price.", "Validation Error", MessageBoxIcon.Warning);
+                    txtretailprice.Focus();
+                    return;
+                }
+
+                if (!int.TryParse(txtReorderLevel.Text, out int reorderLevel) || reorderLevel < 0)
+                {
+                    ShowMessage("Please enter a valid reorder level.", "Validation Error", MessageBoxIcon.Warning);
+                    txtReorderLevel.Focus();
+                    return;
+                }
+
+                string barcodeText = txtBarcode.Text.Trim();
+                if (!string.IsNullOrEmpty(barcodeText))
+                {
+                    if (!_barcodeService.ValidateBarcode(barcodeText))
                     {
-                        ShowMessage("Product added successfully!", "Success", MessageBoxIcon.Information);
-                        LoadProducts();
-                        ClearForm();
-                        GenerateProductCode();
+                        ShowMessage("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.", "Validation Error", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        return;
                     }
-                    else
+
+                    bool isDuplicate = _productRepository.IsBarcodeExists(barcodeText, selectedProductId);
+                    if (isDuplicate)
                     {
-                        ShowMessage("Failed to add product.", "Error", MessageBoxIcon.Error);
+                        ShowMessage($"Barcode '{barcodeText}' already exists! Please use a different barcode.", "Duplicate Barcode", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        txtBarcode.SelectAll();
+                        return;
                     }
+                }
+
+                var existing = _products.First(p => p.ProductID == selectedProductId);
+                var productToUpdate = new Product
+                {
+                    ProductID = selectedProductId,
+                    ProductCode = txtProductCode.Text.Trim(),
+                    ProductName = txtProductName.Text.Trim(),
+                    Description = txtDescription.Text.Trim(),
+                    CategoryID = ((Category)cmbCategory.SelectedItem).CategoryID,
+                    BrandID = ((Brand)cmbBrand.SelectedItem).BrandID,
+                    CostPrice = costPrice,
+                    RetailPrice = retailPrice,
+                    StockQuantity = existing.StockQuantity,
+                    ReorderLevel = reorderLevel,
+                    Barcode = !string.IsNullOrEmpty(barcodeText) ? barcodeText : GenerateUniqueBarcode(),
+                    IsActive = checkBox1.Checked,
+                    CreatedDate = existing.CreatedDate
+                };
+
+                bool updated = _productRepository.UpdateProduct(productToUpdate);
+                if (updated)
+                {
+                    ShowMessage("Product updated successfully!", "Success", MessageBoxIcon.Information);
+                    LoadProducts();
+                    ClearForm();
+                    SetEditMode(false);
+                }
+                else
+                {
+                    ShowMessage("Failed to update product.", "Error", MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
@@ -764,18 +841,11 @@ namespace Vape_Store
         {
             isEditMode = editMode;
             
-            if (editMode)
-            {
-                ADD_button.Text = "New Product";
-                Save_button.Text = "Update";
-                Del_button.Enabled = true;
-            }
-            else
-            {
-                ADD_button.Text = "Add Product";
-                Save_button.Text = "Save";
-                Del_button.Enabled = false;
-            }
+            // Keep fixed labels: ADD_button = Save (add new), Save_button = Update
+            Del_button.Enabled = editMode;
+            // Enable only the relevant action
+            ADD_button.Enabled = !editMode;   // Save enabled only in add mode
+            Save_button.Enabled = editMode;   // Update enabled only in edit mode
         }
 
         private void ShowMessage(string message, string title, MessageBoxIcon icon)

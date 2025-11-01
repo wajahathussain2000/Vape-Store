@@ -168,9 +168,8 @@ namespace Vape_Store
         {
             try
             {
-                // Open Products form to allow barcode printing
-                var productsForm = new Products();
-                productsForm.ShowDialog();
+                var printBarcodeForm = new PrintBarcodeForm();
+                printBarcodeForm.ShowDialog();
             }
             catch (Exception ex)
             {

@@ -310,6 +310,35 @@ namespace Vape_Store
                     {
                         foreach (var returnItem in returnItems)
                         {
+                            // Get product name - if not in return item, look it up by ProductID
+                            string productName = returnItem.ProductName;
+                            if (string.IsNullOrWhiteSpace(productName) && returnItem.ProductID > 0)
+                            {
+                                // Try to find product in loaded products list
+                                var product = _products?.FirstOrDefault(p => p.ProductID == returnItem.ProductID);
+                                if (product != null && !string.IsNullOrWhiteSpace(product.ProductName))
+                                {
+                                    productName = product.ProductName;
+                                }
+                                else
+                                {
+                                    // If not in list, try direct database lookup
+                                    try
+                                    {
+                                        var dbProduct = _productRepository.GetProductById(returnItem.ProductID);
+                                        productName = dbProduct?.ProductName ?? $"Product ID: {returnItem.ProductID}";
+                                    }
+                                    catch
+                                    {
+                                        productName = $"Product ID: {returnItem.ProductID}";
+                                    }
+                                }
+                            }
+                            else if (string.IsNullOrWhiteSpace(productName))
+                            {
+                                productName = returnItem.ProductID > 0 ? $"Product ID: {returnItem.ProductID}" : "Unknown Product";
+                            }
+                            
                             var reportItem = new SalesReturnReportItem
                             {
                                 ReturnID = salesReturn.ReturnID,
@@ -317,7 +346,7 @@ namespace Vape_Store
                                 ReturnDate = salesReturn.ReturnDate,
                                 OriginalInvoiceNumber = salesReturn.OriginalInvoiceNumber,
                                 CustomerName = salesReturn.CustomerName ?? "Unknown",
-                                ProductName = returnItem.ProductName,
+                                ProductName = productName,
                                 Quantity = returnItem.Quantity,
                                 UnitPrice = returnItem.UnitPrice,
                                 SubTotal = returnItem.SubTotal,

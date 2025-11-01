@@ -21,173 +21,338 @@ namespace Vape_Store
             _purchase = purchase;
             _purchaseItems = purchaseItems ?? new List<PurchaseItem>();
             _receiptService = new ThermalReceiptService();
+            
+            // Wire up event handlers after InitializeComponent
+            WireUpEventHandlers();
+            
             LoadReceiptPreview();
+        }
+
+        private void WireUpEventHandlers()
+        {
+            // Find buttons and wire up events - more robust approach
+            try
+            {
+                // Find the main panel first
+                Panel mainPanel = null;
+                foreach (Control control in this.Controls)
+                {
+                    if (control is Panel panel)
+                    {
+                        mainPanel = panel;
+                        break;
+                    }
+                }
+
+                if (mainPanel != null)
+                {
+                    // Find the button panel
+                    Panel buttonPanel = null;
+                    foreach (Control control in mainPanel.Controls)
+                    {
+                        if (control is Panel panel && panel.BackColor == System.Drawing.Color.LightGray)
+                        {
+                            buttonPanel = panel;
+                            break;
+                        }
+                    }
+
+                    if (buttonPanel != null)
+                    {
+                        // Wire up button events
+                        foreach (Control control in buttonPanel.Controls)
+                        {
+                            if (control is Button button)
+                            {
+                                switch (button.Text)
+                                {
+                                    case "Print Receipt":
+                                        button.Click += BtnPrint_Click;
+                                        break;
+                                    case "Save PDF":
+                                        button.Click += BtnSavePDF_Click;
+                                        break;
+                                    case "Close":
+                                        button.Click += BtnClose_Click;
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error wiring up event handlers: {ex.Message}");
+            }
         }
 
 
         private void LoadReceiptPreview()
         {
-            // Create a preview of the receipt - same as sales form
-            var previewPanel = this.Controls[0] as Panel;
-            if (previewPanel != null)
+            // Create a preview of the receipt with simple A4 design
+            try
             {
-                previewPanel.Paint += PreviewPanel_Paint;
+                // Find the receipt panel more robustly
+                Panel receiptPanel = null;
+                
+                // Find the main panel first
+                foreach (Control control in this.Controls)
+                {
+                    if (control is Panel mainPanel)
+                    {
+                        // Find the receipt panel within main panel
+                        foreach (Control subControl in mainPanel.Controls)
+                        {
+                            if (subControl is Panel panel && panel.AutoScroll == true)
+                            {
+                                receiptPanel = panel;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                if (receiptPanel != null)
+                {
+                    receiptPanel.Paint += ReceiptPanel_Paint;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading receipt preview: {ex.Message}");
             }
         }
 
-        private void PreviewPanel_Paint(object sender, PaintEventArgs e)
+        private void ReceiptPanel_Paint(object sender, PaintEventArgs e)
         {
             try
             {
                 Graphics g = e.Graphics;
-                float yPosition = 20;
-                float leftMargin = 25;
-                float rightMargin = 400;
-                float centerX = 225;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-                // Store header with better formatting
-                yPosition = DrawCenteredText(g, "VAPE STORE", new Font("Arial", 18, FontStyle.Bold), centerX, yPosition);
-                yPosition += 5;
-                yPosition = DrawCenteredText(g, "123 Main Street, City, State 12345", new Font("Arial", 9), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Phone: (555) 123-4567", new Font("Arial", 9), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "info@vapestore.com", new Font("Arial", 9), centerX, yPosition);
-                
-                yPosition += 15;
-                DrawDashedLine(g, leftMargin, yPosition, rightMargin, yPosition);
-                yPosition += 15;
+                // A4 dimensions and margins
+                float pageWidth = 720; // A4 width in pixels at 96 DPI
+                float leftMargin = 50;
+                float rightMargin = pageWidth - 50;
+                float centerX = pageWidth / 2;
+                float yPosition = 30;
 
-                // Purchase invoice details with better alignment
-                yPosition = DrawText(g, "PURCHASE INVOICE #: " + _purchase.InvoiceNumber, new Font("Arial", 11, FontStyle.Bold), leftMargin, yPosition);
-                yPosition = DrawText(g, "DATE: " + _purchase.PurchaseDate.ToString("MM/dd/yyyy hh:mm tt"), new Font("Arial", 9), leftMargin, yPosition);
-                
-                // Add user information
-                if (!string.IsNullOrEmpty(_purchase.UserName))
-                {
-                    yPosition = DrawText(g, "ENTERED BY: " + _purchase.UserName, new Font("Arial", 9), leftMargin, yPosition);
-                }
-                
-                // Add supplier information
-                if (!string.IsNullOrEmpty(_purchase.SupplierName))
-                {
-                    yPosition = DrawText(g, "SUPPLIER: " + _purchase.SupplierName, new Font("Arial", 9), leftMargin, yPosition);
-                }
-                
-                yPosition += 10;
-                DrawDashedLine(g, leftMargin, yPosition, rightMargin, yPosition);
-                yPosition += 15;
+                // Simple header
+                DrawSimpleHeader(g, leftMargin, rightMargin, ref yPosition);
 
-                // Items header with better alignment - all on same line
-                float itemCol = leftMargin;
-                float qtyCol = leftMargin + 130;
-                float priceCol = leftMargin + 200;
-                float totalCol = leftMargin + 300;
-                
-                // Draw all headers at the same Y position
-                DrawText(g, "ITEM", new Font("Arial", 9, FontStyle.Bold), itemCol, yPosition);
-                DrawText(g, "QTY", new Font("Arial", 9, FontStyle.Bold), qtyCol, yPosition);
-                DrawText(g, "PRICE", new Font("Arial", 9, FontStyle.Bold), priceCol, yPosition);
-                DrawText(g, "TOTAL", new Font("Arial", 9, FontStyle.Bold), totalCol, yPosition);
-                
-                // Move to next line after drawing all headers
-                yPosition += new Font("Arial", 9, FontStyle.Bold).Height;
-                
-                yPosition += 5;
-                g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
-                yPosition += 10;
+                // Invoice details section
+                DrawSimpleInvoiceDetails(g, leftMargin, rightMargin, ref yPosition);
 
-                // Items with better formatting - all columns on same line
-                foreach (var item in _purchaseItems)
-                {
-                    string productName = item.ProductName;
-                    if (productName.Length > 18)
-                    {
-                        productName = productName.Substring(0, 15) + "...";
-                    }
-                    
-                    // Draw all item details at the same Y position
-                    DrawText(g, productName, new Font("Arial", 8), itemCol, yPosition);
-                    DrawText(g, item.Quantity.ToString(), new Font("Arial", 8), qtyCol, yPosition);
-                    DrawText(g, item.UnitPrice.ToString("F2"), new Font("Arial", 8), priceCol, yPosition);
-                    DrawText(g, item.SubTotal.ToString("F2"), new Font("Arial", 8), totalCol, yPosition);
-                    
-                    // Move to next line for next item
-                    yPosition += new Font("Arial", 8).Height + 3;
-                }
+                // Supplier information section
+                DrawSimpleSupplierInfo(g, leftMargin, rightMargin, ref yPosition);
 
-                yPosition += 10;
-                g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
-                yPosition += 15;
+                // Items table with simple styling
+                DrawSimpleItemsTable(g, leftMargin, rightMargin, ref yPosition);
 
-                // Financial summary with better alignment
-                float labelCol = leftMargin + 220;
-                float valueCol = leftMargin + 300;
-                
-                // Subtotal
-                DrawText(g, "SUBTOTAL:", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
-                DrawText(g, _purchase.SubTotal.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
-                yPosition += new Font("Arial", 9).Height;
-                
-                // Tax
-                if (_purchase.TaxAmount > 0)
-                {
-                    DrawText(g, "TAX (" + _purchase.TaxPercent.ToString("F1") + "%):", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
-                    DrawText(g, _purchase.TaxAmount.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
-                    yPosition += new Font("Arial", 9).Height;
-                }
-                
-                // Discount (if applicable)
-                decimal discountAmount = _purchase.SubTotal + _purchase.TaxAmount - _purchase.TotalAmount;
-                if (discountAmount > 0)
-                {
-                    DrawText(g, "DISCOUNT:", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
-                    DrawText(g, "-" + discountAmount.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
-                    yPosition += new Font("Arial", 9).Height;
-                }
-                
-                yPosition += 10;
-                g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
-                yPosition += 15;
+                // Financial summary with simple design
+                DrawSimpleFinancialSummary(g, leftMargin, rightMargin, ref yPosition);
 
-                // Total with emphasis
-                DrawText(g, "TOTAL:", new Font("Arial", 12, FontStyle.Bold), labelCol, yPosition);
-                DrawText(g, _purchase.TotalAmount.ToString("F2"), new Font("Arial", 12, FontStyle.Bold), valueCol, yPosition);
-                yPosition += new Font("Arial", 12, FontStyle.Bold).Height;
-                
-                yPosition += 15;
-                g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
-                yPosition += 15;
+                // Payment details
+                DrawSimplePaymentDetails(g, leftMargin, rightMargin, ref yPosition);
 
-                // Payment details with better formatting
-                yPosition = DrawText(g, "PAYMENT METHOD: " + _purchase.PaymentMethod.ToUpper(), new Font("Arial", 9, FontStyle.Bold), leftMargin, yPosition);
-                yPosition = DrawText(g, "AMOUNT PAID: $" + _purchase.PaidAmount.ToString("F2"), new Font("Arial", 9), leftMargin, yPosition);
-                
-                // Calculate balance amount
-                decimal balanceAmount = _purchase.TotalAmount - _purchase.PaidAmount;
-                if (balanceAmount > 0)
-                {
-                    yPosition = DrawText(g, "BALANCE DUE: $" + balanceAmount.ToString("F2"), new Font("Arial", 9, FontStyle.Bold), leftMargin, yPosition);
-                }
-                else if (balanceAmount < 0)
-                {
-                    yPosition = DrawText(g, "OVERPAID: $" + Math.Abs(balanceAmount).ToString("F2"), new Font("Arial", 9, FontStyle.Bold), leftMargin, yPosition);
-                }
-
-                yPosition += 20;
-
-                // Additional receipt information
-                yPosition = DrawCenteredText(g, "Purchase Receipt #" + _purchase.InvoiceNumber, new Font("Arial", 8), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Generated: " + DateTime.Now.ToString("MM/dd/yyyy hh:mm tt"), new Font("Arial", 8), centerX, yPosition);
-                yPosition += 10;
-
-                // Footer with better styling
-                yPosition = DrawCenteredText(g, "Thank you for your business!", new Font("Arial", 9, FontStyle.Bold), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Please come again!", new Font("Arial", 8), centerX, yPosition);
-                yPosition += 10;
-                yPosition = DrawCenteredText(g, "---", new Font("Arial", 8), centerX, yPosition);
+                // Footer with simple branding
+                DrawSimpleFooter(g, leftMargin, rightMargin, ref yPosition);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error generating preview: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error generating receipt: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void DrawSimpleHeader(Graphics g, float leftMargin, float rightMargin, ref float yPosition)
+        {
+            // Simple header - no background colors
+            float centerX = (leftMargin + rightMargin) / 2;
+            
+            // Company name centered
+            using (var blackBrush = new SolidBrush(Color.Black))
+            {
+                g.DrawString("VAPE STORE", new Font("Arial", 24, FontStyle.Bold), blackBrush, centerX - 100, yPosition);
+                g.DrawString("123 Main Street, City, State 12345", new Font("Arial", 10), blackBrush, centerX - 120, yPosition + 30);
+                g.DrawString("Phone: (555) 123-4567 | Email: info@vapestore.com", new Font("Arial", 9), blackBrush, centerX - 150, yPosition + 45);
+            }
+
+            yPosition += 80;
+            
+            // Simple line separator
+            g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
+            yPosition += 20;
+        }
+
+        private void DrawSimpleInvoiceDetails(Graphics g, float leftMargin, float rightMargin, ref float yPosition)
+        {
+            // Simple invoice details - no background colors
+            using (var blackBrush = new SolidBrush(Color.Black))
+            {
+                g.DrawString("PURCHASE INVOICE", new Font("Arial", 14, FontStyle.Bold), blackBrush, leftMargin, yPosition);
+                g.DrawString($"Invoice #: {_purchase.InvoiceNumber}", new Font("Arial", 11, FontStyle.Bold), blackBrush, leftMargin, yPosition + 25);
+                g.DrawString($"Date: {_purchase.PurchaseDate:MMM dd, yyyy 'at' hh:mm tt}", new Font("Arial", 10), blackBrush, leftMargin, yPosition + 45);
+                
+                if (!string.IsNullOrEmpty(_purchase.UserName))
+                {
+                    g.DrawString($"Entered by: {_purchase.UserName}", new Font("Arial", 10), blackBrush, rightMargin - 200, yPosition + 25);
+                }
+            }
+
+            yPosition += 80;
+            
+            // Simple line separator
+            g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
+            yPosition += 20;
+        }
+
+        private void DrawSimpleSupplierInfo(Graphics g, float leftMargin, float rightMargin, ref float yPosition)
+        {
+            if (!string.IsNullOrEmpty(_purchase.SupplierName))
+            {
+                // Simple supplier info - no background colors
+                using (var blackBrush = new SolidBrush(Color.Black))
+                {
+                    g.DrawString("SUPPLIER INFORMATION", new Font("Arial", 12, FontStyle.Bold), blackBrush, leftMargin, yPosition);
+                    g.DrawString($"Supplier: {_purchase.SupplierName}", new Font("Arial", 11), blackBrush, leftMargin, yPosition + 25);
+                }
+
+                yPosition += 60;
+                
+                // Simple line separator
+                g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
+                yPosition += 20;
+            }
+        }
+
+        private void DrawSimpleItemsTable(Graphics g, float leftMargin, float rightMargin, ref float yPosition)
+        {
+            // Simple table headers - no background colors
+            float[] columnPositions = { leftMargin, leftMargin + 300, leftMargin + 400, leftMargin + 500 };
+            string[] headers = { "PRODUCT", "QTY", "UNIT PRICE", "TOTAL" };
+
+            using (var blackBrush = new SolidBrush(Color.Black))
+            {
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    g.DrawString(headers[i], new Font("Arial", 10, FontStyle.Bold), blackBrush, columnPositions[i], yPosition);
+                }
+            }
+
+            yPosition += 25;
+            
+            // Simple line separator
+            g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
+            yPosition += 15;
+
+            // Items rows - simple alternating background
+            bool isEven = false;
+            foreach (var item in _purchaseItems)
+            {
+                // Simple alternating row background
+                if (isEven)
+                {
+                    using (var lightBrush = new SolidBrush(Color.FromArgb(248, 248, 248)))
+                    {
+                        g.FillRectangle(lightBrush, leftMargin, yPosition - 5, rightMargin - leftMargin, 25);
+                    }
+                }
+
+                // Row content
+                using (var blackBrush = new SolidBrush(Color.Black))
+                {
+                    g.DrawString(item.ProductName, new Font("Arial", 10), blackBrush, columnPositions[0], yPosition);
+                    g.DrawString(item.Quantity.ToString(), new Font("Arial", 10), blackBrush, columnPositions[1], yPosition);
+                    g.DrawString(item.UnitPrice.ToString("F2"), new Font("Arial", 10), blackBrush, columnPositions[2], yPosition);
+                    g.DrawString(item.SubTotal.ToString("F2"), new Font("Arial", 10, FontStyle.Bold), blackBrush, columnPositions[3], yPosition);
+                }
+
+                yPosition += 25;
+                isEven = !isEven;
+            }
+
+            yPosition += 20;
+        }
+
+        private void DrawSimpleFinancialSummary(Graphics g, float leftMargin, float rightMargin, ref float yPosition)
+        {
+            // Simple financial summary - no background colors
+            float summaryX = rightMargin - 300;
+            float summaryY = yPosition;
+
+            using (var blackBrush = new SolidBrush(Color.Black))
+            {
+                // Subtotal
+                g.DrawString("Subtotal:", new Font("Arial", 12), blackBrush, summaryX, summaryY);
+                g.DrawString(_purchase.SubTotal.ToString("F2"), new Font("Arial", 12, FontStyle.Bold), blackBrush, summaryX + 150, summaryY);
+                summaryY += 25;
+
+                // Tax
+                if (_purchase.TaxAmount > 0)
+                {
+                    g.DrawString($"Tax ({_purchase.TaxPercent:F1}%):", new Font("Arial", 12), blackBrush, summaryX, summaryY);
+                    g.DrawString(_purchase.TaxAmount.ToString("F2"), new Font("Arial", 12, FontStyle.Bold), blackBrush, summaryX + 150, summaryY);
+                    summaryY += 25;
+                }
+
+                // Discount
+                decimal discountAmount = _purchase.SubTotal + _purchase.TaxAmount - _purchase.TotalAmount;
+                if (discountAmount > 0)
+                {
+                    g.DrawString("Discount:", new Font("Arial", 12), blackBrush, summaryX, summaryY);
+                    g.DrawString($"-{discountAmount:F2}", new Font("Arial", 12, FontStyle.Bold), blackBrush, summaryX + 150, summaryY);
+                    summaryY += 25;
+                }
+
+                // Total with emphasis
+                summaryY += 10;
+                g.DrawString("TOTAL:", new Font("Arial", 16, FontStyle.Bold), blackBrush, summaryX, summaryY);
+                g.DrawString(_purchase.TotalAmount.ToString("F2"), new Font("Arial", 16, FontStyle.Bold), blackBrush, summaryX + 150, summaryY);
+            }
+
+            yPosition += 120;
+        }
+
+        private void DrawSimplePaymentDetails(Graphics g, float leftMargin, float rightMargin, ref float yPosition)
+        {
+            // Simple payment details - no background colors
+            using (var blackBrush = new SolidBrush(Color.Black))
+            {
+                g.DrawString("PAYMENT DETAILS", new Font("Arial", 12, FontStyle.Bold), blackBrush, leftMargin, yPosition);
+                g.DrawString($"Payment Method: {_purchase.PaymentMethod.ToUpper()}", new Font("Arial", 11), blackBrush, leftMargin, yPosition + 25);
+                g.DrawString($"Amount Paid: {_purchase.PaidAmount:F2}", new Font("Arial", 11), blackBrush, leftMargin, yPosition + 45);
+
+                decimal balanceAmount = _purchase.TotalAmount - _purchase.PaidAmount;
+                if (balanceAmount > 0)
+                {
+                    g.DrawString($"Balance Due: {balanceAmount:F2}", new Font("Arial", 11, FontStyle.Bold), blackBrush, leftMargin, yPosition + 65);
+                }
+                else if (balanceAmount < 0)
+                {
+                    g.DrawString($"Overpaid: {Math.Abs(balanceAmount):F2}", new Font("Arial", 11, FontStyle.Bold), blackBrush, leftMargin, yPosition + 65);
+                }
+            }
+
+            yPosition += 100;
+        }
+
+        private void DrawSimpleFooter(Graphics g, float leftMargin, float rightMargin, ref float yPosition)
+        {
+            // Simple footer - no background colors
+            yPosition += 20;
+            
+            // Simple line separator
+            g.DrawLine(Pens.Black, leftMargin, yPosition, rightMargin, yPosition);
+            yPosition += 20;
+
+            using (var blackBrush = new SolidBrush(Color.Black))
+            {
+                g.DrawString("Thank you for your business!", new Font("Arial", 12, FontStyle.Bold), blackBrush, leftMargin, yPosition);
+                g.DrawString("Generated on " + DateTime.Now.ToString("MMM dd, yyyy 'at' hh:mm tt"), new Font("Arial", 9), blackBrush, leftMargin, yPosition + 20);
+                g.DrawString("Purchase Receipt #" + _purchase.InvoiceNumber, new Font("Arial", 9), blackBrush, leftMargin, yPosition + 35);
             }
         }
 
@@ -248,43 +413,47 @@ namespace Vape_Store
             }
         }
 
-        private void BtnPrintDirect_Click(object sender, EventArgs e)
+        private void BtnSavePDF_Click(object sender, EventArgs e)
         {
             try
             {
-                // Convert purchase to sale format for printing
-                var sale = new Sale
+                SaveFileDialog saveDialog = new SaveFileDialog
                 {
-                    InvoiceNumber = _purchase.InvoiceNumber,
-                    SaleDate = _purchase.PurchaseDate,
-                    SubTotal = _purchase.SubTotal,
-                    TaxAmount = _purchase.TaxAmount,
-                    TaxPercent = _purchase.TaxPercent,
-                    TotalAmount = _purchase.TotalAmount,
-                    PaymentMethod = _purchase.PaymentMethod,
-                    PaidAmount = _purchase.PaidAmount,
-                    ChangeAmount = _purchase.TotalAmount - _purchase.PaidAmount,
-                    UserName = _purchase.UserName,
-                    SaleItems = _purchaseItems.Select(pi => new SaleItem
-                    {
-                        ProductName = pi.ProductName,
-                        Quantity = pi.Quantity,
-                        UnitPrice = pi.UnitPrice,
-                        SubTotal = pi.SubTotal
-                    }).ToList()
+                    Filter = "PDF Files (*.pdf)|*.pdf",
+                    FileName = $"Purchase_Receipt_{_purchase.InvoiceNumber}_{DateTime.Now:yyyyMMdd}.pdf",
+                    Title = "Save Purchase Receipt as PDF"
                 };
-                
-                _receiptService.PrintReceiptDirect(sale);
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // TODO: Implement PDF generation
+                    MessageBox.Show("PDF generation feature will be implemented soon!", "Feature Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error printing receipt: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error saving PDF: {ex.Message}", "PDF Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void BtnClose_Click(object sender, EventArgs e)
         {
             this.Close();
+        }
+
+        // Helper method to draw rounded rectangles
+        private void FillRoundedRectangle(Graphics g, Brush brush, float x, float y, float width, float height, float radius)
+        {
+            using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
+                path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
+                path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
+                path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
+                path.CloseFigure();
+                
+                g.FillPath(brush, path);
+            }
         }
     }
 }

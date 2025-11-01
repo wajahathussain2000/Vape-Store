@@ -185,15 +185,15 @@ namespace Vape_Store
                 yPosition += 15;
 
                 // Financial summary with better alignment
-                float labelCol = leftMargin + 220;
-                float valueCol = leftMargin + 300;
+                float labelCol = leftMargin + 200;
+                float valueCol = leftMargin + 320;
                 
                 // Subtotal
                 DrawText(g, "SUBTOTAL:", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
                 DrawText(g, _sale.SubTotal.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
                 yPosition += new Font("Arial", 9).Height;
                 
-                // Tax
+                // Sales Tax
                 if (_sale.TaxAmount > 0)
                 {
                     DrawText(g, "TAX (" + _sale.TaxPercent.ToString("F1") + "%):", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
@@ -225,15 +225,15 @@ namespace Vape_Store
 
                 // Payment details with better formatting
                 yPosition = DrawText(g, "PAYMENT METHOD: " + _sale.PaymentMethod.ToUpper(), new Font("Arial", 9, FontStyle.Bold), leftMargin, yPosition);
-                yPosition = DrawText(g, "AMOUNT PAID: $" + _sale.PaidAmount.ToString("F2"), new Font("Arial", 9), leftMargin, yPosition);
+                yPosition = DrawText(g, "AMOUNT PAID: " + _sale.PaidAmount.ToString("F2"), new Font("Arial", 9), leftMargin, yPosition);
                 
                 if (_sale.ChangeAmount > 0)
                 {
-                    yPosition = DrawText(g, "CHANGE: $" + _sale.ChangeAmount.ToString("F2"), new Font("Arial", 9, FontStyle.Bold), leftMargin, yPosition);
+                    yPosition = DrawText(g, "CHANGE: " + _sale.ChangeAmount.ToString("F2"), new Font("Arial", 9, FontStyle.Bold), leftMargin, yPosition);
                 }
                 else if (_sale.ChangeAmount < 0)
                 {
-                    yPosition = DrawText(g, "BALANCE DUE: $" + Math.Abs(_sale.ChangeAmount).ToString("F2"), new Font("Arial", 9, FontStyle.Bold), leftMargin, yPosition);
+                    yPosition = DrawText(g, "BALANCE DUE: " + Math.Abs(_sale.ChangeAmount).ToString("F2"), new Font("Arial", 9, FontStyle.Bold), leftMargin, yPosition);
                 }
 
                 yPosition += 20;

@@ -379,10 +379,14 @@ namespace Vape_Store
                 // If you need to show discount amount, you could add a label or tooltip
                 txtTax.Text = taxAmount.ToString("F2");
                 txtTotal.Text = total.ToString("F2");
+                
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"Sales Return Calculation: Subtotal={subtotal:F2}, Discount={discountAmount:F2}, Taxable={taxableAmount:F2}, Tax%={taxPercent:F2}, Tax={taxAmount:F2}, Total={total:F2}");
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error calculating totals: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Sales Return CalculateTotals Error: {ex.Message}");
             }
         }
 
@@ -430,7 +434,16 @@ namespace Vape_Store
 
         private void CmbTax_SelectedIndexChanged(object sender, EventArgs e)
         {
-            CalculateTotals();
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Sales Return Tax dropdown changed to: {cmbTax.SelectedItem?.ToString()}");
+                CalculateTotals();
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error handling tax selection: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Sales Return Tax Selection Error: {ex.Message}");
+            }
         }
 
         private void TxtTaxPercent_TextChanged(object sender, EventArgs e)
@@ -547,6 +560,15 @@ namespace Vape_Store
             _returnItems.Clear();
             _selectedSale = null;
             GenerateReturnNumber();
+
+            // Reload lookups so dropdowns are ready for the next return
+            LoadCustomers();
+            LoadSales();
+            InitializeReturnReasons();
+            if (cmbTax.Items.Count > 0)
+            {
+                cmbTax.SelectedIndex = 0;
+            }
         }
 
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
@@ -575,6 +597,9 @@ namespace Vape_Store
             txtTaxPercent.Text = "0";
             txtTax.Text = "0.00";
             txtTotal.Text = "0.00";
+            
+            // Ensure tax calculation runs after initialization
+            CalculateTotals();
         }
 
         private decimal ParseDecimal(string value)

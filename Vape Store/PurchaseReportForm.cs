@@ -86,6 +86,8 @@ namespace Vape_Store
                 dgvPurchaseReport.RowHeadersVisible = false;
                 dgvPurchaseReport.EnableHeadersVisualStyles = false;
                 dgvPurchaseReport.GridColor = Color.FromArgb(236, 240, 241);
+                // Suppress default DataGridView data error dialogs
+                dgvPurchaseReport.DataError += (s, e) => { e.ThrowException = false; };
                 
                 // Set header styling
                 dgvPurchaseReport.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 152, 219);
@@ -457,7 +459,8 @@ namespace Vape_Store
                     ).ToList();
                 }
                 
-                // Bind to DataGridView
+                // Bind to DataGridView (reset first to avoid CurrencyManager index mismatches)
+                dgvPurchaseReport.DataSource = null;
                 dgvPurchaseReport.DataSource = _purchaseReportItems;
                 
                 // Update summary

@@ -10,9 +10,12 @@ namespace Vape_Store
         private ProgressBar progressBar;
         private Timer animationTimer;
         private int animationStep = 0;
+        private string baseMessage = "";
+        private bool isDisposed = false;
 
         public LoadingIndicator(string message = "Loading...")
         {
+            baseMessage = message;
             InitializeComponent();
             lblMessage.Text = message;
             StartAnimation();
@@ -29,7 +32,7 @@ namespace Vape_Store
             // Form properties
             this.Text = "Loading";
             this.Size = new Size(300, 120);
-            this.StartPosition = FormStartPosition.CenterParent;
+            this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -61,75 +64,222 @@ namespace Vape_Store
 
         private void StartAnimation()
         {
-            animationTimer.Start();
+            if (animationTimer != null && !isDisposed)
+            {
+                animationTimer.Start();
+            }
         }
 
         private void AnimationTimer_Tick(object sender, EventArgs e)
         {
-            animationStep++;
-            string dots = new string('.', (animationStep % 4));
-            lblMessage.Text = lblMessage.Text.Split('.')[0] + dots;
+            if (isDisposed || lblMessage == null || lblMessage.IsDisposed)
+            {
+                animationTimer?.Stop();
+                return;
+            }
+
+            try
+            {
+                if (InvokeRequired)
+                {
+                    this.BeginInvoke(new Action(() => UpdateAnimation()));
+                }
+                else
+                {
+                    UpdateAnimation();
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                animationTimer?.Stop();
+            }
+            catch (InvalidOperationException)
+            {
+                animationTimer?.Stop();
+            }
+        }
+
+        private void UpdateAnimation()
+        {
+            if (isDisposed || lblMessage == null || lblMessage.IsDisposed)
+                return;
+
+            try
+            {
+                animationStep++;
+                string dots = new string('.', (animationStep % 4));
+                
+                // Safely update the message - keep base message and add dots
+                string messageWithoutDots = baseMessage;
+                if (string.IsNullOrEmpty(messageWithoutDots))
+                {
+                    messageWithoutDots = "Loading";
+                }
+                
+                lblMessage.Text = messageWithoutDots + dots;
+            }
+            catch (ObjectDisposedException)
+            {
+                animationTimer?.Stop();
+            }
+            catch (InvalidOperationException)
+            {
+                animationTimer?.Stop();
+            }
         }
 
         public void UpdateMessage(string message)
         {
-            lblMessage.Text = message;
+            if (isDisposed || lblMessage == null || lblMessage.IsDisposed)
+                return;
+
+            try
+            {
+                if (InvokeRequired)
+                {
+                    this.BeginInvoke(new Action(() => UpdateMessage(message)));
+                    return;
+                }
+
+                baseMessage = message ?? "Loading";
+                lblMessage.Text = baseMessage;
+                animationStep = 0; // Reset animation
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
         }
 
         public void SetProgress(int percentage)
         {
-            progressBar.Style = ProgressBarStyle.Continuous;
-            progressBar.Value = Math.Min(100, Math.Max(0, percentage));
+            if (isDisposed || progressBar == null || progressBar.IsDisposed)
+                return;
+
+            try
+            {
+                if (InvokeRequired)
+                {
+                    this.BeginInvoke(new Action(() => SetProgress(percentage)));
+                    return;
+                }
+
+                progressBar.Style = ProgressBarStyle.Continuous;
+                progressBar.Value = Math.Min(100, Math.Max(0, percentage));
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            isDisposed = true;
+            animationTimer?.Stop();
+            base.OnFormClosing(e);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            isDisposed = true;
             animationTimer?.Stop();
             animationTimer?.Dispose();
+            animationTimer = null;
             base.OnFormClosed(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                isDisposed = true;
+                animationTimer?.Stop();
+                animationTimer?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 
     public static class LoadingHelper
     {
         private static LoadingIndicator currentIndicator;
+        private static readonly object lockObject = new object();
 
         public static void ShowLoading(string message = "Loading...")
         {
-            if (currentIndicator == null || currentIndicator.IsDisposed)
+            lock (lockObject)
             {
-                currentIndicator = new LoadingIndicator(message);
-                currentIndicator.Show();
-            }
-            else
-            {
-                currentIndicator.UpdateMessage(message);
+                if (currentIndicator == null || currentIndicator.IsDisposed)
+                {
+                    if (Application.OpenForms.Count > 0)
+                    {
+                        var parentForm = Application.OpenForms[0];
+                        currentIndicator = new LoadingIndicator(message);
+                        currentIndicator.StartPosition = FormStartPosition.CenterParent;
+                        currentIndicator.Owner = parentForm;
+                    }
+                    else
+                    {
+                        currentIndicator = new LoadingIndicator(message);
+                        currentIndicator.StartPosition = FormStartPosition.CenterScreen;
+                    }
+                    
+                    currentIndicator.Show();
+                }
+                else
+                {
+                    currentIndicator.UpdateMessage(message);
+                }
             }
         }
 
         public static void UpdateLoading(string message)
         {
-            if (currentIndicator != null && !currentIndicator.IsDisposed)
+            lock (lockObject)
             {
-                currentIndicator.UpdateMessage(message);
+                if (currentIndicator != null && !currentIndicator.IsDisposed)
+                {
+                    currentIndicator.UpdateMessage(message);
+                }
             }
         }
 
         public static void SetProgress(int percentage)
         {
-            if (currentIndicator != null && !currentIndicator.IsDisposed)
+            lock (lockObject)
             {
-                currentIndicator.SetProgress(percentage);
+                if (currentIndicator != null && !currentIndicator.IsDisposed)
+                {
+                    currentIndicator.SetProgress(percentage);
+                }
             }
         }
 
         public static void HideLoading()
         {
-            if (currentIndicator != null && !currentIndicator.IsDisposed)
+            lock (lockObject)
             {
-                currentIndicator.Close();
-                currentIndicator.Dispose();
-                currentIndicator = null;
+                if (currentIndicator != null && !currentIndicator.IsDisposed)
+                {
+                    try
+                    {
+                        if (currentIndicator.InvokeRequired)
+                        {
+                            currentIndicator.Invoke(new Action(() => {
+                                currentIndicator.Close();
+                                currentIndicator.Dispose();
+                            }));
+                        }
+                        else
+                        {
+                            currentIndicator.Close();
+                            currentIndicator.Dispose();
+                        }
+                    }
+                    catch (ObjectDisposedException) { }
+                    catch (InvalidOperationException) { }
+                    finally
+                    {
+                        currentIndicator = null;
+                    }
+                }
             }
         }
     }

@@ -64,7 +64,6 @@
             this.txtsubTotal = new System.Windows.Forms.TextBox();
             this.txtTaxPercent = new System.Windows.Forms.TextBox();
             this.label10 = new System.Windows.Forms.Label();
-            this.txtTax = new System.Windows.Forms.TextBox();
             this.cmbTax = new System.Windows.Forms.ComboBox();
             this.label13 = new System.Windows.Forms.Label();
             this.txtTotal = new System.Windows.Forms.TextBox();
@@ -109,7 +108,7 @@
             this.guna2DateTimePicker1.MaxDate = new System.DateTime(9998, 12, 31, 0, 0, 0, 0);
             this.guna2DateTimePicker1.MinDate = new System.DateTime(1753, 1, 1, 0, 0, 0, 0);
             this.guna2DateTimePicker1.Name = "guna2DateTimePicker1";
-            this.guna2DateTimePicker1.Size = new System.Drawing.Size(200, 36);
+            this.guna2DateTimePicker1.Size = new System.Drawing.Size(264, 36);
             this.guna2DateTimePicker1.TabIndex = 3;
             this.guna2DateTimePicker1.Value = new System.DateTime(2025, 10, 14, 8, 58, 52, 205);
             // 
@@ -487,14 +486,6 @@
             this.label10.TabIndex = 28;
             this.label10.Text = "Discount:";
             // 
-            // txtTax
-            // 
-            this.txtTax.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtTax.Location = new System.Drawing.Point(345, 136);
-            this.txtTax.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.txtTax.Name = "txtTax";
-            this.txtTax.Size = new System.Drawing.Size(87, 34);
-            this.txtTax.TabIndex = 29;
             // 
             // cmbTax
             // 
@@ -551,7 +542,6 @@
             this.panel2.Controls.Add(this.label10);
             this.panel2.Controls.Add(this.label15);
             this.panel2.Controls.Add(this.txtTaxPercent);
-            this.panel2.Controls.Add(this.txtTax);
             this.panel2.Controls.Add(this.txtTotal);
             this.panel2.Controls.Add(this.label13);
             this.panel2.Controls.Add(this.label14);
@@ -680,7 +670,6 @@
         private System.Windows.Forms.TextBox txtsubTotal;
         private System.Windows.Forms.TextBox txtTaxPercent;
         private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.TextBox txtTax;
         private System.Windows.Forms.ComboBox cmbTax;
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.TextBox txtTotal;

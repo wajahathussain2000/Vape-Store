@@ -8,6 +8,12 @@ namespace Vape_Store.Services
 {
     public class ReportingService
     {
+        private static void NormalizeRange(ref DateTime startDate, ref DateTime endDate)
+        {
+            // Ensure inclusive date range: [00:00:00 ... 23:59:59.9999999]
+            startDate = startDate.Date;
+            endDate = endDate.Date.AddDays(1).AddTicks(-1);
+        }
         public class SalesReport
         {
             public DateTime Date { get; set; }
@@ -35,6 +41,7 @@ namespace Vape_Store.Services
         public List<SalesReport> GetDailySalesReport(DateTime startDate, DateTime endDate)
         {
             List<SalesReport> reports = new List<SalesReport>();
+            NormalizeRange(ref startDate, ref endDate);
             string query = @"SELECT CAST(SaleDate AS DATE) as SaleDate, 
                            SUM(TotalAmount) as TotalSales, 
                            COUNT(*) as TotalTransactions,
@@ -74,6 +81,7 @@ namespace Vape_Store.Services
         public List<ProductSalesReport> GetTopSellingProducts(DateTime startDate, DateTime endDate, int topCount = 10)
         {
             List<ProductSalesReport> reports = new List<ProductSalesReport>();
+            NormalizeRange(ref startDate, ref endDate);
             string query = @"SELECT p.ProductName, p.ProductCode, 
                            SUM(si.Quantity) as QuantitySold,
                            SUM(si.SubTotal) as TotalRevenue
@@ -116,6 +124,7 @@ namespace Vape_Store.Services
         public List<CustomerReport> GetTopCustomers(DateTime startDate, DateTime endDate, int topCount = 10)
         {
             List<CustomerReport> reports = new List<CustomerReport>();
+            NormalizeRange(ref startDate, ref endDate);
             string query = @"SELECT c.CustomerName,
                            COUNT(s.SaleID) as TotalPurchases,
                            SUM(s.TotalAmount) as TotalSpent,
@@ -157,6 +166,7 @@ namespace Vape_Store.Services
         
         public decimal GetTotalSales(DateTime startDate, DateTime endDate)
         {
+            NormalizeRange(ref startDate, ref endDate);
             string query = "SELECT ISNULL(SUM(TotalAmount), 0) FROM Sales WHERE SaleDate BETWEEN @StartDate AND @EndDate";
             
             using (var connection = DatabaseConnection.GetConnection())
@@ -175,6 +185,7 @@ namespace Vape_Store.Services
         
         public int GetTotalTransactions(DateTime startDate, DateTime endDate)
         {
+            NormalizeRange(ref startDate, ref endDate);
             string query = "SELECT COUNT(*) FROM Sales WHERE SaleDate BETWEEN @StartDate AND @EndDate";
             
             using (var connection = DatabaseConnection.GetConnection())
@@ -193,6 +204,7 @@ namespace Vape_Store.Services
         
         public decimal GetAverageTransactionValue(DateTime startDate, DateTime endDate)
         {
+            NormalizeRange(ref startDate, ref endDate);
             string query = "SELECT ISNULL(AVG(TotalAmount), 0) FROM Sales WHERE SaleDate BETWEEN @StartDate AND @EndDate";
             
             using (var connection = DatabaseConnection.GetConnection())
@@ -212,6 +224,7 @@ namespace Vape_Store.Services
         public Dictionary<string, decimal> GetSalesByPaymentMethod(DateTime startDate, DateTime endDate)
         {
             Dictionary<string, decimal> salesByMethod = new Dictionary<string, decimal>();
+            NormalizeRange(ref startDate, ref endDate);
             string query = @"SELECT PaymentMethod, SUM(TotalAmount) as TotalSales
                            FROM Sales 
                            WHERE SaleDate BETWEEN @StartDate AND @EndDate

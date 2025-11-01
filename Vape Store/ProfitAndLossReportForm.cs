@@ -41,6 +41,7 @@ namespace Vape_Store
                 
                 SetupEventHandlers();
                 InitializeDataGridView();
+                InitializeEnterpriseUI();
                 SetInitialState();
             }
             catch (Exception ex)
@@ -48,6 +49,70 @@ namespace Vape_Store
                 MessageBox.Show($"Error initializing Profit & Loss Report: {ex.Message}", "Initialization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 throw;
             }
+        }
+
+        // Enterprise UI: Tabbed details
+        private TabControl tabControl;
+        private TabPage tabSummary;
+        private TabPage tabRevenue;
+        private TabPage tabCOGS;
+        private TabPage tabExpenses;
+        private DataGridView dgvRevenueBreakdown;
+        private DataGridView dgvCogsBreakdown;
+        private DataGridView dgvExpenseBreakdown;
+
+        private void InitializeEnterpriseUI()
+        {
+            // Tabs
+            tabControl = new TabControl();
+            tabControl.Dock = DockStyle.None; // manual layout for coexisting controls
+
+            tabSummary = new TabPage("Summary");
+            tabRevenue = new TabPage("Revenue Breakdown");
+            tabCOGS = new TabPage("COGS Breakdown");
+            tabExpenses = new TabPage("Expenses Breakdown");
+
+            // Move existing main grid into Summary tab
+            dgvProfitLoss.Parent = tabSummary;
+            dgvProfitLoss.Dock = DockStyle.Fill;
+
+            // Revenue grid
+            dgvRevenueBreakdown = CreateReadOnlyGrid();
+            dgvRevenueBreakdown.Parent = tabRevenue;
+            dgvRevenueBreakdown.Dock = DockStyle.Fill;
+
+            // COGS grid
+            dgvCogsBreakdown = CreateReadOnlyGrid();
+            dgvCogsBreakdown.Parent = tabCOGS;
+            dgvCogsBreakdown.Dock = DockStyle.Fill;
+
+            // Expenses grid
+            dgvExpenseBreakdown = CreateReadOnlyGrid();
+            dgvExpenseBreakdown.Parent = tabExpenses;
+            dgvExpenseBreakdown.Dock = DockStyle.Fill;
+
+            tabControl.TabPages.Add(tabSummary);
+            tabControl.TabPages.Add(tabRevenue);
+            tabControl.TabPages.Add(tabCOGS);
+            tabControl.TabPages.Add(tabExpenses);
+
+            // Insert into form
+            this.Controls.Add(tabControl);
+            LayoutEnterpriseUI();
+        }
+
+
+        private DataGridView CreateReadOnlyGrid()
+        {
+            var grid = new DataGridView();
+            grid.AutoGenerateColumns = true;
+            grid.ReadOnly = true;
+            grid.AllowUserToAddRows = false;
+            grid.AllowUserToDeleteRows = false;
+            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            grid.MultiSelect = false;
+            grid.DataError += (s, e) => { e.ThrowException = false; };
+            return grid;
         }
 
         private void SetupEventHandlers()
@@ -66,6 +131,7 @@ namespace Vape_Store
             
             // Form event handlers
             this.Load += ProfitAndLossReportForm_Load;
+            this.Resize += (s, e) => LayoutEnterpriseUI();
         }
 
         private void InitializeDataGridView()
@@ -80,6 +146,8 @@ namespace Vape_Store
                 dgvProfitLoss.MultiSelect = false;
                 dgvProfitLoss.EnableHeadersVisualStyles = false;
                 dgvProfitLoss.GridColor = Color.FromArgb(236, 240, 241);
+                // Prevent default DataGridView data error dialog from popping up
+                dgvProfitLoss.DataError += (s, e) => { e.ThrowException = false; };
                 
                 // Set header styling
                 dgvProfitLoss.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 152, 219);
@@ -118,24 +186,16 @@ namespace Vape_Store
                     HeaderText = "Amount",
                     DataPropertyName = "Amount",
                     Width = 150,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight }
                 });
                 
                 dgvProfitLoss.Columns.Add(new DataGridViewTextBoxColumn
                 {
-                    Name = "Type",
-                    HeaderText = "Type",
-                    DataPropertyName = "Type",
-                    Width = 100
-                });
-                
-                dgvProfitLoss.Columns.Add(new DataGridViewTextBoxColumn
-                {
-                    Name = "Date",
-                    HeaderText = "Date",
-                    DataPropertyName = "Date",
-                    Width = 100,
-                    DefaultCellStyle = new DataGridViewCellStyle { Format = "MM/dd/yyyy" }
+                    Name = "Percentage",
+                    HeaderText = "% of Net Sales",
+                    DataPropertyName = "Percentage",
+                    Width = 140,
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "P2", Alignment = DataGridViewContentAlignment.MiddleRight }
                 });
             }
             catch (Exception ex)
@@ -185,64 +245,83 @@ namespace Vape_Store
                 var fromDate = dtpFromDate.Value.Date;
                 var toDate = dtpToDate.Value.Date.AddDays(1).AddSeconds(-1); // End of day
                 
-                _profitLossItems.Clear();
+                // Build a fresh list each time to avoid CurrencyManager index mismatches
+                var items = new List<ProfitLossItem>();
                 _summary = new ProfitLossSummary();
                 
                 // Get sales data
                 var sales = _saleRepository.GetSalesByDateRange(fromDate, toDate);
                 var totalSales = sales.Sum(s => s.TotalAmount);
                 var totalSalesTax = sales.Sum(s => s.TaxAmount);
+                var salesReturns = 0m; // placeholder if returns are modeled elsewhere
+                var netRevenue = Math.Max(0m, totalSales - totalSalesTax - salesReturns);
                 
                 // Add revenue items
-                _profitLossItems.Add(new ProfitLossItem
+                items.Add(new ProfitLossItem
                 {
                     Category = "REVENUE",
                     Description = "Total Sales",
                     Amount = totalSales,
                     Type = "Revenue",
                     Date = fromDate,
-                    IsHeader = true
+                    IsHeader = true,
+                    Percentage = netRevenue > 0 ? totalSales / netRevenue : 0
                 });
                 
-                _profitLossItems.Add(new ProfitLossItem
+                items.Add(new ProfitLossItem
                 {
                     Category = "REVENUE",
                     Description = "Sales Tax",
                     Amount = totalSalesTax,
                     Type = "Revenue",
                     Date = fromDate,
-                    IsHeader = false
+                    IsHeader = false,
+                    Percentage = netRevenue > 0 ? totalSalesTax / netRevenue : 0
+                });
+
+                items.Add(new ProfitLossItem
+                {
+                    Category = "REVENUE",
+                    Description = "Net Revenue",
+                    Amount = netRevenue,
+                    Type = "Revenue",
+                    Date = fromDate,
+                    IsHeader = true,
+                    Percentage = netRevenue > 0 ? 1m : 0
                 });
                 
-                _summary.TotalRevenue = totalSales;
+                _summary.TotalRevenue = netRevenue;
                 
                 // Get purchase data (Cost of Goods Sold)
                 var purchases = _purchaseRepository.GetPurchasesByDateRange(fromDate, toDate);
                 var totalPurchases = purchases.Sum(p => p.TotalAmount);
                 var totalPurchaseTax = purchases.Sum(p => p.TaxAmount);
+                var cogs = Math.Max(0m, totalPurchases - totalPurchaseTax);
                 
                 // Add COGS items
-                _profitLossItems.Add(new ProfitLossItem
+                items.Add(new ProfitLossItem
                 {
                     Category = "COST OF GOODS SOLD",
-                    Description = "Total Purchases",
-                    Amount = totalPurchases,
+                    Description = "Purchases (Net of Tax)",
+                    Amount = cogs,
                     Type = "Expense",
                     Date = fromDate,
-                    IsHeader = true
+                    IsHeader = true,
+                    Percentage = netRevenue > 0 ? cogs / netRevenue : 0
                 });
                 
-                _profitLossItems.Add(new ProfitLossItem
+                items.Add(new ProfitLossItem
                 {
                     Category = "COST OF GOODS SOLD",
                     Description = "Purchase Tax",
                     Amount = totalPurchaseTax,
                     Type = "Expense",
                     Date = fromDate,
-                    IsHeader = false
+                    IsHeader = false,
+                    Percentage = netRevenue > 0 ? totalPurchaseTax / netRevenue : 0
                 });
                 
-                _summary.TotalCostOfGoods = totalPurchases;
+                _summary.TotalCostOfGoods = cogs;
                 _summary.GrossProfit = _summary.TotalRevenue - _summary.TotalCostOfGoods;
                 
                 // Get expense data
@@ -253,14 +332,15 @@ namespace Vape_Store
                 var totalExpenses = expenses.Sum(e => e.Amount);
                 
                 // Add expense items
-                _profitLossItems.Add(new ProfitLossItem
+                items.Add(new ProfitLossItem
                 {
                     Category = "OPERATING EXPENSES",
                     Description = "Total Business Expenses",
                     Amount = totalExpenses,
                     Type = "Expense",
                     Date = fromDate,
-                    IsHeader = true
+                    IsHeader = true,
+                    Percentage = netRevenue > 0 ? totalExpenses / netRevenue : 0
                 });
                 
                 // Add individual expense categories
@@ -270,43 +350,49 @@ namespace Vape_Store
                 
                 foreach (var category in expenseCategories)
                 {
-                    _profitLossItems.Add(new ProfitLossItem
+                    items.Add(new ProfitLossItem
                     {
                         Category = "OPERATING EXPENSES",
                         Description = category.Category,
                         Amount = category.Amount,
                         Type = "Expense",
                         Date = fromDate,
-                        IsHeader = false
+                        IsHeader = false,
+                        Percentage = netRevenue > 0 ? category.Amount / netRevenue : 0
                     });
                 }
                 
                 _summary.TotalExpenses = totalExpenses;
-                _summary.NetProfit = _summary.GrossProfit - _summary.TotalExpenses;
+                var operatingProfit = _summary.GrossProfit - _summary.TotalExpenses;
+                _summary.NetProfit = operatingProfit;
                 _summary.ProfitMargin = _summary.TotalRevenue > 0 ? (_summary.NetProfit / _summary.TotalRevenue) * 100 : 0;
                 
                 // Add summary items
-                _profitLossItems.Add(new ProfitLossItem
+                items.Add(new ProfitLossItem
                 {
                     Category = "SUMMARY",
                     Description = "Gross Profit",
                     Amount = _summary.GrossProfit,
                     Type = "Summary",
                     Date = fromDate,
-                    IsHeader = true
+                    IsHeader = true,
+                    Percentage = netRevenue > 0 ? _summary.GrossProfit / netRevenue : 0
                 });
                 
-                _profitLossItems.Add(new ProfitLossItem
+                items.Add(new ProfitLossItem
                 {
                     Category = "SUMMARY",
-                    Description = "Net Profit",
+                    Description = "Operating/Net Profit",
                     Amount = _summary.NetProfit,
                     Type = "Summary",
                     Date = fromDate,
-                    IsHeader = true
+                    IsHeader = true,
+                    Percentage = netRevenue > 0 ? _summary.NetProfit / netRevenue : 0
                 });
                 
                 // Bind to DataGridView
+                dgvProfitLoss.DataSource = null; // reset binding to avoid stale CurrencyManager state
+                _profitLossItems = items;
                 dgvProfitLoss.DataSource = _profitLossItems;
                 
                 // Apply formatting
@@ -315,12 +401,94 @@ namespace Vape_Store
                 // Update summary
                 UpdateSummaryLabels();
                 
+                // Build breakdowns
+                BuildAndBindBreakdowns(sales, purchases, expenses, netRevenue, cogs, totalExpenses);
                 // Profit & Loss report generated successfully
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error generating profit & loss report: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
+        }
+
+        private void BuildAndBindBreakdowns(List<Sale> sales, List<Purchase> purchases, List<Expense> expenses, decimal netRevenue, decimal cogs, decimal totalExpenses)
+        {
+            // Revenue by payment method
+            var revenueByPayment = sales
+                .GroupBy(s => s.PaymentMethod ?? "Unknown")
+                .Select(g => new RevenueBreakdownRow
+                {
+                    PaymentMethod = g.Key,
+                    Invoices = g.Count(),
+                    Subtotal = g.Sum(x => x.TotalAmount - x.TaxAmount),
+                    Tax = g.Sum(x => x.TaxAmount),
+                    Total = g.Sum(x => x.TotalAmount),
+                    PercentageOfNet = netRevenue > 0 ? g.Sum(x => x.TotalAmount - x.TaxAmount) / netRevenue : 0
+                })
+                .OrderByDescending(r => r.Total)
+                .ToList();
+            dgvRevenueBreakdown.DataSource = revenueByPayment;
+
+            // COGS by supplier
+            var cogsBySupplier = purchases
+                .GroupBy(p => p.SupplierName ?? "Unknown")
+                .Select(g => new CogsBreakdownRow
+                {
+                    Supplier = g.Key,
+                    Bills = g.Count(),
+                    Subtotal = g.Sum(x => x.TotalAmount - x.TaxAmount),
+                    Tax = g.Sum(x => x.TaxAmount),
+                    Total = g.Sum(x => x.TotalAmount),
+                    PercentageOfNet = netRevenue > 0 ? (g.Sum(x => x.TotalAmount - x.TaxAmount)) / netRevenue : 0
+                })
+                .OrderByDescending(r => r.Total)
+                .ToList();
+            dgvCogsBreakdown.DataSource = cogsBySupplier;
+
+            // Expenses by category
+            var expenseByCategory = expenses
+                .GroupBy(e => e.Category ?? "Other")
+                .Select(g => new ExpenseBreakdownRow
+                {
+                    Category = g.Key,
+                    Amount = g.Sum(x => x.Amount),
+                    PercentageOfNet = netRevenue > 0 ? g.Sum(x => x.Amount) / netRevenue : 0
+                })
+                .OrderByDescending(r => r.Amount)
+                .ToList();
+            dgvExpenseBreakdown.DataSource = expenseByCategory;
+        }
+
+
+        private void LayoutEnterpriseUI()
+        {
+            try
+            {
+                // Calculate top anchor based on buttons panel or use default
+                int topAnchor = 12;
+                if (pnlButtons != null)
+                {
+                    topAnchor = pnlButtons.Bottom + 12;
+                }
+                else if (btnClose != null)
+                {
+                    topAnchor = btnClose.Bottom + 12;
+                }
+
+                // Position tab control below buttons panel, above summary panel
+                if (tabControl != null)
+                {
+                    tabControl.Left = 12;
+                    tabControl.Top = topAnchor;
+                    tabControl.Width = this.ClientSize.Width - 24;
+                    
+                    // Calculate height - leave space for summary panel at bottom
+                    int bottomMargin = pnlSummary != null ? pnlSummary.Height + 12 : 16;
+                    tabControl.Height = this.ClientSize.Height - topAnchor - bottomMargin;
+                    tabControl.BringToFront();
+                }
+            }
+            catch { }
         }
 
         private void ApplyDataGridViewFormatting()
@@ -334,21 +502,14 @@ namespace Vape_Store
                         if (item.IsHeader)
                         {
                             row.DefaultCellStyle.Font = new System.Drawing.Font(dgvProfitLoss.DefaultCellStyle.Font, FontStyle.Bold);
-                            row.DefaultCellStyle.BackColor = Color.LightGray;
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(245, 247, 250);
                         }
                         
-                        if (item.Category == "REVENUE")
-                        {
-                            row.DefaultCellStyle.ForeColor = Color.Green;
-                        }
-                        else if (item.Category == "COST OF GOODS SOLD" || item.Category == "OPERATING EXPENSES")
-                        {
-                            row.DefaultCellStyle.ForeColor = Color.Red;
-                        }
-                        else if (item.Category == "SUMMARY")
-                        {
-                            row.DefaultCellStyle.ForeColor = Color.Blue;
-                        }
+                        // Professional color rules: negatives red, others default
+                        if (item.Amount < 0)
+                            row.DefaultCellStyle.ForeColor = Color.FromArgb(192, 57, 43);
+                        else
+                            row.DefaultCellStyle.ForeColor = dgvProfitLoss.DefaultCellStyle.ForeColor;
                     }
                 }
             }
@@ -541,6 +702,7 @@ namespace Vape_Store
             {
                 SetInitialState();
                 GenerateProfitLossReport(); // Automatically load data when form opens
+                LayoutEnterpriseUI();
             }
             catch (Exception ex)
             {
@@ -679,6 +841,7 @@ namespace Vape_Store
         public string Category { get; set; }
         public string Description { get; set; }
         public decimal Amount { get; set; }
+        public decimal Percentage { get; set; }
         public string Type { get; set; }
         public DateTime Date { get; set; }
         public bool IsHeader { get; set; }
@@ -692,5 +855,33 @@ namespace Vape_Store
         public decimal TotalExpenses { get; set; }
         public decimal NetProfit { get; set; }
         public decimal ProfitMargin { get; set; }
+    }
+
+    // Breakdown row models for enterprise view
+    public class RevenueBreakdownRow
+    {
+        public string PaymentMethod { get; set; }
+        public int Invoices { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal Tax { get; set; }
+        public decimal Total { get; set; }
+        public decimal PercentageOfNet { get; set; }
+    }
+
+    public class CogsBreakdownRow
+    {
+        public string Supplier { get; set; }
+        public int Bills { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal Tax { get; set; }
+        public decimal Total { get; set; }
+        public decimal PercentageOfNet { get; set; }
+    }
+
+    public class ExpenseBreakdownRow
+    {
+        public string Category { get; set; }
+        public decimal Amount { get; set; }
+        public decimal PercentageOfNet { get; set; }
     }
 }

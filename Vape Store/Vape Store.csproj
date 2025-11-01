@@ -293,6 +293,12 @@
     <Compile Include="ThermalInvoiceForm.Designer.cs">
       <DependentUpon>ThermalInvoiceForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="PrintBarcodeForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PrintBarcodeForm.Designer.cs">
+      <DependentUpon>PrintBarcodeForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="InvoicePreviewForm.Designer.cs">
       <DependentUpon>ThermalInvoiceForm.cs</DependentUpon>
     </Compile>

@@ -355,10 +355,14 @@ namespace Vape_Store
                 txtsubTotal.Text = subtotal.ToString("F2");
                 txtTax.Text = taxAmount.ToString("F2");
                 txtTotal.Text = total.ToString("F2");
+                
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"Purchase Return Calculation: Subtotal={subtotal:F2}, Discount={discountAmount:F2}, Taxable={taxableAmount:F2}, Tax%={taxPercent:F2}, Tax={taxAmount:F2}, Total={total:F2}");
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error calculating totals: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Purchase Return CalculateTotals Error: {ex.Message}");
             }
         }
 
@@ -416,7 +420,16 @@ namespace Vape_Store
 
         private void CmbTax_SelectedIndexChanged(object sender, EventArgs e)
         {
-            CalculateTotals();
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Purchase Return Tax dropdown changed to: {cmbTax.SelectedItem?.ToString()}");
+                CalculateTotals();
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error handling tax selection: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Purchase Return Tax Selection Error: {ex.Message}");
+            }
         }
 
         private void TxtTaxPercent_TextChanged(object sender, EventArgs e)
@@ -534,6 +547,18 @@ namespace Vape_Store
             _returnItems.Clear();
             _selectedPurchase = null;
             GenerateReturnNumber();
+            
+            // Ensure tax calculation runs after clearing
+            CalculateTotals();
+
+            // Reload lookups so dropdowns are populated for the next return
+            LoadSuppliers();
+            LoadPurchases();
+            InitializeReturnReasons();
+            if (cmbTax.Items.Count > 0)
+            {
+                cmbTax.SelectedIndex = 0;
+            }
         }
 
         private void ShowMessage(string message, string title, MessageBoxIcon icon)

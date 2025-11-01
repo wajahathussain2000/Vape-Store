@@ -34,70 +34,71 @@ namespace Vape_Store
         {
             this.SuspendLayout();
             
-            // Form properties
-            this.Text = "Purchase Receipt Preview - Vape Store";
-            this.Size = new System.Drawing.Size(450, 700);
+            // Form properties for A4 size
+            this.Text = "Purchase Receipt - Vape Store";
+            this.Size = new System.Drawing.Size(800, 1000); // A4 proportions
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
+            this.MaximizeBox = true;
+            this.MinimizeBox = true;
+            this.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
 
-            // Create preview panel
-            var previewPanel = new System.Windows.Forms.Panel
+            // Create main container panel
+            var mainPanel = new System.Windows.Forms.Panel
+            {
+                Dock = System.Windows.Forms.DockStyle.Fill,
+                BackColor = System.Drawing.Color.White,
+                Padding = new System.Windows.Forms.Padding(40, 40, 40, 40)
+            };
+            this.Controls.Add(mainPanel);
+
+            // Create receipt content panel
+            var receiptPanel = new System.Windows.Forms.Panel
             {
                 Dock = System.Windows.Forms.DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = System.Drawing.Color.White,
-                BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+                BorderStyle = System.Windows.Forms.BorderStyle.None
             };
-            this.Controls.Add(previewPanel);
+            mainPanel.Controls.Add(receiptPanel);
 
-            // Create buttons panel
+            // Simple buttons panel
             var buttonPanel = new System.Windows.Forms.Panel
             {
                 Dock = System.Windows.Forms.DockStyle.Bottom,
-                Height = 50,
+                Height = 60,
                 BackColor = System.Drawing.Color.LightGray
             };
-            this.Controls.Add(buttonPanel);
+            mainPanel.Controls.Add(buttonPanel);
 
-            // Print button
+            // Simple Print button
             var btnPrint = new System.Windows.Forms.Button
             {
                 Text = "Print Receipt",
-                Size = new System.Drawing.Size(100, 30),
-                Location = new System.Drawing.Point(20, 10),
-                BackColor = System.Drawing.Color.Green,
-                ForeColor = System.Drawing.Color.White,
+                Size = new System.Drawing.Size(120, 35),
+                Location = new System.Drawing.Point(50, 12),
                 Font = new System.Drawing.Font("Arial", 9, System.Drawing.FontStyle.Bold)
             };
-            btnPrint.Click += BtnPrint_Click;
             buttonPanel.Controls.Add(btnPrint);
 
-            // Print Direct button
-            var btnPrintDirect = new System.Windows.Forms.Button
+            // Simple Save PDF button
+            var btnSavePDF = new System.Windows.Forms.Button
             {
-                Text = "Print Direct",
-                Size = new System.Drawing.Size(100, 30),
-                Location = new System.Drawing.Point(130, 10),
-                BackColor = System.Drawing.Color.Blue,
-                ForeColor = System.Drawing.Color.White,
+                Text = "Save PDF",
+                Size = new System.Drawing.Size(120, 35),
+                Location = new System.Drawing.Point(200, 12),
                 Font = new System.Drawing.Font("Arial", 9, System.Drawing.FontStyle.Bold)
             };
-            btnPrintDirect.Click += BtnPrintDirect_Click;
-            buttonPanel.Controls.Add(btnPrintDirect);
+            buttonPanel.Controls.Add(btnSavePDF);
 
-            // Close button
+            // Simple Close button
             var btnClose = new System.Windows.Forms.Button
             {
                 Text = "Close",
-                Size = new System.Drawing.Size(80, 30),
-                Location = new System.Drawing.Point(240, 10),
-                BackColor = System.Drawing.Color.Gray,
-                ForeColor = System.Drawing.Color.White,
+                Size = new System.Drawing.Size(80, 35),
+                Location = new System.Drawing.Point(650, 12),
                 Font = new System.Drawing.Font("Arial", 9, System.Drawing.FontStyle.Bold)
             };
-            btnClose.Click += BtnClose_Click;
             buttonPanel.Controls.Add(btnClose);
 
             this.ResumeLayout(false);

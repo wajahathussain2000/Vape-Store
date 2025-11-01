@@ -67,6 +67,8 @@ namespace Vape_Store
                 dgvCustomerReport.ReadOnly = true;
                 dgvCustomerReport.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
                 dgvCustomerReport.MultiSelect = false;
+                // Suppress default DataGridView data error dialogs
+                dgvCustomerReport.DataError += (s, e) => { e.ThrowException = false; };
 
                 dgvCustomerReport.Columns.Clear();
                 
