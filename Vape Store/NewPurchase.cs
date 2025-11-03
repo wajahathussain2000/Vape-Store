@@ -51,6 +51,10 @@ namespace Vape_Store
         private bool _isFilteringProductCombo = false;
         private bool _isFilteringVendorCombo = false;
         private object _filterLock = new object();
+        // Popup suggestions for product search (textbox-like behavior)
+        private ListBox _productSuggestList;
+        // Popup suggestions for vendor search
+        private ListBox _vendorSuggestList;
         #endregion
 
         #region Constructor
@@ -123,11 +127,86 @@ namespace Vape_Store
                 
                 // Set form state
                 _isFormDirty = false;
+
+                // Create suggestion list for product search
+                _productSuggestList = new ListBox
+                {
+                    Visible = false,
+                    IntegralHeight = true,
+                    Height = 120
+                };
+                _productSuggestList.Click += ProductSuggestList_Click;
+                _productSuggestList.KeyDown += ProductSuggestList_KeyDown;
+                this.Controls.Add(_productSuggestList);
+
+                // Create suggestion list for vendor search
+                _vendorSuggestList = new ListBox
+                {
+                    Visible = false,
+                    IntegralHeight = true,
+                    Height = 120
+                };
+                _vendorSuggestList.Click += VendorSuggestList_Click;
+                _vendorSuggestList.KeyDown += VendorSuggestList_KeyDown;
+                this.Controls.Add(_vendorSuggestList);
             }
             catch (Exception ex)
             {
                 ShowError($"Error initializing form: {ex.Message}");
                 throw; // Re-throw to be caught by constructor
+            }
+        }
+
+        private void AddOrIncrementPurchaseProduct(Product product)
+        {
+            // Try find existing row by ProductCode
+            int existingRow = -1;
+            for (int i = 0; i < dgvPurchaseItems.Rows.Count; i++)
+            {
+                var row = dgvPurchaseItems.Rows[i];
+                var codeVal = row.Cells["colProductCode"].Value?.ToString();
+                if (!string.IsNullOrEmpty(codeVal) && codeVal.Equals(product.ProductCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    existingRow = i;
+                    break;
+                }
+            }
+
+            if (existingRow >= 0)
+            {
+                // Increment quantity and recalc
+                var row = dgvPurchaseItems.Rows[existingRow];
+                int qty = 0;
+                int.TryParse(row.Cells["colQty"].Value?.ToString() ?? "0", out qty);
+                qty = Math.Max(0, qty) + 1;
+                row.Cells["colQty"].Value = qty;
+
+                // Ensure price
+                decimal price = 0m;
+                decimal.TryParse(row.Cells["colPurchasePrice"].Value?.ToString() ?? "0", out price);
+                if (price <= 0m) price = product.PurchasePrice > 0 ? product.PurchasePrice : product.CostPrice;
+                row.Cells["colPurchasePrice"].Value = price;
+                CalculateRowTotal(existingRow);
+                CalculateTotals();
+                return;
+            }
+
+            // Otherwise add a new row and set product
+            int emptyRow = GetFirstEmptyRowIndex();
+            if (emptyRow < 0) AddBlankRow();
+            emptyRow = GetFirstEmptyRowIndex();
+            if (emptyRow < 0 && dgvPurchaseItems.Rows.Count > 0) emptyRow = dgvPurchaseItems.Rows.Count - 1;
+
+            if (emptyRow >= 0)
+            {
+                dgvPurchaseItems.CurrentCell = dgvPurchaseItems.Rows[emptyRow].Cells["colProductName"];
+                dgvPurchaseItems.BeginEdit(true);
+                dgvPurchaseItems.Rows[emptyRow].Cells["colProductName"].Value = product.ProductID; // triggers population
+                dgvPurchaseItems.Rows[emptyRow].Cells["colProductCode"].Value = product.ProductCode ?? string.Empty;
+                dgvPurchaseItems.Rows[emptyRow].Cells["colQty"].Value = 1;
+                dgvPurchaseItems.Rows[emptyRow].Cells["colPurchasePrice"].Value = product.PurchasePrice > 0 ? product.PurchasePrice : product.CostPrice;
+                CalculateRowTotal(emptyRow);
+                CalculateTotals();
             }
         }
 
@@ -152,6 +231,7 @@ namespace Vape_Store
                 cmbVendorName.KeyDown += CmbVendorName_KeyDown;
                 cmbVendorName.KeyPress += CmbVendorName_KeyPress;
                 cmbVendorName.PreviewKeyDown += CmbVendorName_PreviewKeyDown;
+                cmbVendorName.Leave += (s, e2) => { HideVendorSuggestions(); };
                 
                 // Make Payment Terms ComboBox searchable
                 cmbPaymentTerms.DropDownStyle = ComboBoxStyle.DropDown;
@@ -201,91 +281,9 @@ namespace Vape_Store
                 {
                     return;
                 }
-                
-                _isFilteringVendorCombo = true;
-                
-                try
-                {
-                    // Get the current filter text (what user has typed)
-                    string filter = (cb.Text ?? string.Empty).ToLower().Trim();
-                    
-                    // If filter is empty, show all vendors
-                    if (string.IsNullOrWhiteSpace(filter))
-                    {
-                        RefreshAllVendorsInComboBox(cb);
-                        if (cb != null && !cb.IsDisposed && cb.Items.Count > 0 && !cb.DroppedDown)
-                        {
-                            cb.DroppedDown = true;
-                        }
-                        return;
-                    }
-                    
-                    // Filter vendors based on search text (contains match - works for "ap" -> "Apple Suppliers")
-                    if (_suppliers == null || _suppliers.Count == 0) return;
-                    
-                    // Filter items that contain the search text (case-insensitive substring match)
-                    var filteredItems = _suppliers
-                        .Where(s => !string.IsNullOrEmpty(s.SupplierName) && 
-                                    s.SupplierName.ToLower().Contains(filter))
-                        .Select(s => s.SupplierName)
-                        .ToList();
-                    
-                    // Preserve current text and caret position BEFORE modifying
-                    string currentText = cb.Text ?? string.Empty;
-                    int selectionStart = Math.Max(0, Math.Min(cb.SelectionStart, currentText.Length));
-                    
-                    // Update items safely
-                    if (cb != null && !cb.IsDisposed)
-                    {
-                        // Close dropdown before modifying items to prevent AccessViolationException
-                        bool wasDroppedDown = cb.DroppedDown;
-                        if (wasDroppedDown)
-                        {
-                            cb.DroppedDown = false;
-                        }
-                        
-                        try
-                        {
-                            cb.BeginUpdate();
-                            cb.Items.Clear();
-                            if (filteredItems.Count > 0)
-                            {
-                                cb.Items.AddRange(filteredItems.ToArray());
-                            }
-                            cb.EndUpdate();
-                            
-                            // Restore text and caret position AFTER updating items
-                            _isFilteringVendorCombo = true;
-                            try
-                            {
-                                cb.Text = currentText;
-                                if (selectionStart >= 0 && selectionStart <= currentText.Length)
-                                {
-                                    cb.SelectionStart = selectionStart;
-                                    cb.SelectionLength = 0;
-                                }
-                            }
-                            finally
-                            {
-                                _isFilteringVendorCombo = false;
-                            }
-                            
-                            // Reopen dropdown if it was open and we have filtered items
-                            if (filteredItems.Count > 0 && wasDroppedDown)
-                            {
-                                cb.DroppedDown = true;
-                            }
-                        }
-                        catch (ObjectDisposedException) { }
-                        catch (AccessViolationException) { }
-                        catch (InvalidOperationException) { }
-                        catch { }
-                    }
-                }
-                finally
-                {
-                    _isFilteringVendorCombo = false;
-                }
+
+                // Show popup suggestions (contains) instead of mutating ComboBox items
+                ShowVendorSuggestions(cb);
             }
             catch (ObjectDisposedException) { }
             catch (InvalidOperationException) { }
@@ -324,50 +322,53 @@ namespace Vape_Store
                 
                 if (e.KeyCode == Keys.Enter)
                 {
-                    // Get selected item or first item in filtered list
+                    // Prefer popup suggestion selection if visible
+                    if (_vendorSuggestList != null && _vendorSuggestList.Visible)
+                    {
+                        if (_vendorSuggestList.SelectedItem is Supplier sel)
+                        {
+                            CommitVendorSelection(sel);
+                        }
+                        else if (_vendorSuggestList.Items.Count > 0 && _vendorSuggestList.Items[0] is Supplier first)
+                        {
+                            CommitVendorSelection(first);
+                        }
+                        HideVendorSuggestions();
+                        cb.DroppedDown = false;
+                        e.Handled = true;
+                        return;
+                    }
+
+                    // Fallback to existing behavior
                     string selectedVendorName = null;
-                    
-                    // First priority: If user navigated with arrow keys, use selected item
                     if (cb.SelectedIndex >= 0 && cb.SelectedItem != null)
                     {
                         selectedVendorName = cb.SelectedItem.ToString();
                     }
-                    // Second priority: If no selection but filtered items exist, use first filtered item
                     else if (cb.Items.Count > 0)
                     {
-                        // Use first item in filtered list - this is the best match for what user typed
                         selectedVendorName = cb.Items[0].ToString();
-                        // Also update the ComboBox to show this selection
-                        try
-                        {
-                            cb.SelectedIndex = 0;
-                            cb.Text = selectedVendorName;
-                        }
-                        catch { }
+                        try { cb.SelectedIndex = 0; cb.Text = selectedVendorName; } catch { }
                     }
-                    // Third priority: If no items but user typed something, try to find exact match
                     else if (!string.IsNullOrEmpty(cb.Text))
                     {
-                        // Try to find vendor that matches the typed text
                         string searchText = cb.Text.Trim();
-                        var matchedSupplier = _suppliers?.FirstOrDefault(s => 
-                            (!string.IsNullOrEmpty(s.SupplierName) && 
-                             s.SupplierName.Equals(searchText, StringComparison.OrdinalIgnoreCase)));
-                        
-                        if (matchedSupplier != null)
-                        {
-                            selectedVendorName = matchedSupplier.SupplierName;
-                        }
+                        var matchedSupplier = _suppliers?.FirstOrDefault(s => !string.IsNullOrEmpty(s.SupplierName) && s.SupplierName.Equals(searchText, StringComparison.OrdinalIgnoreCase));
+                        if (matchedSupplier != null) selectedVendorName = matchedSupplier.SupplierName;
                     }
-                    
-                    // If we found a vendor, commit the selection
                     if (!string.IsNullOrEmpty(selectedVendorName))
                     {
                         cb.Text = selectedVendorName;
                         cb.SelectedItem = selectedVendorName;
-                        // This will trigger SelectedIndexChanged which populates vendor details
                     }
-                    
+                    HideVendorSuggestions();
+                    cb.DroppedDown = false;
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.Escape)
+                {
+                    HideVendorSuggestions();
+                    cb.DroppedDown = false;
                     e.Handled = true;
                 }
             }
@@ -708,6 +709,9 @@ namespace Vape_Store
             dgvPurchaseItems.DataError += DgvPurchaseItems_DataError;
             dgvPurchaseItems.CellClick += DgvPurchaseItems_CellClick;
             dgvPurchaseItems.DataError += (s, e) => { e.ThrowException = false; };
+            // Hide any leftover suggestion popup when grid scrolls or loses focus
+            dgvPurchaseItems.Scroll += (s, e) => { HideProductSuggestions(); };
+            dgvPurchaseItems.Leave += (s, e) => { HideProductSuggestions(); };
             
             // Form events
             this.FormClosing += NewPurchase_FormClosing;
@@ -722,6 +726,8 @@ namespace Vape_Store
                 {
                     ShowPurchaseItemsDisplay();
                 }
+                // Ensure any stale popup is hidden when selection moves to a new row
+                HideProductSuggestions();
             }
             catch (Exception ex)
             {
@@ -1083,10 +1089,28 @@ namespace Vape_Store
         {
             for (int i = 0; i < dgvPurchaseItems.Rows.Count; i++)
             {
-                var val = dgvPurchaseItems.Rows[i].Cells["colProductName"].Value?.ToString();
-                if (string.IsNullOrWhiteSpace(val))
+                var val = dgvPurchaseItems.Rows[i].Cells["colProductName"].Value;
+                // Check for null, DBNull, or 0 (empty ProductID)
+                if (val == null || val == DBNull.Value)
                 {
                     return i;
+                }
+                // If it's an int (ProductID), check if it's 0
+                if (val is int productId)
+                {
+                    if (productId == 0)
+                    {
+                        return i;
+                    }
+                }
+                // If it's a string, check if it's empty
+                else
+                {
+                    string productStr = val.ToString();
+                    if (string.IsNullOrWhiteSpace(productStr))
+                    {
+                        return i;
+                    }
                 }
             }
             return -1;
@@ -1102,6 +1126,102 @@ namespace Vape_Store
                 {
                     ec.DroppedDown = true;
                 }
+                // Hide any suggestion list left from previous row
+                HideProductSuggestions();
+            }
+            catch { }
+        }
+
+        private void ShowVendorSuggestions(ComboBox cb)
+        {
+            try
+            {
+                if (cb == null || cb.IsDisposed) return;
+                string text = cb.Text ?? string.Empty;
+                var list = (_suppliers ?? new List<Supplier>())
+                    .Where(s => (!string.IsNullOrEmpty(s.SupplierName) && s.SupplierName.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0))
+                    .Take(100)
+                    .ToList();
+
+                if (list.Count == 0)
+                {
+                    HideVendorSuggestions();
+                    return;
+                }
+
+                // Place suggestion list under the vendor ComboBox
+                var screen = cb.PointToScreen(new System.Drawing.Point(0, cb.Height));
+                var client = this.PointToClient(screen);
+                _vendorSuggestList.Left = client.X;
+                _vendorSuggestList.Top = client.Y;
+                _vendorSuggestList.Width = cb.Width;
+
+                _vendorSuggestList.BeginUpdate();
+                try
+                {
+                    _vendorSuggestList.DataSource = null;
+                    _vendorSuggestList.Items.Clear();
+                    foreach (var s in list) _vendorSuggestList.Items.Add(s);
+                    _vendorSuggestList.DisplayMember = nameof(Supplier.SupplierName);
+                }
+                finally
+                {
+                    _vendorSuggestList.EndUpdate();
+                }
+
+                _vendorSuggestList.Visible = true;
+                _vendorSuggestList.BringToFront();
+            }
+            catch { }
+        }
+
+        private void HideVendorSuggestions()
+        {
+            try { if (_vendorSuggestList != null) _vendorSuggestList.Visible = false; } catch { }
+        }
+
+        private void VendorSuggestList_KeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (e.KeyCode == Keys.Enter && _vendorSuggestList.SelectedItem is Supplier s)
+                {
+                    CommitVendorSelection(s);
+                    HideVendorSuggestions();
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.Escape)
+                {
+                    HideVendorSuggestions();
+                    e.Handled = true;
+                }
+            }
+            catch { }
+        }
+
+        private void VendorSuggestList_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_vendorSuggestList.SelectedItem is Supplier s)
+                {
+                    CommitVendorSelection(s);
+                    HideVendorSuggestions();
+                }
+            }
+            catch { }
+        }
+
+        private void CommitVendorSelection(Supplier supplier)
+        {
+            try
+            {
+                if (supplier == null) return;
+                cmbVendorName.Text = supplier.SupplierName;
+                // Force SelectedIndex to the matching item if present
+                int idx = cmbVendorName.Items.IndexOf(supplier.SupplierName);
+                if (idx >= 0) cmbVendorName.SelectedIndex = idx;
+                MarkFormDirty();
             }
             catch { }
         }
@@ -1285,8 +1405,9 @@ namespace Vape_Store
                     try
                     {
                         cb.DropDownStyle = ComboBoxStyle.DropDown;
-                        cb.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                        cb.AutoCompleteSource = AutoCompleteSource.ListItems;
+                        // Disable built-in AutoComplete to avoid prefix-only behavior; we handle filtering on KeyUp
+                        cb.AutoCompleteMode = AutoCompleteMode.None;
+                        cb.AutoCompleteSource = AutoCompleteSource.None;
                     }
                     catch (ObjectDisposedException) { return; }
                     catch (InvalidOperationException) { return; }
@@ -1316,7 +1437,7 @@ namespace Vape_Store
                         {
                             cb.SelectionChangeCommitted += ProductCombo_SelectionChangeCommitted; // Mouse click commits
                             cb.KeyDown += ProductCombo_KeyDown; // Enter key commits, arrows just navigate
-                            cb.KeyUp += ProductCombo_KeyUp; // Dynamic filtering as user types (PRIMARY FILTERING)
+                            cb.KeyUp += ProductTextBox_KeyUp; // Use textbox-like suggestions
                             cb.KeyPress += ProductCombo_KeyPress; // Detect typing to open dropdown
                             cb.PreviewKeyDown += ProductCombo_PreviewKeyDown;
                             // TextChanged disabled - using KeyUp instead to avoid conflicts
@@ -1803,6 +1924,14 @@ namespace Vape_Store
 
                 if (e.KeyCode == Keys.Enter)
                 {
+                    // If suggestion list is visible, commit that selection first
+                    if (_productSuggestList != null && _productSuggestList.Visible && _productSuggestList.SelectedItem is Product selP)
+                    {
+                        CommitProductSelection(selP);
+                        HideProductSuggestions();
+                        e.Handled = true;
+                        return;
+                    }
                     try
                     {
                         if (dgvPurchaseItems.CurrentCell != null &&
@@ -1850,12 +1979,19 @@ namespace Vape_Store
                                 // Extract product name and code from format "ProductName | ProductCode"
                                 string productName = "";
                                 string productCode = "";
+                                string parsedBarcode = string.Empty;
                                 
                                 // Parse the selected text - it should be in format "ProductName | ProductCode"
                                 if (selectedText.Contains(" | "))
                                 {
                                     var parts = selectedText.Split(new[] { " | " }, StringSplitOptions.None);
-                                    if (parts.Length >= 2)
+                                    if (parts.Length >= 3)
+                                    {
+                                        productName = parts[0].Trim();
+                                        productCode = parts[1].Trim();
+                                        parsedBarcode = parts[2].Trim();
+                                    }
+                                    else if (parts.Length == 2)
                                     {
                                         productName = parts[0].Trim();
                                         productCode = parts[1].Trim();
@@ -1868,7 +2004,13 @@ namespace Vape_Store
                                 else if (selectedText.Contains("|"))
                                 {
                                     var parts = selectedText.Split('|');
-                                    if (parts.Length >= 2)
+                                    if (parts.Length >= 3)
+                                    {
+                                        productName = parts[0].Trim();
+                                        productCode = parts[1].Trim();
+                                        parsedBarcode = parts[2].Trim();
+                                    }
+                                    else if (parts.Length == 2)
                                     {
                                         productName = parts[0].Trim();
                                         productCode = parts[1].Trim();
@@ -1884,9 +2026,18 @@ namespace Vape_Store
                                     productName = selectedText.Trim();
                                 }
                                 
+                                // Prefer matching by Barcode (unique), then ProductCode, then Name
+                                string barcode = parsedBarcode;
+                                if (!string.IsNullOrEmpty(barcode))
+                                {
+                                    selectedProduct = _products?.FirstOrDefault(p =>
+                                        !string.IsNullOrEmpty(p.Barcode) &&
+                                        p.Barcode.Equals(barcode, StringComparison.OrdinalIgnoreCase));
+                                }
+                                
                                 // CRITICAL: Match by ProductCode FIRST (should be unique)
                                 // This ensures we get the exact product the user selected
-                                if (!string.IsNullOrEmpty(productCode))
+                                if (selectedProduct == null && !string.IsNullOrEmpty(productCode))
                                 {
                                     selectedProduct = _products?.FirstOrDefault(p => 
                                         !string.IsNullOrEmpty(p.ProductCode) && 
@@ -1928,8 +2079,11 @@ namespace Vape_Store
                                 // Try to find product one more time with the exact text
                                 string searchText = cb.Text.Trim();
                                 var fallbackProduct = _products?.FirstOrDefault(p => 
-                                    (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
                                     (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                                    (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                                    (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
                                     (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0));
                                 
                                 if (fallbackProduct != null)
@@ -2063,6 +2217,164 @@ namespace Vape_Store
             catch { }
         }
 
+        // TextBox-like suggestions while typing inside the grid ComboBox editor
+        private void ProductTextBox_KeyUp(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                var cb = sender as ComboBox;
+                if (!IsComboBoxValid(cb)) return;
+
+                // Ignore control keys; suggestions show on any printable char and backspace/delete
+                if (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down ||
+                    e.KeyCode == Keys.Left || e.KeyCode == Keys.Right ||
+                    e.KeyCode == Keys.Enter || e.KeyCode == Keys.Escape ||
+                    e.KeyCode == Keys.Tab) return;
+
+                string text = cb.Text ?? string.Empty;
+                var list = (_products ?? new List<Product>())
+                    .Where(p =>
+                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0))
+                    .Take(100)
+                    .ToList();
+
+                if (list.Count == 0)
+                {
+                    HideProductSuggestions();
+                    return;
+                }
+
+                // Place the suggestion list under the current cell
+                int colIndex = dgvPurchaseItems.Columns["colProductName"].Index;
+                int rowIndex = dgvPurchaseItems.CurrentCell != null ? dgvPurchaseItems.CurrentCell.RowIndex : -1;
+                if (rowIndex >= 0)
+                {
+                    var cellRect = dgvPurchaseItems.GetCellDisplayRectangle(colIndex, rowIndex, true);
+                    var screen = dgvPurchaseItems.PointToScreen(new System.Drawing.Point(cellRect.Left, cellRect.Bottom));
+                    var client = this.PointToClient(screen);
+                    _productSuggestList.Left = client.X;
+                    _productSuggestList.Top = client.Y;
+                    _productSuggestList.Width = cellRect.Width;
+                }
+
+                _productSuggestList.BeginUpdate();
+                try
+                {
+                    _productSuggestList.DataSource = null;
+                    _productSuggestList.Items.Clear();
+                    foreach (var p in list)
+                    {
+                        // Show combined text while keeping Product object
+                        _productSuggestList.Items.Add(p);
+                    }
+                    _productSuggestList.DisplayMember = nameof(Product.ProductName);
+                }
+                finally
+                {
+                    _productSuggestList.EndUpdate();
+                }
+
+                _productSuggestList.Visible = true;
+                _productSuggestList.BringToFront();
+            }
+            catch { }
+        }
+
+        private void ProductSuggestList_KeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (e.KeyCode == Keys.Enter && _productSuggestList.SelectedItem is Product p)
+                {
+                    CommitProductSelection(p);
+                    HideProductSuggestions();
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.Escape)
+                {
+                    HideProductSuggestions();
+                    e.Handled = true;
+                }
+            }
+            catch { }
+        }
+
+        private void ProductSuggestList_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_productSuggestList.SelectedItem is Product p)
+                {
+                    CommitProductSelection(p);
+                    HideProductSuggestions();
+                }
+            }
+            catch { }
+        }
+
+        private void HideProductSuggestions()
+        {
+            try { if (_productSuggestList != null) _productSuggestList.Visible = false; } catch { }
+        }
+
+        private void CommitProductSelection(Product selectedProduct)
+        {
+            try
+            {
+                if (selectedProduct == null) return;
+                if (dgvPurchaseItems.CurrentCell == null) return;
+
+                // Set ProductID in the current cell of colProductName (bound to ProductID)
+                dgvPurchaseItems.CurrentCell.Value = selectedProduct.ProductID;
+                dgvPurchaseItems.InvalidateCell(dgvPurchaseItems.CurrentCell);
+
+                // Update related cells in the same row if present
+                int rowIndex = dgvPurchaseItems.CurrentCell.RowIndex;
+                if (rowIndex >= 0 && rowIndex < dgvPurchaseItems.Rows.Count)
+                {
+                    var row = dgvPurchaseItems.Rows[rowIndex];
+                    try { row.Cells["colProductCode"].Value = selectedProduct.ProductCode; } catch { }
+                    try { row.Cells["colPurchasePrice"].Value = selectedProduct.PurchasePrice; } catch { }
+                    try { row.Cells["colSalePrice"].Value = selectedProduct.RetailPrice; } catch { }
+                    try { UpdateExistingStockDisplay(selectedProduct); } catch { }
+                    try { CalculateRowTotal(rowIndex); } catch { }
+                }
+
+                // Automatically move to the next empty row for quick entry
+                // Only move if the current row now has a product (we just filled it)
+                try
+                {
+                    bool currentRowHasProduct = false;
+                    if (rowIndex >= 0 && rowIndex < dgvPurchaseItems.Rows.Count)
+                    {
+                        var currentRowProduct = dgvPurchaseItems.Rows[rowIndex].Cells["colProductName"].Value;
+                        currentRowHasProduct = currentRowProduct != null && 
+                            !string.IsNullOrWhiteSpace(currentRowProduct.ToString());
+                    }
+                    
+                    // Only move to next row if we just filled the current row with a product
+                    if (currentRowHasProduct)
+                    {
+                        int nextEmpty = GetFirstEmptyRowIndex();
+                        if (nextEmpty == -1)
+                        {
+                            AddBlankRow();
+                            nextEmpty = GetFirstEmptyRowIndex();
+                        }
+                        // Move to the next empty row (should be different from current row)
+                        if (nextEmpty >= 0 && nextEmpty != rowIndex)
+                        {
+                            FocusProductCell(nextEmpty);
+                        }
+                    }
+                }
+                catch { }
+            }
+            catch { }
+        }
+
         private void ProductCombo_KeyPress(object sender, KeyPressEventArgs e)
         {
             try
@@ -2134,14 +2446,14 @@ namespace Vape_Store
                     // Filter products based on search text (contains match - works for "ap" -> "apple")
                     if (_products == null || _products.Count == 0) return;
                     
-                    // Create list of all product strings
+                    // Create list of all product strings, include barcode for searching
                     var allItems = _products
-                        .Where(p => !string.IsNullOrEmpty(p.ProductName) && !string.IsNullOrEmpty(p.ProductCode))
-                        .Select(p => $"{p.ProductName} | {p.ProductCode}")
+                        .Where(p => !string.IsNullOrEmpty(p.ProductName))
+                        .Select(p => $"{p.ProductName} | {p.ProductCode} | {p.Barcode}")
                         .ToList();
                     
                     // Filter items that contain the search text (case-insensitive substring match)
-                    // This works for "ap" -> "apple", "pod" -> "Pod 13", etc.
+                    // Matches within name, code, or barcode
                     var filteredItems = allItems
                         .Where(x => !string.IsNullOrEmpty(x) && x.ToLower().Contains(filter))
                         .ToList();
@@ -2821,12 +3133,20 @@ namespace Vape_Store
 
                     // Commit safely; do not touch the editing control after this
                     dgvPurchaseItems.CommitEdit(DataGridViewDataErrorContexts.Commit);
+                    
+                    // Force end edit to ensure CellValueChanged fires
+                    dgvPurchaseItems.EndEdit();
 
                     // Defer row-advance and new-row logic until editor is disposed
+                    // Use double BeginInvoke to ensure all events (CellValueChanged, CellEndEdit) have fired
                     this.BeginInvoke(new Action(() =>
                     {
-                        CommitAndAddNextRow(currentRow);
-                    }));
+                        // Wait one more message cycle to ensure CellValueChanged and CellEndEdit have completed
+                        this.BeginInvoke(new Action(() =>
+                        {
+                            CommitAndAddNextRow(currentRow);
+                        }), null);
+                    }), null);
                 }
             }
             catch (ObjectDisposedException) { }
@@ -2861,28 +3181,18 @@ namespace Vape_Store
                 // Keep it editable so dropdown can open again when clicked
                 // try { dgvPurchaseItems.Rows[currentRow].Cells["colProductName"].ReadOnly = true; } catch { }
 
-                // Move to Qty on the same row
-                try
-                {
-                    if (currentRow < dgvPurchaseItems.Rows.Count)
-                    {
-                        var qtyCell = dgvPurchaseItems.Rows[currentRow].Cells["colQty"];
-                        dgvPurchaseItems.CurrentCell = qtyCell;
-                        dgvPurchaseItems.BeginEdit(true);
-                        if (dgvPurchaseItems.EditingControl is TextBox tb && !tb.IsDisposed)
-                        {
-                            tb.SelectAll();
-                        }
-                    }
-                }
-                catch { }
-
                 // Ensure exactly ONE empty row exists - add only if none exists
+                int nextEmptyRow = -1;
                 if (dgvPurchaseItems != null && !dgvPurchaseItems.IsDisposed)
                 {
                     int emptyRowCount = dgvPurchaseItems.Rows
                         .Cast<DataGridViewRow>()
-                        .Count(r => string.IsNullOrWhiteSpace(Convert.ToString(r.Cells["colProductName"].Value)));
+                        .Count(r => {
+                            var val = r.Cells["colProductName"].Value;
+                            if (val == null || val == DBNull.Value) return true;
+                            if (val is int productId) return productId == 0;
+                            return string.IsNullOrWhiteSpace(val.ToString());
+                        });
                     
                     // If no empty row exists, add exactly one
                     if (emptyRowCount == 0)
@@ -2893,6 +3203,97 @@ namespace Vape_Store
                     else if (emptyRowCount > 1)
                     {
                         RemoveExtraEmptyRows();
+                    }
+                    
+                    // Find the next empty row (should be the row after currentRow or the first empty row)
+                    nextEmptyRow = GetFirstEmptyRowIndex();
+                    
+                    // Check if current row has a product - must handle ProductID (int) properly
+                    bool currentRowHasProduct = false;
+                    if (currentRow >= 0 && currentRow < dgvPurchaseItems.Rows.Count)
+                    {
+                        var currentRowProduct = dgvPurchaseItems.Rows[currentRow].Cells["colProductName"].Value;
+                        // Check for null, DBNull, or 0 (empty ProductID)
+                        if (currentRowProduct != null && currentRowProduct != DBNull.Value)
+                        {
+                            // If it's an int (ProductID), check if it's not 0
+                            if (currentRowProduct is int productId)
+                            {
+                                currentRowHasProduct = productId > 0;
+                            }
+                            // If it's a string, check if it's not empty
+                            else
+                            {
+                                string productStr = currentRowProduct.ToString();
+                                currentRowHasProduct = !string.IsNullOrWhiteSpace(productStr);
+                            }
+                        }
+                    }
+                    
+                    // ALWAYS move to next empty row after selecting a product (if we found an empty row and current row has product)
+                    if (currentRowHasProduct && nextEmptyRow >= 0 && nextEmptyRow != currentRow)
+                    {
+                        try
+                        {
+                            // Move to ProductName cell in the next empty row
+                            var nextRowProductCell = dgvPurchaseItems.Rows[nextEmptyRow].Cells["colProductName"];
+                            dgvPurchaseItems.CurrentCell = nextRowProductCell;
+                            
+                            // Use BeginInvoke to ensure the cell is ready before beginning edit
+                            this.BeginInvoke(new Action(() =>
+                            {
+                                try
+                                {
+                                    if (this != null && !this.IsDisposed && 
+                                        dgvPurchaseItems != null && !dgvPurchaseItems.IsDisposed &&
+                                        nextEmptyRow >= 0 && nextEmptyRow < dgvPurchaseItems.Rows.Count)
+                                    {
+                                        dgvPurchaseItems.BeginEdit(true);
+                                        
+                                        // Open dropdown after edit begins - use another BeginInvoke to ensure edit is ready
+                                        this.BeginInvoke(new Action(() =>
+                                        {
+                                            try
+                                            {
+                                                if (dgvPurchaseItems.EditingControl is ComboBox cb && !cb.IsDisposed)
+                                                {
+                                                    // Ensure items are loaded
+                                                    if (cb.Items.Count == 0 && _products != null && _products.Count > 0)
+                                                    {
+                                                        RefreshAllProductsInComboBox(cb);
+                                                    }
+                                                    if (cb.Items.Count > 0 && !cb.DroppedDown)
+                                                    {
+                                                        cb.DroppedDown = true;
+                                                    }
+                                                }
+                                            }
+                                            catch { }
+                                        }), null);
+                                    }
+                                }
+                                catch { }
+                            }), null);
+                        }
+                        catch { }
+                    }
+                    else if (!currentRowHasProduct)
+                    {
+                        // If current row is empty, stay in Qty on current row
+                        try
+                        {
+                            if (currentRow < dgvPurchaseItems.Rows.Count)
+                            {
+                                var qtyCell = dgvPurchaseItems.Rows[currentRow].Cells["colQty"];
+                                dgvPurchaseItems.CurrentCell = qtyCell;
+                                dgvPurchaseItems.BeginEdit(true);
+                                if (dgvPurchaseItems.EditingControl is TextBox tb && !tb.IsDisposed)
+                                {
+                                    tb.SelectAll();
+                                }
+                            }
+                        }
+                        catch { }
                     }
                 }
             }
@@ -2970,8 +3371,8 @@ namespace Vape_Store
                     catch (AccessViolationException) { return; }
                     catch { return; }
                     
-                    // Filter products based on text input with priority for starts-with matches
-                    // CRITICAL: Don't trim the search text - preserve it exactly as typed for display
+                    // Filter products based on text input (contains match across name or code)
+                    // Requirement: do NOT bias to first-letter; match anywhere within the full name/code
                     // Only trim when doing the actual search comparison
                     List<string> filtered = new List<string>();
                     try
@@ -2988,25 +3389,23 @@ namespace Vape_Store
                         {
                             // Trim only for search comparison, but preserve original text for display
                             string searchTerm = text.Trim();
-                            
-                            // Priority 1: Products where name starts with the search text
-                            var startsWithMatches = _products
-                                .Where(p => 
-                                    (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-                                    (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase)))
-                                .Select(p => $"{p.ProductName} | {p.ProductCode}")
+
+                            // Contains match across ProductName, ProductCode, or Barcode; allow single-letter filtering
+                            filtered = _products
+                                .Where(p =>
+                                    (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                                    (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0))
+                                .Select(p => new { p.ProductName, p.ProductCode, p.Barcode,
+                                    rank = new int[] {
+                                        Math.Max(0, (p.ProductName ?? "").IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase)),
+                                        Math.Max(0, (p.ProductCode ?? "").IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase)),
+                                        Math.Max(0, (p.Barcode ?? "").IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase))
+                                    }.Min() })
+                                .OrderBy(x => x.rank)
+                                .Select(x => $"{x.ProductName} | {x.ProductCode} | {x.Barcode}")
+                                .Distinct()
                                 .ToList();
-                            
-                            // Priority 2: Products where name or code contains the search text (but doesn't start with it)
-                            var containsMatches = _products
-                                .Where(p => 
-                                    (!string.IsNullOrEmpty(p.ProductName) && !p.ProductName.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase) && p.ProductName.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                                    (!string.IsNullOrEmpty(p.ProductCode) && !p.ProductCode.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase) && p.ProductCode.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0))
-                                .Select(p => $"{p.ProductName} | {p.ProductCode}")
-                                .ToList();
-                            
-                            // Combine: starts-with matches first, then contains matches
-                            filtered = startsWithMatches.Concat(containsMatches).Distinct().ToList();
                         }
                     }
                     catch { return; }
@@ -3947,7 +4346,12 @@ namespace Vape_Store
                         // Ensure there's always exactly ONE empty row available
                         int emptyRowCount = dgvPurchaseItems.Rows
                             .Cast<DataGridViewRow>()
-                            .Count(r => string.IsNullOrWhiteSpace(Convert.ToString(r.Cells["colProductName"].Value)));
+                            .Count(r => {
+                                var val = r.Cells["colProductName"].Value;
+                                if (val == null || val == DBNull.Value) return true;
+                                if (val is int productId) return productId == 0;
+                                return string.IsNullOrWhiteSpace(val.ToString());
+                            });
                         
                         if (emptyRowCount == 0)
                         {

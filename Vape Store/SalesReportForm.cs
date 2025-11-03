@@ -28,6 +28,7 @@ namespace Vape_Store
         private List<SalesReportItem> _salesReportItems;
         private List<Customer> _customers;
         private List<Product> _products;
+        private bool _isItemWiseMode = false;
 
         public SalesReportForm()
         {
@@ -342,7 +343,7 @@ namespace Vape_Store
                 }
                 
                 // Check if this is item-wise mode
-                if (this.Text.Contains("Item-wise"))
+                if (_isItemWiseMode)
                 {
                     LoadItemWiseData(sales);
                 }
@@ -762,10 +763,9 @@ namespace Vape_Store
         {
             // Set to show item-wise sales data
             this.Text = "Item-wise Sales Report";
-            // Load all sales data for item-wise view
-            LoadSalesData();
-            
-            // Update column headers for item-wise view
+            _isItemWiseMode = true;
+
+            // Update column headers/visibility for item-wise view
             if (dgvSalesReport.Columns["ProductName"] != null)
                 dgvSalesReport.Columns["ProductName"].HeaderText = "Product Name";
             if (dgvSalesReport.Columns["Quantity"] != null)
@@ -774,6 +774,19 @@ namespace Vape_Store
                 dgvSalesReport.Columns["UnitPrice"].HeaderText = "Average Unit Price";
             if (dgvSalesReport.Columns["SubTotal"] != null)
                 dgvSalesReport.Columns["SubTotal"].HeaderText = "Total Revenue";
+
+            // Hide columns that don't make sense in item-wise aggregated view
+            if (dgvSalesReport.Columns["InvoiceNumber"] != null)
+                dgvSalesReport.Columns["InvoiceNumber"].Visible = false;
+            if (dgvSalesReport.Columns["SaleDate"] != null)
+                dgvSalesReport.Columns["SaleDate"].Visible = false;
+            if (dgvSalesReport.Columns["PaymentMethod"] != null)
+                dgvSalesReport.Columns["PaymentMethod"].Visible = false;
+            if (dgvSalesReport.Columns["PaidAmount"] != null)
+                dgvSalesReport.Columns["PaidAmount"].Visible = false;
+
+            // Load data for this mode
+            LoadSalesData();
         }
 
         private void SeedDatabaseWithTestData()

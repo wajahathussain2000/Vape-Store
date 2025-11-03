@@ -96,6 +96,7 @@ namespace Vape_Store
         }
         private void OpenNewSaleForm() //method for opening the product form 
         {
+            if (!RequirePermission("sales")) return;
             NewSale newsale = new NewSale();
             newsale.FormClosed += (s, e) => RefreshDashboardData();
             newsale.Show();
@@ -127,6 +128,7 @@ namespace Vape_Store
         }
         private void OpenAddPurchaseForm()
         { 
+           if (!RequirePermission("purchases")) return;
            NewPurchase newPurchase= new NewPurchase();  
             newPurchase.FormClosed += (s, e) => RefreshDashboardData();
             newPurchase.Show(); 
@@ -148,12 +150,14 @@ namespace Vape_Store
 
         private void OpenProductsForm()
         {
+            if (!RequirePermission("inventory")) return;
             Products products = new Products(); 
             products.Show();            
 
         }
         private void OpenCategoriesForm()
         {
+            if (!RequirePermission("inventory")) return;
             Categories categories = new Categories();
             categories.Show();
 
@@ -183,29 +187,34 @@ namespace Vape_Store
         }
         private void OpenCustomersForm()
         {
+            if (!RequirePermission("people")) return;
             Customers customers = new Customers();  
             customers.Show();   
 
         }
         private void OpenSuppliersForm()
         {
+            if (!RequirePermission("people")) return;
             Supplier_Master suppliers = new Supplier_Master();  
             suppliers.Show();
 
         }
         private void OpenUsersForm()
         {
+            if (!RequirePermission("users")) return;
             Users users = new Users();
             users.Show();
         }
         private void OpenCashinHandForm()
         {
+            if (!RequirePermission("accounts")) return;
             Cash_in_Hand cash_In_Hand = new Cash_in_Hand(); 
             cash_In_Hand.Show();    
 
         }
         private void OpenExpenseEntryForm()
         {
+          if (!RequirePermission("accounts")) return;
           ExpenseEntry expense_entry = new ExpenseEntry();  
             expense_entry.Show();   
         }
@@ -235,6 +244,7 @@ namespace Vape_Store
 
         private void OpenStockReportForm()
         {
+            if (!RequirePermission("reports") && !RequirePermission("basic_reports")) return;
             StockReportForm stockReport = new StockReportForm();
             stockReport.Show();
         }
@@ -335,6 +345,7 @@ namespace Vape_Store
         {
             try
             {
+                if (!RequirePermission("backup") && !RequirePermission("utilities")) return;
                 // Open Database Backup Manager form
                 var databaseBackupForm = new DatabaseBackupForm();
                 databaseBackupForm.ShowDialog();
@@ -354,9 +365,14 @@ namespace Vape_Store
         {
             try
             {
-                // Open Users form for user access management
-                var usersForm = new Users();
-                usersForm.ShowDialog();
+                var role = (UserSession.CurrentUser?.Role ?? string.Empty).Trim().ToLower();
+                if (role != "superadmin" && role != "super admin")
+                {
+                    MessageBox.Show("Only SuperAdmin can manage roles & permissions.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                var rp = new RolesPermissionsForm();
+                rp.ShowDialog();
             }
             catch (Exception ex)
             {
@@ -772,6 +788,37 @@ namespace Vape_Store
         private void Dashboard_Load(object sender, EventArgs e)
         {
             LoadDashboardData();
+            ApplyRolePermissions();
+        }
+
+        private bool RequirePermission(string permission)
+        {
+            try
+            {
+                if (UserSession.HasPermission(permission)) return true;
+            }
+            catch { }
+            MessageBox.Show("You do not have permission to perform this action.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+
+        private void ApplyRolePermissions()
+        {
+            try
+            {
+                // Sales menu: visible to sales/manager/admin/superadmin
+                BtnSales.Enabled = UserSession.HasPermission("sales");
+
+                // Match actual field names from Designer
+                purchaseBtn.Enabled = UserSession.HasPermission("purchases");
+                inventoryBtn.Enabled = UserSession.HasPermission("inventory");
+                peopleBtn.Enabled = UserSession.HasPermission("people") || UserSession.HasPermission("users");
+                accountsBtn.Enabled = UserSession.HasPermission("accounts");
+                reportsBtn.Enabled = UserSession.HasPermission("reports") || UserSession.HasPermission("basic_reports");
+                utilitiesBtn.Enabled = UserSession.HasPermission("utilities") || UserSession.HasPermission("backup");
+                usersBtn.Enabled = UserSession.HasPermission("users");
+            }
+            catch { }
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)

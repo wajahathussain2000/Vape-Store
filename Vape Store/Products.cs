@@ -49,6 +49,13 @@ namespace Vape_Store
             // Configure buttons: ADD_button acts as dedicated Save; Save_button is Update
             ADD_button.Text = "Save";
             Save_button.Text = "Update";
+            
+            // Hide barcode section
+            if (barcodeGroup != null)
+            {
+                barcodeGroup.Visible = false;
+                barcodeGroup.Enabled = false;
+            }
         }
 
         private void InitializeDataGridView()
@@ -107,7 +114,6 @@ namespace Vape_Store
             Clear_button.Click += ClearButton_Click;
             Exit_button.Click += ExitButton_Click;
             Print_button.Click += PrintButton_Click;
-            generateBtn.Click += GenerateBarcode_Click;
             
             // DataGridView event handlers
             dgvProducts.CellDoubleClick += DgvProducts_CellDoubleClick;
@@ -116,12 +122,18 @@ namespace Vape_Store
             // Search event handler
             txtSearch.TextChanged += TxtSearch_TextChanged;
             
-            // Barcode validation event handler
-            txtBarcode.TextChanged += TxtBarcode_TextChanged;
-            
-            // Add tooltip for barcode field
-            var tooltip = new ToolTip();
-            tooltip.SetToolTip(txtBarcode, "Enter custom barcode (e.g., apple001) or leave empty for auto-generation");
+            // Form closing handler to ensure cleanup
+            this.FormClosing += Products_FormClosing;
+        }
+        
+        private void Products_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Allow form to close even if operations are pending
+            // Cancel close only if user explicitly cancels
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = false;
+            }
         }
 
         private void LoadCategories()
@@ -160,8 +172,12 @@ namespace Vape_Store
         {
             try
             {
+                Application.DoEvents(); // Keep UI responsive
                 _products = _productRepository.GetAllProducts();
+                Application.DoEvents();
                 RefreshDataGridView();
+                Application.DoEvents();
+                UpdateSearchAutoComplete();
             }
             catch (Exception ex)
             {
@@ -175,14 +191,31 @@ namespace Vape_Store
             {
                 dgvProducts.Rows.Clear();
                 
+                if (_products == null || _products.Count == 0)
+                    return;
+                
                 foreach (var product in _products)
                 {
+                    string categoryName = "";
+                    if (_categories != null && _categories.Count > 0)
+                    {
+                        var cat = _categories.FirstOrDefault(c => c.CategoryID == product.CategoryID);
+                        categoryName = cat?.CategoryName ?? "";
+                    }
+                    
+                    string brandName = "";
+                    if (_brands != null && _brands.Count > 0)
+                    {
+                        var brand = _brands.FirstOrDefault(b => b.BrandID == product.BrandID);
+                        brandName = brand?.BrandName ?? "";
+                    }
+                    
                     dgvProducts.Rows.Add(
                         product.ProductID,
                         product.ProductCode,
                         product.ProductName,
-                        _categories.FirstOrDefault(c => c.CategoryID == product.CategoryID)?.CategoryName ?? "",
-                        _brands.FirstOrDefault(b => b.BrandID == product.BrandID)?.BrandName ?? "",
+                        categoryName,
+                        brandName,
                         product.CostPrice,
                         product.RetailPrice,
                         product.StockQuantity,
@@ -191,6 +224,7 @@ namespace Vape_Store
                         product.IsActive ? "Active" : "Inactive"
                     );
                 }
+                UpdateSearchAutoComplete();
             }
             catch (Exception ex)
             {
@@ -220,10 +254,15 @@ namespace Vape_Store
                 string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
                 string uniqueBarcode = $"PRD{productCode}{timestamp.Substring(timestamp.Length - 6)}";
                 
-                // Ensure uniqueness by checking against existing barcodes
-                while (_products.Any(p => p.Barcode == uniqueBarcode))
+                // Ensure uniqueness by checking against existing barcodes (safe check for null/empty)
+                if (_products != null && _products.Count > 0)
                 {
-                    uniqueBarcode = $"PRD{productCode}{DateTime.Now.Ticks.ToString().Substring(DateTime.Now.Ticks.ToString().Length - 6)}";
+                    int attempts = 0;
+                    while (_products.Any(p => p.Barcode == uniqueBarcode) && attempts < 10)
+                    {
+                        uniqueBarcode = $"PRD{productCode}{DateTime.Now.Ticks.ToString().Substring(Math.Max(0, DateTime.Now.Ticks.ToString().Length - 6))}";
+                        attempts++;
+                    }
                 }
                 
                 return uniqueBarcode;
@@ -306,28 +345,8 @@ namespace Vape_Store
                     return;
                 }
 
-                // Validate barcode if provided
-                string barcodeText = txtBarcode.Text.Trim();
-                if (!string.IsNullOrEmpty(barcodeText))
-                {
-                    // Validate barcode format
-                    if (!_barcodeService.ValidateBarcode(barcodeText))
-                    {
-                        ShowMessage("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.", "Validation Error", MessageBoxIcon.Warning);
-                        txtBarcode.Focus();
-                        return;
-                    }
-
-                    // Check for duplicate barcode
-                    bool isDuplicate = _productRepository.IsBarcodeExists(barcodeText, isEditMode ? selectedProductId : (int?)null);
-                    if (isDuplicate)
-                    {
-                        ShowMessage($"Barcode '{barcodeText}' already exists! Please use a different barcode.", "Duplicate Barcode", MessageBoxIcon.Warning);
-                        txtBarcode.Focus();
-                        txtBarcode.SelectAll();
-                        return;
-                    }
-                }
+                // Auto-generate barcode (UI section removed, always auto-generate)
+                string barcodeText = GenerateUniqueBarcode();
 
                 // Add new product
                 var product = new Product
@@ -341,28 +360,47 @@ namespace Vape_Store
                     RetailPrice = retailPrice,
                     StockQuantity = 0, // New products start with 0 stock
                     ReorderLevel = reorderLevel,
-                    Barcode = !string.IsNullOrEmpty(barcodeText) ? barcodeText : GenerateUniqueBarcode(),
+                    Barcode = barcodeText,
                     IsActive = checkBox1.Checked,
                     CreatedDate = DateTime.Now
                 };
 
-                bool success = _productRepository.AddProduct(product);
-                
-                if (success)
+                // Disable buttons to prevent double-click
+                ADD_button.Enabled = false;
+                ADD_button.Text = "Saving...";
+                try
                 {
-                    ShowMessage("Product added successfully!", "Success", MessageBoxIcon.Information);
-                    LoadProducts();
-                    ClearForm();
-                    GenerateProductCode();
+                    Application.DoEvents(); // Keep UI responsive
+                    bool success = _productRepository.AddProduct(product);
+                    
+                    if (success)
+                    {
+                        Application.DoEvents();
+                        // Refresh data first
+                        LoadProducts();
+                        Application.DoEvents();
+                        ClearForm();
+                        GenerateProductCode();
+                        Application.DoEvents();
+                        
+                        ShowMessage("Product added successfully!", "Success", MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        ShowMessage("Failed to add product.", "Error", MessageBoxIcon.Error);
+                    }
                 }
-                else
+                finally
                 {
-                    ShowMessage("Failed to add product.", "Error", MessageBoxIcon.Error);
+                    ADD_button.Enabled = true;
+                    ADD_button.Text = "Save";
                 }
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error saving product: {ex.Message}", "Error", MessageBoxIcon.Error);
+                ADD_button.Enabled = true;
+                ADD_button.Text = "Save";
+                ShowMessage($"Error saving product: {ex.Message}\n\nPlease check:\n1. Database connection\n2. Required fields are filled\n3. Product code is unique", "Error", MessageBoxIcon.Error);
             }
         }
 
@@ -419,27 +457,14 @@ namespace Vape_Store
                     return;
                 }
 
-                string barcodeText = txtBarcode.Text.Trim();
-                if (!string.IsNullOrEmpty(barcodeText))
+                // Keep existing barcode when updating (UI section removed)
+                var existing = _products.FirstOrDefault(p => p.ProductID == selectedProductId);
+                if (existing == null)
                 {
-                    if (!_barcodeService.ValidateBarcode(barcodeText))
-                    {
-                        ShowMessage("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.", "Validation Error", MessageBoxIcon.Warning);
-                        txtBarcode.Focus();
-                        return;
-                    }
-
-                    bool isDuplicate = _productRepository.IsBarcodeExists(barcodeText, selectedProductId);
-                    if (isDuplicate)
-                    {
-                        ShowMessage($"Barcode '{barcodeText}' already exists! Please use a different barcode.", "Duplicate Barcode", MessageBoxIcon.Warning);
-                        txtBarcode.Focus();
-                        txtBarcode.SelectAll();
-                        return;
-                    }
+                    ShowMessage("Product not found.", "Error", MessageBoxIcon.Error);
+                    return;
                 }
 
-                var existing = _products.First(p => p.ProductID == selectedProductId);
                 var productToUpdate = new Product
                 {
                     ProductID = selectedProductId,
@@ -452,7 +477,7 @@ namespace Vape_Store
                     RetailPrice = retailPrice,
                     StockQuantity = existing.StockQuantity,
                     ReorderLevel = reorderLevel,
-                    Barcode = !string.IsNullOrEmpty(barcodeText) ? barcodeText : GenerateUniqueBarcode(),
+                    Barcode = existing.Barcode ?? GenerateUniqueBarcode(), // Keep existing barcode
                     IsActive = checkBox1.Checked,
                     CreatedDate = existing.CreatedDate
                 };
@@ -550,7 +575,7 @@ namespace Vape_Store
             txtPrice.Clear();
             txtretailprice.Clear();
             txtReorderLevel.Clear();
-            txtBarcode.Clear();
+            // Barcode UI removed - auto-generated on save
             checkBox1.Checked = true;
             selectedProductId = -1;
             SetEditMode(false);
@@ -559,7 +584,17 @@ namespace Vape_Store
 
         private void ExitButton_Click(object sender, EventArgs e)
         {
-            this.Close();
+            try
+            {
+                // Cancel any pending operations
+                this.DialogResult = DialogResult.Cancel;
+                this.Close();
+            }
+            catch
+            {
+                // Force close if normal close fails
+                try { Application.ExitThread(); } catch { }
+            }
         }
 
         private void PrintButton_Click(object sender, EventArgs e)
@@ -734,6 +769,15 @@ namespace Vape_Store
         {
             if (e.RowIndex >= 0 && e.RowIndex < dgvProducts.Rows.Count)
             {
+                // Get ProductID directly from the clicked row
+                DataGridViewRow clickedRow = dgvProducts.Rows[e.RowIndex];
+                if (clickedRow.Cells["ProductID"].Value != null)
+                {
+                    if (int.TryParse(clickedRow.Cells["ProductID"].Value.ToString(), out int productId))
+                    {
+                        selectedProductId = productId;
+                    }
+                }
                 EditSelectedProduct();
             }
         }
@@ -742,10 +786,15 @@ namespace Vape_Store
         {
             if (dgvProducts.SelectedRows.Count > 0)
             {
-                int rowIndex = dgvProducts.SelectedRows[0].Index;
-                if (rowIndex >= 0 && rowIndex < _products.Count)
+                // Get ProductID directly from the DataGridView row instead of using row index
+                // This works correctly even when products are filtered
+                DataGridViewRow selectedRow = dgvProducts.SelectedRows[0];
+                if (selectedRow.Cells["ProductID"].Value != null)
                 {
-                    selectedProductId = _products[rowIndex].ProductID;
+                    if (int.TryParse(selectedRow.Cells["ProductID"].Value.ToString(), out int productId))
+                    {
+                        selectedProductId = productId;
+                    }
                 }
             }
         }
@@ -760,23 +809,57 @@ namespace Vape_Store
                     return;
                 }
 
-                var product = _products.FirstOrDefault(p => p.ProductID == selectedProductId);
+                // Ensure products are loaded
+                if (_products == null || _products.Count == 0)
+                {
+                    LoadProducts();
+                }
+
+                var product = _products?.FirstOrDefault(p => p.ProductID == selectedProductId);
                 if (product == null)
                 {
                     ShowMessage("Product not found.", "Error", MessageBoxIcon.Error);
                     return;
                 }
 
+                // Ensure categories and brands are loaded
+                if (_categories == null || _categories.Count == 0)
+                {
+                    LoadCategories();
+                }
+                if (_brands == null || _brands.Count == 0)
+                {
+                    LoadBrands();
+                }
+
                 // Populate form with product data
-                txtProductCode.Text = product.ProductCode;
-                txtProductName.Text = product.ProductName;
-                txtDescription.Text = product.Description;
-                cmbCategory.SelectedValue = product.CategoryID;
-                cmbBrand.SelectedValue = product.BrandID;
+                txtProductCode.Text = product.ProductCode ?? "";
+                txtProductName.Text = product.ProductName ?? "";
+                txtDescription.Text = product.Description ?? "";
+                
+                // Set category and brand safely
+                try
+                {
+                    if (cmbCategory.Items.Count > 0 && product.CategoryID > 0)
+                    {
+                        cmbCategory.SelectedValue = product.CategoryID;
+                    }
+                }
+                catch { cmbCategory.SelectedIndex = -1; }
+                
+                try
+                {
+                    if (cmbBrand.Items.Count > 0 && product.BrandID > 0)
+                    {
+                        cmbBrand.SelectedValue = product.BrandID;
+                    }
+                }
+                catch { cmbBrand.SelectedIndex = -1; }
+                
                 txtPrice.Text = product.CostPrice.ToString("F2");
                 txtretailprice.Text = product.RetailPrice.ToString("F2");
                 txtReorderLevel.Text = product.ReorderLevel.ToString();
-                txtBarcode.Text = product.Barcode;
+                // Barcode UI removed - stored but not displayed
                 checkBox1.Checked = product.IsActive;
                 
                 SetEditMode(true);
@@ -797,6 +880,9 @@ namespace Vape_Store
         {
             try
             {
+                if (_products == null || _products.Count == 0)
+                    return;
+
                 string searchText = txtSearch.Text.ToLower();
                 
                 if (string.IsNullOrWhiteSpace(searchText))
@@ -806,22 +892,36 @@ namespace Vape_Store
                 }
 
                 var filteredProducts = _products.Where(p => 
-                    p.ProductName.ToLower().Contains(searchText) ||
-                    p.ProductCode.ToLower().Contains(searchText) ||
-                    p.Barcode.ToLower().Contains(searchText) ||
-                    (_categories.FirstOrDefault(c => c.CategoryID == p.CategoryID)?.CategoryName ?? "").ToLower().Contains(searchText) ||
-                    (_brands.FirstOrDefault(b => b.BrandID == p.BrandID)?.BrandName ?? "").ToLower().Contains(searchText)).ToList();
+                    (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.ToLower().Contains(searchText)) ||
+                    (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.ToLower().Contains(searchText)) ||
+                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(searchText)) ||
+                    (_categories != null && _categories.Count > 0 && (_categories.FirstOrDefault(c => c.CategoryID == p.CategoryID)?.CategoryName ?? "").ToLower().Contains(searchText)) ||
+                    (_brands != null && _brands.Count > 0 && (_brands.FirstOrDefault(b => b.BrandID == p.BrandID)?.BrandName ?? "").ToLower().Contains(searchText))).ToList();
 
                 dgvProducts.Rows.Clear();
                 
                 foreach (var product in filteredProducts)
                 {
+                    string categoryName = "";
+                    if (_categories != null && _categories.Count > 0)
+                    {
+                        var cat = _categories.FirstOrDefault(c => c.CategoryID == product.CategoryID);
+                        categoryName = cat?.CategoryName ?? "";
+                    }
+                    
+                    string brandName = "";
+                    if (_brands != null && _brands.Count > 0)
+                    {
+                        var brand = _brands.FirstOrDefault(b => b.BrandID == product.BrandID);
+                        brandName = brand?.BrandName ?? "";
+                    }
+                    
                     dgvProducts.Rows.Add(
                         product.ProductID,
                         product.ProductCode,
                         product.ProductName,
-                        _categories.FirstOrDefault(c => c.CategoryID == product.CategoryID)?.CategoryName ?? "",
-                        _brands.FirstOrDefault(b => b.BrandID == product.BrandID)?.BrandName ?? "",
+                        categoryName,
+                        brandName,
                         product.CostPrice,
                         product.RetailPrice,
                         product.StockQuantity,
@@ -830,11 +930,33 @@ namespace Vape_Store
                         product.IsActive ? "Active" : "Inactive"
                     );
                 }
+                UpdateSearchAutoComplete();
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error filtering products: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
+        }
+
+        private void UpdateSearchAutoComplete()
+        {
+            try
+            {
+                var collection = new AutoCompleteStringCollection();
+                if (_products != null)
+                {
+                    foreach (var p in _products)
+                    {
+                        if (!string.IsNullOrWhiteSpace(p.ProductName)) collection.Add(p.ProductName);
+                        if (!string.IsNullOrWhiteSpace(p.ProductCode)) collection.Add(p.ProductCode);
+                        if (!string.IsNullOrWhiteSpace(p.Barcode)) collection.Add(p.Barcode);
+                    }
+                }
+                txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
+                txtSearch.AutoCompleteCustomSource = collection;
+            }
+            catch { }
         }
 
         private void SetEditMode(bool editMode)

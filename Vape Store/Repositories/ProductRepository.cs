@@ -34,6 +34,7 @@ namespace Vape_Store.Repositories
                 {
                     using (var command = new SqlCommand(query, connection))
                     {
+                        command.CommandTimeout = 30; // 30 second timeout
                         connection.Open();
                         
                         using (var reader = command.ExecuteReader())
@@ -138,6 +139,7 @@ namespace Vape_Store.Repositories
                 {
                     using (var command = new SqlCommand(query, connection))
                     {
+                        command.CommandTimeout = 30; // 30 second timeout
                         command.Parameters.AddWithValue("@ProductCode", product.ProductCode);
                         command.Parameters.AddWithValue("@ProductName", product.ProductName);
                         command.Parameters.AddWithValue("@Description", product.Description ?? (object)DBNull.Value);

@@ -242,6 +242,9 @@
     <Compile Include="RecentFormsManager.cs" />
     <Compile Include="FavoritesManager.cs" />
     <Compile Include="DataAccess\DatabaseConnection.cs" />
+    <Compile Include="Models\Role.cs" />
+    <Compile Include="Models\Permission.cs" />
+    <Compile Include="Models\UserRole.cs" />
     <Compile Include="Models\User.cs" />
     <Compile Include="Models\Product.cs" />
     <Compile Include="Models\Customer.cs" />
@@ -273,6 +276,7 @@
     <Compile Include="Repositories\ExpenseCategoryRepository.cs" />
     <Compile Include="Repositories\CustomerPaymentRepository.cs" />
     <Compile Include="Repositories\SupplierPaymentRepository.cs" />
+    <Compile Include="Repositories\RoleRepository.cs" />
     <Compile Include="Services\SalesService.cs" />
     <Compile Include="Services\InventoryService.cs" />
     <Compile Include="Services\AuthenticationService.cs" />
@@ -284,6 +288,10 @@
     <Compile Include="Services\DatabaseBackupService.cs" />
     <Compile Include="Services\ConfigurationService.cs" />
     <Compile Include="Services\LoggingService.cs" />
+    <Compile Include="Services\RoleManagerService.cs" />
+    <Compile Include="RolesPermissionsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="DatabaseBackupForm.cs">
       <SubType>Form</SubType>
     </Compile>

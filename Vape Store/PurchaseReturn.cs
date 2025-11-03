@@ -132,14 +132,34 @@ namespace Vape_Store
             try
             {
                 _purchases = _purchaseReturnRepository.GetPurchasesForReturn();
-                cmbInvoiceNumber.DataSource = _purchases;
-                cmbInvoiceNumber.DisplayMember = "InvoiceNumber";
-                cmbInvoiceNumber.ValueMember = "PurchaseID";
-                cmbInvoiceNumber.SelectedIndex = -1;
+                SetupSearchableInvoiceComboBox();
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error loading purchases: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void SetupSearchableInvoiceComboBox()
+        {
+            try
+            {
+                // Make Invoice Number ComboBox searchable using built-in autocomplete
+                cmbInvoiceNumber.DropDownStyle = ComboBoxStyle.DropDown;
+                cmbInvoiceNumber.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                cmbInvoiceNumber.AutoCompleteSource = AutoCompleteSource.ListItems;
+                
+                // Set up data binding
+                cmbInvoiceNumber.DisplayMember = "InvoiceNumber";
+                cmbInvoiceNumber.ValueMember = "PurchaseID";
+                cmbInvoiceNumber.DataSource = _purchases;
+                cmbInvoiceNumber.SelectedIndex = -1;
+                
+                // Built-in autocomplete handles typing/searching
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error setting up invoice combo box: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
 
@@ -185,13 +205,21 @@ namespace Vape_Store
         {
             try
             {
-                if (cmbInvoiceNumber.SelectedValue == null)
+                // Check for valid selection more thoroughly
+                if (cmbInvoiceNumber.SelectedItem == null || !(cmbInvoiceNumber.SelectedItem is Purchase))
                 {
                     ShowMessage("Please select an invoice to load.", "Selection Error", MessageBoxIcon.Warning);
                     return;
                 }
 
-                int purchaseId = ((Purchase)cmbInvoiceNumber.SelectedItem).PurchaseID;
+                Purchase selectedPurchaseObj = cmbInvoiceNumber.SelectedItem as Purchase;
+                if (selectedPurchaseObj == null)
+                {
+                    ShowMessage("Please select an invoice to load.", "Selection Error", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                int purchaseId = selectedPurchaseObj.PurchaseID;
                 _selectedPurchase = _purchaseReturnRepository.GetPurchaseWithItems(purchaseId);
 
                 if (_selectedPurchase == null)

@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using Vape_Store.Services;
 using Vape_Store.Models;
+using Vape_Store.Repositories;
 
 
 namespace Vape_Store
@@ -56,6 +57,17 @@ namespace Vape_Store
                             Role = user.Role,
                             LoginTime = DateTime.Now
                         };
+
+                        // Load roles and permissions from DB (if tables present)
+                        try
+                        {
+                            var roleRepo = new RoleRepository();
+                            var dbRoles = roleRepo.GetRolesForUser(user.UserID);
+                            var dbPerms = roleRepo.GetEffectivePermissionsForUser(user.UserID);
+                            UserSession.CurrentUser.Roles = dbRoles ?? new List<string>();
+                            UserSession.CurrentUser.Permissions = new System.Collections.Generic.HashSet<string>((dbPerms ?? new List<string>()).Select(p => (p ?? string.Empty).Trim().ToLower()));
+                        }
+                        catch { /* ignore if schema not present */ }
                         
                         LoadingHelper.HideLoading();
                         

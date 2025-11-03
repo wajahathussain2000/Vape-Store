@@ -30,6 +30,10 @@ namespace Vape_Store
         /// </summary>
         public string Role { get; set; }
 
+        // Optional: multi-role support from DB
+        public System.Collections.Generic.List<string> Roles { get; set; }
+        public System.Collections.Generic.HashSet<string> Permissions { get; set; }
+
         /// <summary>
         /// Gets or sets the time when the user logged in
         /// </summary>
@@ -61,6 +65,8 @@ namespace Vape_Store
         {
             LastActivity = DateTime.Now;
             IsActive = true;
+            Roles = new System.Collections.Generic.List<string>();
+            Permissions = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
         #endregion
@@ -79,25 +85,72 @@ namespace Vape_Store
         /// <summary>
         /// Checks if the current user has the specified permission
         /// </summary>
-        /// <param name="permission">The permission to check (e.g., "pos", "user_management", "reports")</param>
+        /// <param name="permission">The permission to check (e.g., "sales", "purchases", "inventory", "users", "reports", "backup", "settings")</param>
         /// <returns>True if user has permission, false otherwise</returns>
         public static bool HasPermission(string permission)
         {
             if (!IsLoggedIn()) 
                 return false;
 
-            // Role-based permission checking
-            switch (CurrentUser.Role?.ToLower())
+            // Normalize
+            var role = (CurrentUser.Role ?? string.Empty).Trim().ToLower();
+            var perm = (permission ?? string.Empty).Trim().ToLower();
+
+            // Super admin: everything
+            if (role == "superadmin" || role == "super admin") return true;
+
+            // If permissions loaded from DB, prefer them
+            try
+            {
+                if (CurrentUser?.Permissions != null && CurrentUser.Permissions.Count > 0)
+                {
+                    return CurrentUser.Permissions.Contains(perm) || CurrentUser.Permissions.Contains("*");
+                }
+            }
+            catch { }
+
+            // Dynamic role manager (JSON-backed). If it answers, use it.
+            try
+            {
+                if (Vape_Store.Services.RoleManagerService.Instance.HasPermission(role, perm))
+                {
+                    return true;
+                }
+            }
+            catch { }
+
+            // Define role ladders and permissions
+            // - admin: all except system-level settings if you want to lock that down (here we allow all app permissions)
+            // - manager: sales, purchases, inventory, people, reports
+            // - sales: sales, customers, basic reports
+            // - cashier: sales only
+            switch (role)
             {
                 case "admin":
-                    return true; // Admin has all permissions
+                    return true;
                 case "manager":
-                    return permission != "user_management" && permission != "system_settings";
+                    return perm == "sales" || perm == "purchases" || perm == "inventory" || perm == "people" || perm == "reports";
+                case "sales":
+                case "seller":
+                    return perm == "sales" || perm == "people" || perm == "reports" || perm == "basic_reports";
                 case "cashier":
-                    return permission == "pos" || permission == "customer_lookup" || permission == "basic_reports";
+                    return perm == "sales" || perm == "basic_reports";
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// Convenience helper to check any of the permissions
+        /// </summary>
+        public static bool HasAny(params string[] permissions)
+        {
+            if (permissions == null) return false;
+            foreach (var p in permissions)
+            {
+                if (HasPermission(p)) return true;
+            }
+            return false;
         }
 
         #endregion

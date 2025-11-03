@@ -137,16 +137,41 @@ namespace Vape_Store
             try
             {
                 _sales = _salesReturnService.GetAvailableSalesForReturn();
-                cmbInvoiceNumber.DataSource = _sales;
-                cmbInvoiceNumber.DisplayMember = "InvoiceNumber";
-                cmbInvoiceNumber.ValueMember = "SaleID";
-                cmbInvoiceNumber.SelectedIndex = -1;
+                SetupSearchableInvoiceComboBox();
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error loading sales: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
+
+        private void SetupSearchableInvoiceComboBox()
+        {
+            try
+            {
+                // Make Invoice Number ComboBox searchable using built-in autocomplete
+                cmbInvoiceNumber.DropDownStyle = ComboBoxStyle.DropDown;
+                cmbInvoiceNumber.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                cmbInvoiceNumber.AutoCompleteSource = AutoCompleteSource.ListItems;
+                
+                // Set up data binding
+                cmbInvoiceNumber.DisplayMember = "InvoiceNumber";
+                cmbInvoiceNumber.ValueMember = "SaleID";
+                cmbInvoiceNumber.DataSource = _sales;
+                cmbInvoiceNumber.SelectedIndex = -1;
+                
+                // Rely on SelectedIndexChanged and Load button; built-in autocomplete handles typing
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error setting up invoice combo box: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private bool _isFilteringInvoiceCombo = false;
+        private bool _isNavigatingWithArrows = false;
+
+        // Removed custom Key/DroppedDown handlers; built-in autocomplete avoids text loss issues
 
         private void GenerateReturnNumber()
         {
@@ -185,13 +210,28 @@ namespace Vape_Store
         {
             try
             {
-                if (cmbInvoiceNumber.SelectedValue == null)
+                // Check for valid selection more thoroughly
+                if (cmbInvoiceNumber.SelectedItem == null || !(cmbInvoiceNumber.SelectedItem is Sale))
                 {
-                    ShowMessage("Please select an invoice to load.", "Selection Error", MessageBoxIcon.Warning);
+                    // Don't show error if user is just navigating
+                    if (!_isNavigatingWithArrows)
+                    {
+                        ShowMessage("Please select an invoice to load.", "Selection Error", MessageBoxIcon.Warning);
+                    }
                     return;
                 }
 
-                int saleId = ((Sale)cmbInvoiceNumber.SelectedItem).SaleID;
+                Sale selectedSaleObj = cmbInvoiceNumber.SelectedItem as Sale;
+                if (selectedSaleObj == null)
+                {
+                    if (!_isNavigatingWithArrows)
+                    {
+                        ShowMessage("Please select an invoice to load.", "Selection Error", MessageBoxIcon.Warning);
+                    }
+                    return;
+                }
+
+                int saleId = selectedSaleObj.SaleID;
                 _selectedSale = _salesReturnRepository.GetSaleWithItems(saleId);
 
                 if (_selectedSale == null)
@@ -228,16 +268,54 @@ namespace Vape_Store
                 dataGridView1.Rows.Clear();
                 _returnItems.Clear();
 
+                if (_selectedSale == null || _selectedSale.SaleItems == null || _selectedSale.SaleItems.Count == 0)
+                {
+                    return;
+                }
+
                 foreach (var saleItem in _selectedSale.SaleItems)
                 {
+                    // Get product name - if not available in sale item, fetch from repository
+                    string productName = saleItem.ProductName;
+                    string productCode = saleItem.ProductCode;
+
+                    // If product name is missing, fetch from product repository
+                    if (string.IsNullOrWhiteSpace(productName) && saleItem.ProductID > 0)
+                    {
+                        try
+                        {
+                            var product = _productRepository.GetProductById(saleItem.ProductID);
+                            if (product != null)
+                            {
+                                productName = product.ProductName ?? "Unknown Product";
+                                productCode = product.ProductCode ?? saleItem.ProductCode ?? "";
+                            }
+                        }
+                        catch (Exception prodEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error fetching product name: {prodEx.Message}");
+                            productName = $"Product ID: {saleItem.ProductID}";
+                        }
+                    }
+
+                    // Ensure we have a display name
+                    if (string.IsNullOrWhiteSpace(productName))
+                    {
+                        productName = $"Product ID: {saleItem.ProductID}";
+                    }
+                    if (string.IsNullOrWhiteSpace(productCode))
+                    {
+                        productCode = "";
+                    }
+
                     var returnItem = new SalesReturnItem
                     {
                         ProductID = saleItem.ProductID,
                         Quantity = 0, // Start with 0 return quantity
                         UnitPrice = saleItem.UnitPrice,
                         SubTotal = 0,
-                        ProductName = saleItem.ProductName,
-                        ProductCode = saleItem.ProductCode
+                        ProductName = productName,
+                        ProductCode = productCode
                     };
 
                     _returnItems.Add(returnItem);
@@ -245,18 +323,40 @@ namespace Vape_Store
                     // Add row to DataGridView
                     int rowIndex = dataGridView1.Rows.Add();
                     dataGridView1.Rows[rowIndex].Cells["Select"].Value = false;
-                    dataGridView1.Rows[rowIndex].Cells["ProductID"].Value = saleItem.ProductID; // Add ProductID
-                    dataGridView1.Rows[rowIndex].Cells["ItemCode"].Value = saleItem.ProductCode;
-                    dataGridView1.Rows[rowIndex].Cells["ItemName"].Value = saleItem.ProductName;
-                    dataGridView1.Rows[rowIndex].Cells["OrignalQty"].Value = saleItem.Quantity;
-                    dataGridView1.Rows[rowIndex].Cells["ReturnQty"].Value = 0;
-                    dataGridView1.Rows[rowIndex].Cells["Price"].Value = saleItem.UnitPrice;
-                    dataGridView1.Rows[rowIndex].Cells["Total"].Value = 0;
+                    dataGridView1.Rows[rowIndex].Cells["ProductID"].Value = saleItem.ProductID;
+                    
+                    // Ensure cell values are set properly
+                    var itemCodeCell = dataGridView1.Rows[rowIndex].Cells["ItemCode"];
+                    var itemNameCell = dataGridView1.Rows[rowIndex].Cells["ItemName"];
+                    var originalQtyCell = dataGridView1.Rows[rowIndex].Cells["OrignalQty"];
+                    var returnQtyCell = dataGridView1.Rows[rowIndex].Cells["ReturnQty"];
+                    var priceCell = dataGridView1.Rows[rowIndex].Cells["Price"];
+                    var totalCell = dataGridView1.Rows[rowIndex].Cells["Total"];
+
+                    if (itemCodeCell != null)
+                        itemCodeCell.Value = productCode ?? "";
+                    if (itemNameCell != null)
+                        itemNameCell.Value = productName ?? "Unknown Product";
+                    if (originalQtyCell != null)
+                        originalQtyCell.Value = saleItem.Quantity;
+                    if (returnQtyCell != null)
+                        returnQtyCell.Value = 0;
+                    if (priceCell != null)
+                        priceCell.Value = saleItem.UnitPrice;
+                    if (totalCell != null)
+                        totalCell.Value = 0;
+
+                    // Force refresh of the row
+                    dataGridView1.RefreshEdit();
                 }
+
+                // Force DataGridView to refresh and display
+                dataGridView1.Refresh();
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error populating return items: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"PopulateReturnItems Error: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -392,9 +492,44 @@ namespace Vape_Store
 
         private void CmbInvoiceNumber_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (cmbInvoiceNumber.SelectedValue != null)
+            try
             {
-                LoadSelectedInvoice();
+                var cb = sender as ComboBox;
+                if (cb == null) return;
+
+                // Update text when item is selected
+                if (cb.SelectedItem is Sale selectedSale)
+                {
+                    // Only update text if we're not filtering (to preserve user's search text)
+                    if (!_isFilteringInvoiceCombo)
+                    {
+                        // Update text to show selected invoice number
+                        if (cb.Text != selectedSale.InvoiceNumber)
+                        {
+                            cb.Text = selectedSale.InvoiceNumber;
+                        }
+                    }
+                }
+
+                // Only load invoice if:
+                // 1. NOT currently navigating with arrow keys (let user press Enter or click to confirm)
+                // 2. Dropdown is NOT open (user clicked on an item in closed dropdown)
+                // 3. Has a valid selection
+                // This prevents loading while user is navigating with arrows
+                if (!_isNavigatingWithArrows && 
+                    !cb.DroppedDown &&
+                    cb.SelectedIndex >= 0 && 
+                    cb.SelectedItem != null && 
+                    cb.SelectedItem is Sale)
+                {
+                    // User explicitly selected an item (likely by clicking or tabbing)
+                    LoadSelectedInvoice();
+                }
+                // If navigating with arrows, don't load - wait for Enter or click
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in CmbInvoiceNumber_SelectedIndexChanged: {ex.Message}");
             }
         }
 

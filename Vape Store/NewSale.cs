@@ -645,11 +645,16 @@ namespace Vape_Store
                     return;
                 }
 
-                // Find product by name
+                // Find product by name, code, or barcode
                 var productsToSearch = _filteredProducts ?? _products;
+                string searchText = txtProductName.Text.Trim().ToLower();
                 var product = productsToSearch.FirstOrDefault(p => 
-                    p.ProductName.ToLower().Contains(txtProductName.Text.ToLower()) ||
-                    p.ProductCode.ToLower().Contains(txtProductName.Text.ToLower()));
+                    p.ProductName.ToLower().Equals(searchText) ||
+                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Equals(searchText)) ||
+                    p.ProductCode.ToLower().Equals(searchText) ||
+                    p.ProductName.ToLower().Contains(searchText) ||
+                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(searchText)) ||
+                    p.ProductCode.ToLower().Contains(searchText));
 
                 if (product == null)
                 {
@@ -1051,7 +1056,8 @@ namespace Vape_Store
                 // Find exact match first (for AutoComplete selection)
                 var productsToSearch = _filteredProducts ?? _products;
                 var exactMatch = productsToSearch.FirstOrDefault(p => 
-                    p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase));
+                    p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(searchText, StringComparison.OrdinalIgnoreCase)));
 
                 if (exactMatch != null)
                 {
@@ -1064,7 +1070,8 @@ namespace Vape_Store
                     // Search for products that contain the search text
                     var matchingProducts = productsToSearch.Where(p => 
                         p.ProductName.ToLower().Contains(searchText.ToLower()) ||
-                        p.ProductCode.ToLower().Contains(searchText.ToLower())
+                        p.ProductCode.ToLower().Contains(searchText.ToLower()) ||
+                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(searchText.ToLower()))
                     ).ToList();
 
                     if (matchingProducts.Count > 0)
@@ -1228,19 +1235,22 @@ namespace Vape_Store
             {
                 var productsToUse = _filteredProducts ?? _products;
                 
-                // Enable AutoComplete for the ProductName TextBox
+                // Enable AutoComplete for the ProductName TextBox (supports name and barcode)
                 txtProductName.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
                 txtProductName.AutoCompleteSource = AutoCompleteSource.CustomSource;
 
                 // Create AutoComplete collection
                 AutoCompleteStringCollection productCollection = new AutoCompleteStringCollection();
 
-                // Add filtered product names to the collection
+                // Add filtered product names and barcodes to the collection
                 if (productsToUse != null)
                 {
                     foreach (var product in productsToUse)
                     {
-                        productCollection.Add(product.ProductName);
+                        if (!string.IsNullOrWhiteSpace(product.ProductName))
+                            productCollection.Add(product.ProductName);
+                        if (!string.IsNullOrWhiteSpace(product.Barcode))
+                            productCollection.Add(product.Barcode);
                     }
                 }
 
@@ -1469,9 +1479,13 @@ namespace Vape_Store
                 
                 if (!string.IsNullOrEmpty(productName))
                 {
-                    // Find the product by name
-                    var product = _products.FirstOrDefault(p => 
-                        p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase));
+                    // Find the product by name, code, or barcode
+                    var productsToSearch = _filteredProducts ?? _products;
+                    string searchText = productName.ToLower();
+                    var product = productsToSearch.FirstOrDefault(p => 
+                        p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase) ||
+                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(productName, StringComparison.OrdinalIgnoreCase)) ||
+                        p.ProductCode.Equals(productName, StringComparison.OrdinalIgnoreCase));
 
                     if (product != null)
                     {

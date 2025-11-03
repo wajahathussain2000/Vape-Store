@@ -70,7 +70,7 @@
             this.ItemName = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Qty = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Price = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.txtinvoiceNo = new System.Windows.Forms.TextBox();
+            this.txtinvoiceNo = new System.Windows.Forms.ComboBox();
             this.btnGetData = new System.Windows.Forms.Button();
             this.panel2.SuspendLayout();
             this.panel1.SuspendLayout();
@@ -552,13 +552,15 @@
             this.Price.Name = "Price";
             this.Price.Width = 180;
             // 
-            // txtinvoiceNo
+            // txtinvoiceNo (ComboBox for searchable invoice)
             // 
+            this.txtinvoiceNo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
             this.txtinvoiceNo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtinvoiceNo.FormattingEnabled = true;
             this.txtinvoiceNo.Location = new System.Drawing.Point(177, 14);
             this.txtinvoiceNo.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.txtinvoiceNo.Name = "txtinvoiceNo";
-            this.txtinvoiceNo.Size = new System.Drawing.Size(240, 34);
+            this.txtinvoiceNo.Size = new System.Drawing.Size(240, 36);
             this.txtinvoiceNo.TabIndex = 28;
             // 
             // btnGetData
@@ -633,7 +635,7 @@
         private Guna.UI2.WinForms.Guna2DateTimePicker guna2DateTimePicker1;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Button btnGetData;
-        private System.Windows.Forms.TextBox txtinvoiceNo;
+        private System.Windows.Forms.ComboBox txtinvoiceNo;
         private System.Windows.Forms.TextBox txtStockQuantity;
         private System.Windows.Forms.Label stockLabel;
         private System.Windows.Forms.TextBox txtReorderLevel;

@@ -193,40 +193,307 @@ namespace Vape_Store.Services
         #region Database Backup Operations
 
         /// <summary>
-        /// Creates a full backup of the VapeStore database
+        /// Gets SQL Server's default backup directory
+        /// </summary>
+        /// <param name="connection">SQL Server connection</param>
+        /// <returns>Default backup directory path</returns>
+        private string GetSqlServerDefaultBackupPath(SqlConnection connection)
+        {
+            try
+            {
+                string query = @"
+                    EXEC master.dbo.xp_instance_regread 
+                    N'HKEY_LOCAL_MACHINE', 
+                    N'SOFTWARE\Microsoft\Microsoft SQL Server\MSSQLServer', 
+                    N'BackupDirectory'";
+                
+                using (var command = new SqlCommand(query, connection))
+                {
+                    var result = command.ExecuteScalar();
+                    if (result != null && !string.IsNullOrEmpty(result.ToString()))
+                    {
+                        return result.ToString();
+                    }
+                }
+            }
+            catch
+            {
+                // If registry read fails, continue with alternative method
+            }
+
+            // Try alternative method - use SQL Server data directory
+            try
+            {
+                string query = @"EXEC xp_instance_regread 
+                    N'HKEY_LOCAL_MACHINE', 
+                    N'SOFTWARE\Microsoft\Microsoft SQL Server\Setup', 
+                    N'SQLDataRoot'";
+                
+                using (var command = new SqlCommand(query, connection))
+                {
+                    var result = command.ExecuteScalar();
+                    if (result != null && !string.IsNullOrEmpty(result.ToString()))
+                    {
+                        return Path.Combine(result.ToString(), "Backup");
+                    }
+                }
+            }
+            catch
+            {
+                // Continue with fallback
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Validates that a path is accessible by SQL Server
+        /// </summary>
+        private bool ValidateBackupPathForSqlServer(string backupPath, SqlConnection connection)
+        {
+            try
+            {
+                // Check if SQL Server has permission to write to the path
+                // We'll test by trying to create a test file in that directory
+                string testFileName = Path.Combine(Path.GetDirectoryName(backupPath), "sql_test_write.tmp");
+                
+                // Escape single quotes in path for SQL
+                string escapedPath = backupPath.Replace("'", "''");
+                
+                // Try to create a test file using xp_cmdshell (if enabled) or FILEEXISTS
+                // If not available, we'll rely on the actual backup attempt
+                return true; // Return true and let the backup attempt determine if path works
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Escapes a file path for use in SQL Server commands
+        /// </summary>
+        private string EscapeSqlPath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return path;
+            
+            // Replace single quotes with double single quotes for SQL escaping
+            return path.Replace("'", "''");
+        }
+
+        /// <summary>
+        /// Creates a full backup of the connected database.
+        /// - Uses the current DB name dynamically
+        /// - Prefers SQL Server default backup directory with fallbacks
+        /// - Tries WITH COMPRESSION first, then retries without if unsupported
         /// </summary>
         /// <returns>Path to the created backup file</returns>
         /// <exception cref="Exception">Thrown when backup operation fails</exception>
         public string BackupDatabase()
         {
+            string backupFilePath = null;
+            string sqlBackupPath = null;
+            
             try
             {
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                string backupFileName = $"VapeStore_Backup_{timestamp}.bak";
-                string backupFilePath = Path.Combine(backupFolderPath, backupFileName);
 
                 using (var connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-                    
-                    string backupQuery = $@"
-                        BACKUP DATABASE [VapeStore] 
-                        TO DISK = '{backupFilePath}'
-                        WITH FORMAT, INIT, NAME = 'VapeStore Full Backup', 
-                        SKIP, NOREWIND, NOUNLOAD, STATS = 10";
-
-                    using (var command = new SqlCommand(backupQuery, connection))
+                    var builder = new SqlConnectionStringBuilder(connectionString);
+                    string dbName = string.IsNullOrWhiteSpace(builder.InitialCatalog) ? connection.Database : builder.InitialCatalog;
+                    if (string.IsNullOrWhiteSpace(dbName))
                     {
-                        command.CommandTimeout = 300; // 5 minutes timeout
-                        command.ExecuteNonQuery();
+                        throw new Exception("Unable to determine database name from connection string.");
+                    }
+                    string safeDbName = dbName.Replace('\\','_').Replace('/', '_').Replace(':','_').Replace('*','_').Replace('?','_').Replace('"','_').Replace('<','_').Replace('>','_').Replace('|','_');
+                    string backupFileName = $"{safeDbName}_Backup_{timestamp}.bak";
+                    
+                    // First, try to get SQL Server's default backup directory
+                    string sqlDefaultPath = GetSqlServerDefaultBackupPath(connection);
+                    
+                    // Determine which path to use
+                    if (!string.IsNullOrEmpty(sqlDefaultPath) && Directory.Exists(sqlDefaultPath))
+                    {
+                        // Use SQL Server's default backup directory (more reliable)
+                        sqlBackupPath = Path.Combine(sqlDefaultPath, backupFileName);
+                        backupFilePath = sqlBackupPath;
+                    }
+                    else
+                    {
+                        // Use our configured backup folder
+                        backupFilePath = Path.Combine(backupFolderPath, backupFileName);
+                        sqlBackupPath = backupFilePath;
+                    }
+                    
+                    // Ensure the directory exists
+                    string backupDir = Path.GetDirectoryName(sqlBackupPath);
+                    if (!Directory.Exists(backupDir))
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(backupDir);
+                        }
+                        catch (Exception dirEx)
+                        {
+                            throw new Exception($"Cannot create backup directory: {dirEx.Message}. Please ensure the SQL Server service account has write permissions.", dirEx);
+                        }
+                    }
+                    
+                    // Escape the path for SQL command
+                    string escapedBackupPath = EscapeSqlPath(sqlBackupPath);
+                    string escapedDbName = dbName.Replace("'", "''");
+                    
+                    // Check if user has backup permission (best-effort)
+                    string permissionQuery = $@"
+                        SELECT HAS_PERMS_BY_NAME('{escapedDbName}', 'DATABASE', 'BACKUP DATABASE')";
+                    
+                    bool hasPermission = false;
+                    try
+                    {
+                        using (var permCommand = new SqlCommand(permissionQuery, connection))
+                        {
+                            var permResult = permCommand.ExecuteScalar();
+                            hasPermission = permResult != null && Convert.ToBoolean(permResult);
+                        }
+                    }
+                    catch
+                    {
+                        // Permission check failed, but continue with backup attempt
+                    }
+                    
+                    if (!hasPermission)
+                    {
+                        // Try backup anyway - the error message will be more specific
+                    }
+                    
+                    // Helper to attempt a backup with optional COMPRESSION
+                    Action<bool> attemptBackup = (withCompression) =>
+                    {
+                        string compressionClause = withCompression ? ", COMPRESSION" : string.Empty;
+                        string backupQuery = $@"
+                            BACKUP DATABASE [{escapedDbName}] 
+                            TO DISK = '{escapedBackupPath}'
+                            WITH FORMAT, INIT, NAME = '{escapedDbName} Full Backup', 
+                            SKIP, NOREWIND, NOUNLOAD, STATS = 10{compressionClause}";
+                        using (var cmd = new SqlCommand(backupQuery, connection))
+                        {
+                            cmd.CommandTimeout = 300; // 5 minutes timeout
+                            cmd.ExecuteNonQuery();
+                        }
+                    };
+                    
+                    // Try with compression first, then retry without on failure
+                    try
+                    {
+                        attemptBackup(true);
+                    }
+                    catch (SqlException)
+                    {
+                        // Retry without compression (covers editions where compression isn't supported)
+                        attemptBackup(false);
+                    }
+                    
+                    // Verify the backup file was created
+                    if (!File.Exists(backupFilePath))
+                    {
+                        throw new Exception("Backup command completed but backup file was not found. The backup may have failed silently.");
+                    }
+                    
+                    // If backup was created in SQL Server's default location but user has a preferred location,
+                    // copy it to the preferred location for easier access
+                    if (sqlDefaultPath != null && Directory.Exists(sqlDefaultPath) && 
+                        backupFilePath != Path.Combine(backupFolderPath, backupFileName))
+                    {
+                        try
+                        {
+                            string copiedPath = CopyBackupToPreferredLocation(backupFilePath);
+                            // Return the copied path as it's in the user's preferred location
+                            return copiedPath;
+                        }
+                        catch
+                        {
+                            // If copy fails, still return the original path
+                            // User can find it in SQL Server's default location
+                        }
                     }
                 }
 
                 return backupFilePath;
             }
+            catch (SqlException sqlEx)
+            {
+                // Provide more specific error messages based on SQL error
+                string errorMessage = "Database backup failed: ";
+                
+                switch (sqlEx.Number)
+                {
+                    case 3013: // Backup database error
+                        errorMessage += "Backup operation failed. " + sqlEx.Message;
+                        break;
+                    case 15105: // Permission denied
+                        errorMessage += "Permission denied. The SQL user does not have BACKUP DATABASE permission. " +
+                                      "Please contact your database administrator to grant this permission.";
+                        break;
+                    case 3201: // Cannot open backup device
+                        errorMessage += "Cannot access the backup location. " +
+                                      $"SQL Server cannot write to: {sqlBackupPath}\n\n" +
+                                      "Possible solutions:\n" +
+                                      "1. Ensure SQL Server service account has write permissions to the backup folder\n" +
+                                      "2. Use SQL Server's default backup directory\n" +
+                                      "3. Change backup location to a folder SQL Server can access";
+                        break;
+                    case 18204: // Backup file error
+                        errorMessage += "Cannot create backup file. " +
+                                      $"Check if SQL Server has write access to: {Path.GetDirectoryName(sqlBackupPath)}";
+                        break;
+                    default:
+                        errorMessage += sqlEx.Message;
+                        if (sqlEx.InnerException != null)
+                            errorMessage += "\nInner exception: " + sqlEx.InnerException.Message;
+                        break;
+                }
+                
+                throw new Exception(errorMessage, sqlEx);
+            }
+            catch (UnauthorizedAccessException unAuthEx)
+            {
+                throw new Exception(
+                    $"Access denied to backup location: {backupFilePath}\n\n" +
+                    "Please ensure:\n" +
+                    "1. The folder exists and is writable\n" +
+                    "2. SQL Server service account has write permissions\n" +
+                    "3. Try changing the backup location to SQL Server's default backup directory",
+                    unAuthEx);
+            }
+            catch (DirectoryNotFoundException dirEx)
+            {
+                throw new Exception(
+                    $"Backup directory not found: {Path.GetDirectoryName(backupFilePath)}\n\n" +
+                    "The backup location may have been deleted or is inaccessible. " +
+                    "Please change the backup location using Backup Manager.",
+                    dirEx);
+            }
             catch (Exception ex)
             {
-                throw new Exception($"Database backup failed: {ex.Message}", ex);
+                string detailedError = $"Database backup failed: {ex.Message}";
+                
+                if (ex.InnerException != null)
+                {
+                    detailedError += $"\n\nInner exception: {ex.InnerException.Message}";
+                }
+                
+                detailedError += $"\n\nBackup path attempted: {sqlBackupPath ?? backupFilePath}";
+                detailedError += "\n\nTroubleshooting tips:";
+                detailedError += "\n1. Ensure SQL Server is running";
+                detailedError += "\n2. Check SQL Server service account has write permissions to backup folder";
+                detailedError += "\n3. Verify the SQL user has BACKUP DATABASE permission";
+                detailedError += "\n4. Try using SQL Server's default backup location";
+                detailedError += "\n5. Check available disk space";
+                
+                throw new Exception(detailedError, ex);
             }
         }
 
@@ -360,6 +627,8 @@ namespace Vape_Store.Services
                     locationType = "Documents";
                 else if (backupFolderPath.Contains("Temp"))
                     locationType = "Temp";
+                else if (backupFolderPath.Contains("Backup") || backupFolderPath.Contains("MSSQL"))
+                    locationType = "SQL Server Default";
                 else
                     locationType = "Application Folder";
 
@@ -368,6 +637,60 @@ namespace Vape_Store.Services
             catch
             {
                 return $"Backup Location: {backupFolderPath}";
+            }
+        }
+
+        /// <summary>
+        /// Gets SQL Server's default backup directory if available
+        /// </summary>
+        /// <returns>SQL Server default backup directory path, or null if unavailable</returns>
+        public string GetSqlServerDefaultBackupDirectory()
+        {
+            try
+            {
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    return GetSqlServerDefaultBackupPath(connection);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Copies a backup file from SQL Server's default location to the user's preferred location
+        /// </summary>
+        /// <param name="sourceBackupPath">Source backup file path</param>
+        /// <returns>Destination backup file path</returns>
+        public string CopyBackupToPreferredLocation(string sourceBackupPath)
+        {
+            try
+            {
+                if (!File.Exists(sourceBackupPath))
+                {
+                    throw new Exception($"Source backup file not found: {sourceBackupPath}");
+                }
+
+                string fileName = Path.GetFileName(sourceBackupPath);
+                string destPath = Path.Combine(backupFolderPath, fileName);
+
+                // Ensure destination directory exists
+                if (!Directory.Exists(backupFolderPath))
+                {
+                    Directory.CreateDirectory(backupFolderPath);
+                }
+
+                // Copy the file
+                File.Copy(sourceBackupPath, destPath, true);
+
+                return destPath;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to copy backup file: {ex.Message}", ex);
             }
         }
 
