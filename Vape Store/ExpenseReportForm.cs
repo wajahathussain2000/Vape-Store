@@ -23,6 +23,7 @@ namespace Vape_Store
         private ReportingService _reportingService;
         
         private List<ExpenseReportItem> _expenseReportItems;
+        private List<ExpenseReportItem> _originalExpenseReportItems; // Store original unfiltered data
         private List<ExpenseCategory> _expenseCategories;
 
         public ExpenseReportForm()
@@ -195,9 +196,11 @@ namespace Vape_Store
                     _expenseReportItems.Add(reportItem);
                 }
                 
+                // Store original unfiltered data
+                _originalExpenseReportItems = new List<ExpenseReportItem>(_expenseReportItems);
+                
                 ApplyFilters();
                 RefreshDataGridView();
-                UpdateSummaryLabels();
             }
             catch (Exception ex)
             {
@@ -209,26 +212,39 @@ namespace Vape_Store
         {
             try
             {
-                var filteredItems = _expenseReportItems.AsEnumerable();
+                // Use original unfiltered data as base
+                var filteredItems = _originalExpenseReportItems?.AsEnumerable() ?? _expenseReportItems.AsEnumerable();
                 
                 // Category filter
                 if (cmbCategory.SelectedItem != null)
                 {
-                    filteredItems = filteredItems.Where(item => item.CategoryName == cmbCategory.Text);
+                    var selectedCategory = (ExpenseCategory)cmbCategory.SelectedItem;
+                    if (selectedCategory != null && selectedCategory.CategoryName != "All Categories")
+                    {
+                        filteredItems = filteredItems.Where(item => item.CategoryName == selectedCategory.CategoryName);
+                    }
                 }
                 
-                // Search filter
+                // Search filter - search through multiple fields
                 if (!string.IsNullOrWhiteSpace(txtSearch.Text))
                 {
                     string searchTerm = txtSearch.Text.ToLower();
                     filteredItems = filteredItems.Where(item => 
-                        item.Description.ToLower().Contains(searchTerm) ||
-                        item.ExpenseCode.ToLower().Contains(searchTerm) ||
-                        item.CategoryName.ToLower().Contains(searchTerm) ||
-                        item.PaymentMethod.ToLower().Contains(searchTerm));
+                        (item.Description?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.ExpenseCode?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.CategoryName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.PaymentMethod?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.ExpenseDate.ToString("yyyy-MM-dd").Contains(searchTerm)) ||
+                        (item.ExpenseDate.ToString("MM/dd/yyyy").Contains(searchTerm)) ||
+                        (item.Amount.ToString("F2").Contains(searchTerm)));
                 }
                 
-                dgvExpenseReport.DataSource = filteredItems.ToList();
+                // Update filtered list and DataGridView
+                var filteredList = filteredItems.ToList();
+                dgvExpenseReport.DataSource = filteredList;
+                
+                // Update summary labels based on filtered data
+                UpdateSummaryLabels(filteredList);
             }
             catch (Exception ex)
             {
@@ -248,14 +264,17 @@ namespace Vape_Store
             }
         }
 
-        private void UpdateSummaryLabels()
+        private void UpdateSummaryLabels(List<ExpenseReportItem> items = null)
         {
             try
             {
-                var totalExpenses = _expenseReportItems.Sum(item => item.Amount);
-                var totalCount = _expenseReportItems.Count;
+                // Use provided filtered items or current items
+                var itemsToUse = items ?? _expenseReportItems;
+                
+                var totalExpenses = itemsToUse.Sum(item => item.Amount);
+                var totalCount = itemsToUse.Count;
                 var averageExpense = totalCount > 0 ? totalExpenses / totalCount : 0;
-                var uniqueCategories = _expenseReportItems.Select(item => item.CategoryName).Distinct().Count();
+                var uniqueCategories = itemsToUse.Select(item => item.CategoryName).Distinct().Count();
                 
                 lblTotalExpenses.Text = $"Total Expenses: {totalExpenses:F2}";
                 lblTotalCount.Text = $"Total Records: {totalCount}";

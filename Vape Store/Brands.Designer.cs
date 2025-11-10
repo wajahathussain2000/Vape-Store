@@ -37,6 +37,7 @@
             this.categoryDescLabel = new System.Windows.Forms.Label();
             this.txtCategoryDesc = new System.Windows.Forms.TextBox();
             this.Savebtn = new System.Windows.Forms.Button();
+            this.Updatebtn = new System.Windows.Forms.Button();
             this.Deletebtn = new System.Windows.Forms.Button();
             this.addCategoryBtn = new System.Windows.Forms.Button();
             this.categoryGridGroup = new System.Windows.Forms.GroupBox();
@@ -78,6 +79,7 @@
             this.categoryInputGroup.Controls.Add(this.categoryDescLabel);
             this.categoryInputGroup.Controls.Add(this.txtCategoryDesc);
             this.categoryInputGroup.Controls.Add(this.Savebtn);
+            this.categoryInputGroup.Controls.Add(this.Updatebtn);
             this.categoryInputGroup.Controls.Add(this.Deletebtn);
             this.categoryInputGroup.Controls.Add(this.addCategoryBtn);
             this.categoryInputGroup.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -145,13 +147,28 @@
             this.Savebtn.Text = "Save";
             this.Savebtn.UseVisualStyleBackColor = false;
             // 
+            // Updatebtn
+            // 
+            this.Updatebtn.BackColor = System.Drawing.Color.White;
+            this.Updatebtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.Updatebtn.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Updatebtn.ForeColor = System.Drawing.Color.Black;
+            this.Updatebtn.Location = new System.Drawing.Point(430, 353);
+            this.Updatebtn.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.Updatebtn.Name = "Updatebtn";
+            this.Updatebtn.Size = new System.Drawing.Size(181, 53);
+            this.Updatebtn.TabIndex = 5;
+            this.Updatebtn.Text = "Update";
+            this.Updatebtn.UseVisualStyleBackColor = false;
+            this.Updatebtn.Enabled = false;
+            // 
             // Deletebtn
             // 
             this.Deletebtn.BackColor = System.Drawing.Color.White;
             this.Deletebtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.Deletebtn.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Deletebtn.ForeColor = System.Drawing.Color.Black;
-            this.Deletebtn.Location = new System.Drawing.Point(430, 353);
+            this.Deletebtn.Location = new System.Drawing.Point(631, 353);
             this.Deletebtn.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.Deletebtn.Name = "Deletebtn";
             this.Deletebtn.Size = new System.Drawing.Size(181, 53);
@@ -264,6 +281,7 @@
         private System.Windows.Forms.Label categoryDescLabel;
         private System.Windows.Forms.TextBox txtCategoryDesc;
         private System.Windows.Forms.Button Savebtn;
+        private System.Windows.Forms.Button Updatebtn;
         private System.Windows.Forms.Button Deletebtn;
         private System.Windows.Forms.Button addCategoryBtn;
         private System.Windows.Forms.GroupBox categoryGridGroup;

@@ -121,8 +121,17 @@ namespace Vape_Store.Repositories
         
         public bool UpdateUser(User user)
         {
+            // Include password update if provided (for SuperAdmin)
             string query = @"UPDATE Users SET Username = @Username, FullName = @FullName, Email = @Email, 
-                           Phone = @Phone, Role = @Role, IsActive = @IsActive WHERE UserID = @UserID";
+                           Phone = @Phone, Role = @Role, IsActive = @IsActive";
+            
+            // If password is provided, update it (only SuperAdmin can do this)
+            if (!string.IsNullOrWhiteSpace(user.Password))
+            {
+                query += ", Password = @Password";
+            }
+            
+            query += " WHERE UserID = @UserID";
             
             using (var connection = DatabaseConnection.GetConnection())
             {
@@ -135,6 +144,12 @@ namespace Vape_Store.Repositories
                     command.Parameters.AddWithValue("@Phone", user.Phone ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("@Role", user.Role);
                     command.Parameters.AddWithValue("@IsActive", user.IsActive);
+                    
+                    // Add password parameter only if password is provided (SuperAdmin only)
+                    if (!string.IsNullOrWhiteSpace(user.Password))
+                    {
+                        command.Parameters.AddWithValue("@Password", user.Password);
+                    }
                     
                     connection.Open();
                     return command.ExecuteNonQuery() > 0;

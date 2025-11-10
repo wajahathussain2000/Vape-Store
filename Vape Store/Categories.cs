@@ -67,6 +67,7 @@ namespace Vape_Store
             // Button event handlers
             addCategoryBtn.Click += AddCategoryBtn_Click;
             Savebtn.Click += SaveBtn_Click;
+            Updatebtn.Click += UpdateBtn_Click;
             Deletebtn.Click += DeleteBtn_Click;
             
             // DataGridView event handlers
@@ -149,6 +150,11 @@ namespace Vape_Store
             SaveCategory();
         }
 
+        private void UpdateBtn_Click(object sender, EventArgs e)
+        {
+            UpdateCategory();
+        }
+
         private void SaveCategory()
         {
             try
@@ -185,6 +191,84 @@ namespace Vape_Store
                 }
 
                 // Check for duplicate category name using database validation
+                bool categoryExists = _categoryRepository.CategoryExists(txtCategoryName.Text.Trim(), -1);
+                if (categoryExists)
+                {
+                    ShowMessage($"A category with the name '{txtCategoryName.Text.Trim()}' already exists.", "Duplicate Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                // Add new category
+                var category = new Category
+                {
+                    CategoryName = txtCategoryName.Text.Trim(),
+                    Description = txtCategoryDesc.Text.Trim(),
+                    IsActive = true,
+                    CreatedDate = DateTime.Now
+                };
+
+                bool success = _categoryRepository.AddCategory(category);
+                
+                if (success)
+                {
+                    ShowMessage("Category added successfully!", "Success", MessageBoxIcon.Information);
+                    LoadCategories();
+                    ClearForm();
+                }
+                else
+                {
+                    ShowMessage("Failed to add category.", "Error", MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error saving category: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateCategory()
+        {
+            try
+            {
+                if (selectedCategoryId == -1)
+                {
+                    ShowMessage("Please select a category to update.", "Selection Error", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Enhanced input validation
+                if (string.IsNullOrWhiteSpace(txtCategoryName.Text))
+                {
+                    ShowMessage("Please enter a category name.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                // Validate category name length
+                if (txtCategoryName.Text.Trim().Length < 2)
+                {
+                    ShowMessage("Category name must be at least 2 characters long.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                if (txtCategoryName.Text.Trim().Length > 100)
+                {
+                    ShowMessage("Category name cannot exceed 100 characters.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                // Validate description length
+                if (txtCategoryDesc.Text.Trim().Length > 500)
+                {
+                    ShowMessage("Description cannot exceed 500 characters.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryDesc.Focus();
+                    return;
+                }
+
+                // Check for duplicate category name using database validation (excluding current category)
                 bool categoryExists = _categoryRepository.CategoryExists(txtCategoryName.Text.Trim(), selectedCategoryId);
                 if (categoryExists)
                 {
@@ -193,60 +277,33 @@ namespace Vape_Store
                     return;
                 }
 
-                if (isEditMode)
+                // Update existing category
+                var category = new Category
                 {
-                    // Update existing category
-                    var category = new Category
-                    {
-                        CategoryID = selectedCategoryId,
-                        CategoryName = txtCategoryName.Text.Trim(),
-                        Description = txtCategoryDesc.Text.Trim(),
-                        IsActive = true,
-                        CreatedDate = _categories.First(c => c.CategoryID == selectedCategoryId).CreatedDate
-                    };
+                    CategoryID = selectedCategoryId,
+                    CategoryName = txtCategoryName.Text.Trim(),
+                    Description = txtCategoryDesc.Text.Trim(),
+                    IsActive = true,
+                    CreatedDate = _categories.First(c => c.CategoryID == selectedCategoryId).CreatedDate
+                };
 
-                    bool success = _categoryRepository.UpdateCategory(category);
-                    
-                    if (success)
-                    {
-                        ShowMessage("Category updated successfully!", "Success", MessageBoxIcon.Information);
-                        LoadCategories();
-                        ClearForm();
-                        SetEditMode(false);
-                    }
-                    else
-                    {
-                        ShowMessage("Failed to update category.", "Error", MessageBoxIcon.Error);
-                    }
+                bool success = _categoryRepository.UpdateCategory(category);
+                
+                if (success)
+                {
+                    ShowMessage("Category updated successfully!", "Success", MessageBoxIcon.Information);
+                    LoadCategories();
+                    ClearForm();
+                    SetEditMode(false);
                 }
                 else
                 {
-                    // Add new category
-                    var category = new Category
-                    {
-                        CategoryName = txtCategoryName.Text.Trim(),
-                        Description = txtCategoryDesc.Text.Trim(),
-                        IsActive = true,
-                        CreatedDate = DateTime.Now
-                    };
-
-                    bool success = _categoryRepository.AddCategory(category);
-                    
-                    if (success)
-                    {
-                        ShowMessage("Category added successfully!", "Success", MessageBoxIcon.Information);
-                        LoadCategories();
-                        ClearForm();
-                    }
-                    else
-                    {
-                        ShowMessage("Failed to add category.", "Error", MessageBoxIcon.Error);
-                    }
+                    ShowMessage("Failed to update category.", "Error", MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error saving category: {ex.Message}", "Error", MessageBoxIcon.Error);
+                ShowMessage($"Error updating category: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
 
@@ -314,10 +371,15 @@ namespace Vape_Store
         {
             if (dgvCategories.SelectedRows.Count > 0)
             {
-                int rowIndex = dgvCategories.SelectedRows[0].Index;
-                if (rowIndex >= 0 && rowIndex < _categories.Count)
+                // Get CategoryID directly from the DataGridView row instead of using row index
+                // This works correctly even when categories are filtered
+                DataGridViewRow selectedRow = dgvCategories.SelectedRows[0];
+                if (selectedRow.Cells["CategoryID"].Value != null)
                 {
-                    selectedCategoryId = _categories[rowIndex].CategoryID;
+                    if (int.TryParse(selectedRow.Cells["CategoryID"].Value.ToString(), out int categoryId))
+                    {
+                        selectedCategoryId = categoryId;
+                    }
                 }
             }
         }
@@ -406,14 +468,16 @@ namespace Vape_Store
             if (editMode)
             {
                 addCategoryBtn.Text = "New Category";
-                Savebtn.Text = "Update";
+                Savebtn.Enabled = false;
+                Updatebtn.Enabled = true;
                 Deletebtn.Enabled = true;
                 categoryInputGroup.Text = "Edit Category";
             }
             else
             {
                 addCategoryBtn.Text = "Add Category";
-                Savebtn.Text = "Save";
+                Savebtn.Enabled = true;
+                Updatebtn.Enabled = false;
                 Deletebtn.Enabled = false;
                 categoryInputGroup.Text = "Add New Category";
             }
@@ -438,12 +502,6 @@ namespace Vape_Store
             txtCategoryName.Focus();
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            // This appears to be a generic button click handler
-            // Implementation depends on which button this refers to
-            MessageBox.Show("Button clicked", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
 
         private void Categories_KeyDown(object sender, KeyEventArgs e)
         {

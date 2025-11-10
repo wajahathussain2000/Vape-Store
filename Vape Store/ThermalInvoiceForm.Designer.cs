@@ -32,7 +32,7 @@ namespace Vape_Store
             this.btnPrintInvoice = new System.Windows.Forms.Button();
             this.btnPreviewInvoice = new System.Windows.Forms.Button();
             this.btnClose = new System.Windows.Forms.Button();
-            this.txtInvoiceNumber = new System.Windows.Forms.TextBox();
+            this.cmbInvoiceNumber = new System.Windows.Forms.ComboBox();
             this.lblSaleInfo = new System.Windows.Forms.Label();
             this.lblInvoiceNumber = new System.Windows.Forms.Label();
             this.lblDate = new System.Windows.Forms.Label();
@@ -76,12 +76,13 @@ namespace Vape_Store
             this.btnClose.Text = "Close";
             this.btnClose.UseVisualStyleBackColor = true;
             // 
-            // txtInvoiceNumber
+            // cmbInvoiceNumber
             // 
-            this.txtInvoiceNumber.Location = new System.Drawing.Point(12, 60);
-            this.txtInvoiceNumber.Name = "txtInvoiceNumber";
-            this.txtInvoiceNumber.Size = new System.Drawing.Size(200, 20);
-            this.txtInvoiceNumber.TabIndex = 4;
+            this.cmbInvoiceNumber.Location = new System.Drawing.Point(12, 60);
+            this.cmbInvoiceNumber.Name = "cmbInvoiceNumber";
+            this.cmbInvoiceNumber.Size = new System.Drawing.Size(200, 21);
+            this.cmbInvoiceNumber.TabIndex = 4;
+            this.cmbInvoiceNumber.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
             // 
             // lblSaleInfo
             // 
@@ -117,7 +118,7 @@ namespace Vape_Store
             this.lblSupplier.Name = "lblSupplier";
             this.lblSupplier.Size = new System.Drawing.Size(48, 13);
             this.lblSupplier.TabIndex = 8;
-            this.lblSupplier.Text = "Supplier:";
+            this.lblSupplier.Text = "Customer:";
             // 
             // lblTotal
             // 
@@ -138,7 +139,7 @@ namespace Vape_Store
             this.Controls.Add(this.lblDate);
             this.Controls.Add(this.lblInvoiceNumber);
             this.Controls.Add(this.lblSaleInfo);
-            this.Controls.Add(this.txtInvoiceNumber);
+            this.Controls.Add(this.cmbInvoiceNumber);
             this.Controls.Add(this.btnClose);
             this.Controls.Add(this.btnPreviewInvoice);
             this.Controls.Add(this.btnPrintInvoice);
@@ -155,7 +156,7 @@ namespace Vape_Store
         private System.Windows.Forms.Button btnPrintInvoice;
         private System.Windows.Forms.Button btnPreviewInvoice;
         private System.Windows.Forms.Button btnClose;
-        private System.Windows.Forms.TextBox txtInvoiceNumber;
+        private System.Windows.Forms.ComboBox cmbInvoiceNumber;
         private System.Windows.Forms.Label lblSaleInfo;
         private System.Windows.Forms.Label lblInvoiceNumber;
         private System.Windows.Forms.Label lblDate;

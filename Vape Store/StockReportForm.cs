@@ -338,15 +338,21 @@ namespace Vape_Store
                     filteredItems = filteredItems.Where(item => selectedStatuses.Contains(item.StockStatus));
                 }
                 
-                // Search filter
+                // Search filter - search through multiple fields
                 if (!string.IsNullOrWhiteSpace(txtSearch.Text))
                 {
                     var searchTerm = txtSearch.Text.ToLower();
                     filteredItems = filteredItems.Where(item => 
-                        item.ProductName.ToLower().Contains(searchTerm) ||
-                        item.ProductCode.ToLower().Contains(searchTerm) ||
-                        item.CategoryName.ToLower().Contains(searchTerm) ||
-                        item.BrandName.ToLower().Contains(searchTerm));
+                        (item.ProductName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.ProductCode?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.CategoryName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.BrandName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.StockQuantity.ToString().Contains(searchTerm)) ||
+                        (item.ReorderLevel.ToString().Contains(searchTerm)) ||
+                        (item.UnitPrice.ToString("F2").Contains(searchTerm)) ||
+                        (item.SellingPrice.ToString("F2").Contains(searchTerm)) ||
+                        (item.TotalValue.ToString("F2").Contains(searchTerm)) ||
+                        (item.StockStatus?.ToLower().Contains(searchTerm) ?? false));
                 }
                 
                 _stockReportItems = filteredItems.ToList();

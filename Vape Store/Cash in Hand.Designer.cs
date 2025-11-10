@@ -118,7 +118,6 @@
             this.txtopeningcash.Name = "txtopeningcash";
             this.txtopeningcash.Size = new System.Drawing.Size(258, 34);
             this.txtopeningcash.TabIndex = 1;
-            this.txtopeningcash.TextChanged += new System.EventHandler(this.txtUsername_TextChanged);
             // 
             // actionsGroup
             // 
@@ -239,7 +238,6 @@
             this.txtCashIn.Name = "txtCashIn";
             this.txtCashIn.Size = new System.Drawing.Size(258, 34);
             this.txtCashIn.TabIndex = 1;
-            this.txtCashIn.TextChanged += new System.EventHandler(this.txtUsername_TextChanged);
             // 
             // textBox2
             // 
@@ -248,7 +246,6 @@
             this.textBox2.Name = "textBox2";
             this.textBox2.Size = new System.Drawing.Size(258, 34);
             this.textBox2.TabIndex = 1;
-            this.textBox2.TextChanged += new System.EventHandler(this.txtUsername_TextChanged);
             // 
             // txtexpense
             // 
@@ -257,7 +254,6 @@
             this.txtexpense.Name = "txtexpense";
             this.txtexpense.Size = new System.Drawing.Size(258, 34);
             this.txtexpense.TabIndex = 1;
-            this.txtexpense.TextChanged += new System.EventHandler(this.txtUsername_TextChanged);
             // 
             // label5
             // 
@@ -285,9 +281,9 @@
             this.txtclosingbalance.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.txtclosingbalance.Location = new System.Drawing.Point(231, 377);
             this.txtclosingbalance.Name = "txtclosingbalance";
+            this.txtclosingbalance.ReadOnly = true;
             this.txtclosingbalance.Size = new System.Drawing.Size(258, 34);
             this.txtclosingbalance.TabIndex = 1;
-            this.txtclosingbalance.TextChanged += new System.EventHandler(this.txtUsername_TextChanged);
             // 
             // label7
             // 

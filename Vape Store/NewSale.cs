@@ -11,6 +11,7 @@ using System.Configuration;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
 using Vape_Store.Models;
+using Vape_Store.Helpers;
 
 namespace Vape_Store
 {
@@ -21,6 +22,7 @@ namespace Vape_Store
         private ProductRepository _productRepository;
         private InventoryService _inventoryService;
         private BarcodeService _barcodeService;
+        private BusinessDateService _businessDateService;
         private PictureBox picBarcode;
         private TextBox txtBarcodeScanner;
         private List<Models.SaleItem> saleItems;
@@ -54,6 +56,7 @@ namespace Vape_Store
             _brandRepository = new BrandRepository();
             _inventoryService = new InventoryService();
             _barcodeService = new BarcodeService();
+            _businessDateService = new BusinessDateService();
             saleItems = new List<Models.SaleItem>();
             
             InitializeDataGridView();
@@ -66,6 +69,9 @@ namespace Vape_Store
             LoadBrands();
             GenerateInvoiceNumber();
             InitializePaymentMethods();
+            
+            // Set date to current business date (not calendar date)
+            guna2DateTimePicker1.Value = _businessDateService.GetCurrentBusinessDate();
             
             // Ensure barcode is displayed after form is fully loaded
             this.Load += (s, e) => {
@@ -197,9 +203,9 @@ namespace Vape_Store
             try
             {
                 _customers = _customerRepository.GetAllCustomers();
-                cmbCustomer.DataSource = _customers;
-                cmbCustomer.DisplayMember = "CustomerName";
-                cmbCustomer.ValueMember = "CustomerID";
+                
+                // Make ComboBox searchable
+                SearchableComboBoxHelper.MakeSearchable(cmbCustomer, _customers, "CustomerName", "CustomerID", "CustomerName");
                 
                 // Set "Walk-in Customer" as default (case-insensitive, tolerant to spacing)
                 var walkInCustomer = _customers.FirstOrDefault(c =>
@@ -348,9 +354,8 @@ namespace Vape_Store
                 // Add actual categories
                 categoryList.AddRange(_categories);
                 
-                cmbCategory.DataSource = categoryList;
-                cmbCategory.DisplayMember = "CategoryName";
-                cmbCategory.ValueMember = "CategoryID";
+                // Make ComboBox searchable
+                SearchableComboBoxHelper.MakeSearchable(cmbCategory, categoryList, "CategoryName", "CategoryID", "CategoryName");
                 cmbCategory.SelectedIndex = 0; // Select "All" by default
             }
             catch (Exception ex)
@@ -378,9 +383,8 @@ namespace Vape_Store
                 // Add actual brands
                 brandList.AddRange(_brands);
                 
-                cmbBrand.DataSource = brandList;
-                cmbBrand.DisplayMember = "BrandName";
-                cmbBrand.ValueMember = "BrandID";
+                // Make ComboBox searchable
+                SearchableComboBoxHelper.MakeSearchable(cmbBrand, brandList, "BrandName", "BrandID", "BrandName");
                 cmbBrand.SelectedIndex = 0; // Select "All" by default
             }
             catch (Exception ex)
@@ -608,8 +612,8 @@ namespace Vape_Store
 
         private void InitializePaymentMethods()
         {
-            cmbPaymentMethod.Items.Clear();
-            cmbPaymentMethod.Items.AddRange(new string[] { "Cash", "Card", "Bank Transfer", "Check", "Digital Wallet" });
+            var paymentMethods = new List<string> { "Cash", "Card", "Bank Transfer", "Check", "Digital Wallet" };
+            SearchableComboBoxHelper.MakeSearchable(cmbPaymentMethod, paymentMethods);
             cmbPaymentMethod.SelectedIndex = 0; // Default to Cash
         }
 
@@ -860,6 +864,15 @@ namespace Vape_Store
                     }
                 }
 
+                // Validate date before saving
+                DateTime saleDate = guna2DateTimePicker1.Value;
+                if (!_businessDateService.CanCreateTransaction(saleDate))
+                {
+                    string message = _businessDateService.GetValidationMessage(saleDate);
+                    ShowMessage(message, "Date Closed", MessageBoxIcon.Warning);
+                    return;
+                }
+
                 // Generate barcode data for the sale
                 byte[] barcodeImageBytes = null;
                 if (!string.IsNullOrEmpty(invoiceNumber))
@@ -872,7 +885,7 @@ namespace Vape_Store
                 {
                     InvoiceNumber = invoiceNumber,
                     CustomerID = cmbCustomer.SelectedItem != null ? ((Customer)cmbCustomer.SelectedItem).CustomerID : 0,
-                    SaleDate = guna2DateTimePicker1.Value,
+                    SaleDate = saleDate,
                     SubTotal = subtotal,
                 TaxAmount = tax,
                     TaxPercent = decimal.TryParse(taxPercentTextBox != null ? taxPercentTextBox.Text : txtTaxPercent.Text, out decimal tp) ? tp : 0,
@@ -966,8 +979,8 @@ namespace Vape_Store
                 GenerateInvoiceNumber();
                 try { GenerateAndDisplayBarcode(); } catch { }
                 
-                // Set current date
-                guna2DateTimePicker1.Value = DateTime.Now;
+                // Set current business date (not calendar date)
+                guna2DateTimePicker1.Value = _businessDateService.GetCurrentBusinessDate();
             }
             catch (Exception ex)
             {
@@ -1462,12 +1475,18 @@ namespace Vape_Store
         {
             try
             {
+                // Cleanup searchable ComboBox helpers
+                SearchableComboBoxHelper.Cleanup(cmbCustomer);
+                SearchableComboBoxHelper.Cleanup(cmbCategory);
+                SearchableComboBoxHelper.Cleanup(cmbBrand);
+                SearchableComboBoxHelper.Cleanup(cmbPaymentMethod);
+                
                 // Unsubscribe from product update events
                 ProductRepository.ProductsUpdated -= OnProductsUpdated;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error unsubscribing from product updates: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error in FormClosing: {ex.Message}");
             }
         }
         

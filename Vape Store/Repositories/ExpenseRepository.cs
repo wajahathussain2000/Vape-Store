@@ -5,13 +5,17 @@ using System.Data.SqlClient;
 using System.Linq;
 using Vape_Store.Models;
 using Vape_Store.DataAccess;
+using Vape_Store.Services;
 
 namespace Vape_Store.Repositories
 {
     public class ExpenseRepository
     {
+        private BusinessDateService _businessDateService;
+
         public ExpenseRepository()
         {
+            _businessDateService = new BusinessDateService();
         }
 
         public List<Expense> GetAllExpenses()
@@ -122,6 +126,13 @@ namespace Vape_Store.Repositories
 
         public bool AddExpense(Expense expense)
         {
+            // Validate date - check if the expense date is closed
+            if (!_businessDateService.CanCreateTransaction(expense.ExpenseDate))
+            {
+                string message = _businessDateService.GetValidationMessage(expense.ExpenseDate);
+                throw new InvalidOperationException(message);
+            }
+
             try
             {
                 using (var connection = DatabaseConnection.GetConnection())
@@ -290,22 +301,32 @@ namespace Vape_Store.Repositories
             
             try
             {
+                if (string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    return GetAllExpenses();
+                }
+
                 using (var connection = DatabaseConnection.GetConnection())
                 {
+                    // Case-insensitive search with proper NULL handling
                     var query = @"
                         SELECT e.*, ec.CategoryName, u.FullName as UserName
                         FROM ExpenseEntries e
                         LEFT JOIN ExpenseCategories ec ON e.CategoryID = ec.CategoryID
                         LEFT JOIN Users u ON e.UserID = u.UserID
-                        WHERE e.ExpenseCode LIKE @SearchTerm 
-                           OR e.Description LIKE @SearchTerm 
-                           OR ec.CategoryName LIKE @SearchTerm 
-                           OR e.ReferenceNumber LIKE @SearchTerm
+                        WHERE LOWER(ISNULL(e.ExpenseCode, '')) LIKE LOWER(@SearchTerm) 
+                           OR LOWER(ISNULL(e.Description, '')) LIKE LOWER(@SearchTerm) 
+                           OR LOWER(ISNULL(ec.CategoryName, '')) LIKE LOWER(@SearchTerm) 
+                           OR LOWER(ISNULL(e.ReferenceNumber, '')) LIKE LOWER(@SearchTerm)
+                           OR LOWER(ISNULL(e.PaymentMethod, '')) LIKE LOWER(@SearchTerm)
+                           OR LOWER(ISNULL(e.Status, '')) LIKE LOWER(@SearchTerm)
+                           OR LOWER(ISNULL(e.Remarks, '')) LIKE LOWER(@SearchTerm)
+                           OR CAST(e.Amount AS VARCHAR(50)) LIKE @SearchTerm
                         ORDER BY e.ExpenseDate DESC, e.CreatedDate DESC";
 
                     using (var command = new SqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@SearchTerm", $"%{searchTerm}%");
+                        command.Parameters.AddWithValue("@SearchTerm", $"%{searchTerm.Trim()}%");
                         connection.Open();
                         using (var reader = command.ExecuteReader())
                         {

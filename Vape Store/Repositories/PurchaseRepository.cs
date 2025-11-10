@@ -5,13 +5,17 @@ using System.Data.SqlClient;
 using System.Linq;
 using Vape_Store.Models;
 using Vape_Store.DataAccess;
+using Vape_Store.Services;
 
 namespace Vape_Store.Repositories
 {
     public class PurchaseRepository
     {
+        private BusinessDateService _businessDateService;
+
         public PurchaseRepository()
         {
+            _businessDateService = new BusinessDateService();
         }
 
         public List<Purchase> GetAllPurchases()
@@ -542,6 +546,13 @@ namespace Vape_Store.Repositories
 
         public bool ProcessPurchase(Purchase purchase, List<PurchaseItem> purchaseItems)
         {
+            // Validate date - check if the purchase date is closed
+            if (!_businessDateService.CanCreateTransaction(purchase.PurchaseDate))
+            {
+                string message = _businessDateService.GetValidationMessage(purchase.PurchaseDate);
+                throw new InvalidOperationException(message);
+            }
+
             // Validate purchase items for negative or zero quantities
             foreach (var item in purchaseItems)
             {

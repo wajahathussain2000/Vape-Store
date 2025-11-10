@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
+using Vape_Store.Helpers;
 
 namespace Vape_Store
 {
@@ -23,12 +24,18 @@ namespace Vape_Store
         
         private bool isEditMode = false;
         private int selectedExpenseId = -1;
+        private System.Windows.Forms.Timer searchTimer;
 
         public ExpenseEntry()
         {
             InitializeComponent();
             _expenseRepository = new ExpenseRepository();
             _expenseCategoryRepository = new ExpenseCategoryRepository();
+            
+            // Initialize search timer for debouncing
+            searchTimer = new System.Windows.Forms.Timer();
+            searchTimer.Interval = 300; // 300ms delay
+            searchTimer.Tick += SearchTimer_Tick;
             
             SetupEventHandlers();
             InitializeDataGridView();
@@ -61,6 +68,7 @@ namespace Vape_Store
             
             // Form event handlers
             this.Load += ExpenseEntry_Load;
+            this.FormClosing += ExpenseEntry_FormClosing;
         }
 
         private void InitializeDataGridView()
@@ -138,9 +146,8 @@ namespace Vape_Store
             try
             {
                 _expenseCategories = _expenseCategoryRepository.GetAllExpenseCategories();
-                cmbCategory.DataSource = _expenseCategories;
-                cmbCategory.DisplayMember = "CategoryName";
-                cmbCategory.ValueMember = "CategoryID";
+                // Make the category ComboBox searchable
+                SearchableComboBoxHelper.MakeSearchable(cmbCategory, _expenseCategories, "CategoryName", "CategoryID", "CategoryName");
                 cmbCategory.SelectedIndex = -1;
             }
             catch (Exception ex)
@@ -401,11 +408,36 @@ namespace Vape_Store
 
         private void TxtSearch_TextChanged(object sender, EventArgs e)
         {
+            // Stop the timer if it's running
+            searchTimer.Stop();
+            
+            // If search is empty, reload all expenses immediately
+            if (string.IsNullOrWhiteSpace(txtSearch.Text))
+            {
+                LoadExpenses();
+                return;
+            }
+            
+            // Restart the timer to debounce the search
+            searchTimer.Start();
+        }
+
+        private void SearchTimer_Tick(object sender, EventArgs e)
+        {
+            // Stop the timer
+            searchTimer.Stop();
+            
+            // Perform the search
+            PerformSearch();
+        }
+
+        private void PerformSearch()
+        {
             try
             {
                 if (string.IsNullOrWhiteSpace(txtSearch.Text))
                 {
-                    RefreshDataGridView();
+                    LoadExpenses();
                 }
                 else
                 {
@@ -485,6 +517,26 @@ namespace Vape_Store
                 return result;
             
             return 0;
+        }
+
+        private void ExpenseEntry_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            try
+            {
+                // Stop and dispose the search timer
+                if (searchTimer != null)
+                {
+                    searchTimer.Stop();
+                    searchTimer.Dispose();
+                }
+                
+                // Cleanup searchable ComboBox helper
+                SearchableComboBoxHelper.Cleanup(cmbCategory);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in FormClosing: {ex.Message}");
+            }
         }
     }
 }

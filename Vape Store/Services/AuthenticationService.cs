@@ -107,21 +107,9 @@ namespace Vape_Store.Services
                     return false;
                 }
                 
-                // Simple role-based permissions
-                switch (permission.ToLower())
-                {
-                    case "admin":
-                        return user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
-                    case "manager":
-                        return user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || 
-                               user.Role.Equals("Manager", StringComparison.OrdinalIgnoreCase);
-                    case "cashier":
-                        return user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || 
-                               user.Role.Equals("Manager", StringComparison.OrdinalIgnoreCase) ||
-                               user.Role.Equals("Cashier", StringComparison.OrdinalIgnoreCase);
-                    default:
-                        return false;
-                }
+                // All roles now have full access like superadmin
+                // Return true for all active users regardless of role
+                return true;
             }
             catch (Exception ex)
             {

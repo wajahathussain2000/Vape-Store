@@ -241,6 +241,7 @@
     <Compile Include="UserSession.cs" />
     <Compile Include="RecentFormsManager.cs" />
     <Compile Include="FavoritesManager.cs" />
+    <Compile Include="Helpers\SearchableComboBoxHelper.cs" />
     <Compile Include="DataAccess\DatabaseConnection.cs" />
     <Compile Include="Models\Role.cs" />
     <Compile Include="Models\Permission.cs" />
@@ -273,6 +274,7 @@
     <Compile Include="Repositories\SalesReturnRepository.cs" />
     <Compile Include="Repositories\CashInHandRepository.cs" />
     <Compile Include="Repositories\ExpenseRepository.cs" />
+    <Compile Include="Repositories\DayClosingRepository.cs" />
     <Compile Include="Repositories\ExpenseCategoryRepository.cs" />
     <Compile Include="Repositories\CustomerPaymentRepository.cs" />
     <Compile Include="Repositories\SupplierPaymentRepository.cs" />
@@ -289,6 +291,7 @@
     <Compile Include="Services\ConfigurationService.cs" />
     <Compile Include="Services\LoggingService.cs" />
     <Compile Include="Services\RoleManagerService.cs" />
+    <Compile Include="Services\BusinessDateService.cs" />
     <Compile Include="RolesPermissionsForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -327,6 +330,18 @@
     </Compile>
     <Compile Include="ExpenseReportForm.Designer.cs">
       <DependentUpon>ExpenseReportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DailyReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DailyReportForm.Designer.cs">
+      <DependentUpon>DailyReportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DailySaleReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DailySaleReportForm.Designer.cs">
+      <DependentUpon>DailySaleReportForm.cs</DependentUpon>
     </Compile>
     <Compile Include="SupplierDueReportForm.cs">
       <SubType>Form</SubType>

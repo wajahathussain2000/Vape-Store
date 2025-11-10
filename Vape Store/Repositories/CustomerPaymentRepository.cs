@@ -199,7 +199,13 @@ namespace Vape_Store.Repositories
                                 command.Parameters.AddWithValue("@Description", payment.Description ?? (object)DBNull.Value);
                                 command.Parameters.AddWithValue("@UserID", payment.UserID);
 
-                                command.ExecuteNonQuery();
+                                int rowsAffected = command.ExecuteNonQuery();
+                                
+                                if (rowsAffected == 0)
+                                {
+                                    transaction.Rollback();
+                                    return false;
+                                }
                             }
 
                             transaction.Commit();
@@ -234,7 +240,13 @@ namespace Vape_Store.Repositories
                             using (var command = new SqlCommand(query, connection, transaction))
                             {
                                 command.Parameters.AddWithValue("@PaymentID", paymentId);
-                                command.ExecuteNonQuery();
+                                int rowsAffected = command.ExecuteNonQuery();
+                                
+                                if (rowsAffected == 0)
+                                {
+                                    transaction.Rollback();
+                                    return false;
+                                }
                             }
 
                             transaction.Commit();
@@ -260,15 +272,27 @@ namespace Vape_Store.Repositories
             {
                 using (var connection = DatabaseConnection.GetConnection())
                 {
+                    // More robust query that safely extracts numeric part from CP voucher numbers
+                    // Only processes records that start with 'CP' and have numeric suffix
                     var query = @"
-                        SELECT ISNULL(MAX(CAST(SUBSTRING(VoucherNumber, 4, LEN(VoucherNumber)) AS INT)), 0) + 1
+                        SELECT ISNULL(MAX(
+                            CASE 
+                                WHEN VoucherNumber LIKE 'CP%' 
+                                     AND LEN(VoucherNumber) >= 3 
+                                     AND ISNUMERIC(SUBSTRING(VoucherNumber, 3, LEN(VoucherNumber))) = 1
+                                THEN CAST(SUBSTRING(VoucherNumber, 3, LEN(VoucherNumber)) AS INT)
+                                ELSE NULL
+                            END
+                        ), 0) + 1
                         FROM CustomerPayments 
-                        WHERE VoucherNumber LIKE 'CP%'";
+                        WHERE VoucherNumber IS NOT NULL 
+                        AND VoucherNumber LIKE 'CP%'";
 
                     using (var command = new SqlCommand(query, connection))
                     {
                         connection.Open();
-                        var nextNumber = Convert.ToInt32(command.ExecuteScalar());
+                        var result = command.ExecuteScalar();
+                        var nextNumber = result != null && result != DBNull.Value ? Convert.ToInt32(result) : 1;
                         return $"CP{nextNumber:D6}";
                     }
                 }
@@ -279,6 +303,47 @@ namespace Vape_Store.Repositories
             }
         }
 
+        public bool IsVoucherNumberExists(string voucherNumber, int? excludePaymentId = null)
+        {
+            if (string.IsNullOrWhiteSpace(voucherNumber))
+                return false;
+
+            try
+            {
+                using (var connection = DatabaseConnection.GetConnection())
+                {
+                    var query = "SELECT COUNT(*) FROM CustomerPayments WHERE VoucherNumber = @VoucherNumber";
+                    
+                    if (excludePaymentId.HasValue)
+                    {
+                        query += " AND PaymentID != @ExcludePaymentId";
+                    }
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@VoucherNumber", voucherNumber.Trim());
+                        
+                        if (excludePaymentId.HasValue)
+                        {
+                            command.Parameters.AddWithValue("@ExcludePaymentId", excludePaymentId.Value);
+                        }
+                        
+                        connection.Open();
+                        int count = Convert.ToInt32(command.ExecuteScalar());
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking voucher number existence: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Gets the total outstanding amount owed by customer
+        /// Formula: Total Sales - Total Payments Made
+        /// </summary>
         public decimal GetCustomerTotalDue(int customerId)
         {
             try
@@ -312,6 +377,7 @@ namespace Vape_Store.Repositories
                         totalPayments = Convert.ToDecimal(paymentsCommand.ExecuteScalar());
                     }
 
+                    // Total Outstanding = Total Sales - Total Payments
                     return totalSales - totalPayments;
                 }
             }
@@ -321,22 +387,29 @@ namespace Vape_Store.Repositories
             }
         }
 
+        /// <summary>
+        /// Gets the remaining balance from the most recent payment transaction
+        /// This represents the balance carried forward from the last payment
+        /// </summary>
         public decimal GetCustomerPreviousBalance(int customerId)
         {
             try
             {
                 using (var connection = DatabaseConnection.GetConnection())
                 {
+                    // Get the most recent payment's remaining balance
                     var query = @"
-                        SELECT ISNULL(SUM(RemainingBalance), 0) 
+                        SELECT TOP 1 ISNULL(RemainingBalance, 0) 
                         FROM CustomerPayments 
-                        WHERE CustomerID = @CustomerID";
+                        WHERE CustomerID = @CustomerID
+                        ORDER BY PaymentDate DESC, PaymentID DESC";
 
                     using (var command = new SqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@CustomerID", customerId);
                         connection.Open();
-                        return Convert.ToDecimal(command.ExecuteScalar());
+                        var result = command.ExecuteScalar();
+                        return result != null && result != DBNull.Value ? Convert.ToDecimal(result) : 0;
                     }
                 }
             }

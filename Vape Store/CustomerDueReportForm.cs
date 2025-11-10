@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using Vape_Store.Helpers;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 
@@ -160,14 +161,20 @@ namespace Vape_Store
             try
             {
                 _customers = _customerRepository.GetAllCustomers();
-                cmbCustomer.DataSource = new List<Customer> { new Customer { CustomerID = 0, CustomerName = "All Customers" } }.Concat(_customers).ToList();
-                cmbCustomer.DisplayMember = "CustomerName";
-                cmbCustomer.ValueMember = "CustomerID";
+                var customerList = new List<Customer> { new Customer { CustomerID = 0, CustomerName = "All Customers" } };
+                if (_customers != null && _customers.Count > 0)
+                {
+                    customerList.AddRange(_customers);
+                }
+                SearchableComboBoxHelper.MakeSearchable(cmbCustomer, customerList, "CustomerName", "CustomerID", "CustomerName");
                 cmbCustomer.SelectedIndex = 0;
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error loading customers: {ex.Message}", "Error", MessageBoxIcon.Error);
+                var fallbackList = new List<Customer> { new Customer { CustomerID = 0, CustomerName = "All Customers" } };
+                SearchableComboBoxHelper.MakeSearchable(cmbCustomer, fallbackList, "CustomerName", "CustomerID", "CustomerName");
+                cmbCustomer.SelectedIndex = 0;
             }
         }
 
@@ -233,14 +240,21 @@ namespace Vape_Store
                     filteredItems = filteredItems.Where(item => item.CustomerID == selectedCustomer.CustomerID);
                 }
                 
-                // Search filter
+                // Search filter - search through multiple fields
                 if (!string.IsNullOrWhiteSpace(txtSearch.Text))
                 {
                     string searchTerm = txtSearch.Text.ToLower();
                     filteredItems = filteredItems.Where(item => 
-                        item.CustomerName.ToLower().Contains(searchTerm) ||
-                        item.CustomerCode.ToLower().Contains(searchTerm) ||
-                        item.Phone.ToLower().Contains(searchTerm));
+                        (item.CustomerName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.CustomerCode?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.Phone?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.TotalSales.ToString("F2").Contains(searchTerm)) ||
+                        (item.TotalPaid.ToString("F2").Contains(searchTerm)) ||
+                        (item.TotalDue.ToString("F2").Contains(searchTerm)) ||
+                        (item.LastSaleDate?.ToString("yyyy-MM-dd").Contains(searchTerm) ?? false) ||
+                        (item.LastSaleDate?.ToString("MM/dd/yyyy").Contains(searchTerm) ?? false) ||
+                        (item.LastPaymentDate?.ToString("yyyy-MM-dd").Contains(searchTerm) ?? false) ||
+                        (item.LastPaymentDate?.ToString("MM/dd/yyyy").Contains(searchTerm) ?? false));
                 }
                 
                 dgvCustomerDueReport.DataSource = filteredItems.ToList();

@@ -2,16 +2,19 @@ using System;
 using System.Drawing;
 using System.Drawing.Printing;
 using System.Windows.Forms;
+using System.IO;
 using Vape_Store.Services;
 using Vape_Store.Repositories;
 using Vape_Store.Models;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
 
 namespace Vape_Store
 {
     public partial class PrintBarcodeForm : Form
     {
         private readonly BarcodeService _barcodeService;
-        private Image _previewImage;
+        private System.Drawing.Image _previewImage;
         private PrintDocument _printDocument;
         private readonly ProductRepository _productRepository = new ProductRepository();
         private System.Collections.Generic.List<Product> _products;
@@ -33,7 +36,22 @@ namespace Vape_Store
             if (!IsDesignMode())
             {
                 LoadProducts();
+                InitializeForm();
             }
+        }
+
+        private void InitializeForm()
+        {
+            try
+            {
+                // Clear all fields on form load
+                txtLabel.Clear();
+                txtCode.Clear();
+                lblBarcodeValue.Text = "";
+                cmbProduct.SelectedIndex = -1;
+                pictureBox.Image = null;
+            }
+            catch { }
         }
 
         private bool IsDesignMode()
@@ -81,14 +99,21 @@ namespace Vape_Store
                 if (cmbProduct.SelectedItem is Product p)
                 {
                     txtCode.Text = p.Barcode ?? string.Empty;
-                    txtLabel.Text = string.IsNullOrWhiteSpace(txtLabel.Text) ? p.ProductName : txtLabel.Text;
-                    lblBarcodeValue.Text = $"DB Code: {p.Barcode}";
+                    // Don't auto-fill label - keep it optional as the field name suggests
+                    // User can manually enter label if needed
+                    lblBarcodeValue.Text = $"DB Code: {p.Barcode ?? "N/A"}";
+                }
+                else
+                {
+                    // Clear fields if no product selected
+                    txtCode.Clear();
+                    lblBarcodeValue.Text = "";
                 }
             }
             catch { }
         }
 
-        private Image GenerateCompositePreview()
+        private System.Drawing.Image GenerateCompositePreview()
         {
             // Create one barcode image
             var single = _barcodeService.GenerateBarcodeImageObject(txtCode.Text.Trim(), (int)numWidth.Value, (int)numHeight.Value);
@@ -105,7 +130,7 @@ namespace Vape_Store
 
             var bmp = new Bitmap(bmpW, bmpH);
             using (var g = Graphics.FromImage(bmp))
-            using (var font = new Font("Segoe UI", 9))
+            using (var font = new System.Drawing.Font("Segoe UI", 9))
             using (var brush = new SolidBrush(Color.Black))
             using (var sf = new StringFormat { Alignment = StringAlignment.Center })
             {
@@ -117,7 +142,7 @@ namespace Vape_Store
                     {
                         int x = c * (cellW + gutter);
                         int y = r * (cellH + gutter);
-                        g.DrawImage(single, new Rectangle(x, y, cellW, (int)numHeight.Value));
+                        g.DrawImage(single, new System.Drawing.Rectangle(x, y, cellW, (int)numHeight.Value));
                         if (!string.IsNullOrWhiteSpace(txtLabel.Text))
                         {
                             g.DrawString(txtLabel.Text, font, brush, new RectangleF(x, y + (int)numHeight.Value + 5, cellW, 20), sf);
@@ -138,18 +163,76 @@ namespace Vape_Store
                 {
                     _previewImage = GenerateCompositePreview();
                 }
-                using (var sfd = new SaveFileDialog { Filter = "PNG Image|*.png", FileName = $"barcode_{DateTime.Now:yyyyMMdd_HHmmss}.png" })
+                using (var sfd = new SaveFileDialog 
+                { 
+                    Filter = "PNG Image|*.png|PDF Document|*.pdf", 
+                    FilterIndex = 1,
+                    FileName = $"barcode_{DateTime.Now:yyyyMMdd_HHmmss}" 
+                })
                 {
                     if (sfd.ShowDialog(this) == DialogResult.OK)
                     {
-                        _previewImage.Save(sfd.FileName, System.Drawing.Imaging.ImageFormat.Png);
-                        MessageBox.Show("Saved.");
+                        string extension = Path.GetExtension(sfd.FileName).ToLower();
+                        
+                        if (extension == ".pdf")
+                        {
+                            SaveAsPdf(sfd.FileName);
+                        }
+                        else
+                        {
+                            // Default to PNG
+                            _previewImage.Save(sfd.FileName, System.Drawing.Imaging.ImageFormat.Png);
+                        }
+                        MessageBox.Show("Saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Save error: {ex.Message}", "Error");
+                MessageBox.Show($"Save error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SaveAsPdf(string filePath)
+        {
+            try
+            {
+                // Create PDF document
+                Document document = new Document(PageSize.A4, 20, 20, 20, 20);
+                PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(filePath, FileMode.Create));
+                document.Open();
+
+                // Convert Image to iTextSharp Image
+                iTextSharp.text.Image pdfImage;
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    _previewImage.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    pdfImage = iTextSharp.text.Image.GetInstance(ms.ToArray());
+                }
+
+                // Scale image to fit page width while maintaining aspect ratio
+                float pageWidth = document.PageSize.Width - document.LeftMargin - document.RightMargin;
+                float pageHeight = document.PageSize.Height - document.TopMargin - document.BottomMargin;
+                
+                if (pdfImage.Width > pageWidth)
+                {
+                    float ratio = pageWidth / pdfImage.Width;
+                    pdfImage.ScaleAbsoluteWidth(pageWidth);
+                    pdfImage.ScaleAbsoluteHeight(pdfImage.Height * ratio);
+                }
+
+                // Center the image on the page
+                pdfImage.SetAbsolutePosition(
+                    document.LeftMargin + (pageWidth - pdfImage.ScaledWidth) / 2,
+                    document.PageSize.Height - document.TopMargin - pdfImage.ScaledHeight - 20
+                );
+
+                document.Add(pdfImage);
+                document.Close();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error creating PDF: {ex.Message}", ex);
             }
         }
 
@@ -173,7 +256,7 @@ namespace Vape_Store
 
             int printed = 0;
             int row = 0;
-            using (var font = new Font("Segoe UI", 9))
+            using (var font = new System.Drawing.Font("Segoe UI", 9))
             using (var brush = new SolidBrush(Color.Black))
             using (var sf = new StringFormat { Alignment = StringAlignment.Center })
             {
@@ -188,7 +271,7 @@ namespace Vape_Store
                         var img = _barcodeService.GenerateBarcodeImageObject(txtCode.Text.Trim(), (int)numWidth.Value, (int)numHeight.Value);
                         int drawW = cellWidth;
                         int drawH = (int)numHeight.Value;
-                        e.Graphics.DrawImage(img, new Rectangle(x, y, drawW, drawH));
+                        e.Graphics.DrawImage(img, new System.Drawing.Rectangle(x, y, drawW, drawH));
                         img.Dispose();
 
                         // Draw label text if provided

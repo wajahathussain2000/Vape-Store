@@ -13,6 +13,7 @@ using Vape_Store.DataAccess;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using Vape_Store.Helpers;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 
@@ -191,9 +192,7 @@ namespace Vape_Store
                 {
                     customerList.AddRange(_customers);
                 }
-                cmbCustomer.DataSource = customerList;
-                cmbCustomer.DisplayMember = "CustomerName";
-                cmbCustomer.ValueMember = "CustomerID";
+                SearchableComboBoxHelper.MakeSearchable(cmbCustomer, customerList, "CustomerName", "CustomerID", "CustomerName");
                 cmbCustomer.SelectedIndex = 0; // Select "All Customers"
             }
             catch (Exception ex)
@@ -201,9 +200,7 @@ namespace Vape_Store
                 ShowMessage($"Error loading customers: {ex.Message}", "Error", MessageBoxIcon.Error);
                 // Ensure ComboBox has at least one item
                 var fallbackList = new List<Customer> { new Customer { CustomerID = 0, CustomerName = "All Customers" } };
-                cmbCustomer.DataSource = fallbackList;
-                cmbCustomer.DisplayMember = "CustomerName";
-                cmbCustomer.ValueMember = "CustomerID";
+                SearchableComboBoxHelper.MakeSearchable(cmbCustomer, fallbackList, "CustomerName", "CustomerID", "CustomerName");
                 cmbCustomer.SelectedIndex = 0;
             }
         }
@@ -218,9 +215,7 @@ namespace Vape_Store
                 {
                     productList.AddRange(_products);
                 }
-                cmbProduct.DataSource = productList;
-                cmbProduct.DisplayMember = "ProductName";
-                cmbProduct.ValueMember = "ProductID";
+                SearchableComboBoxHelper.MakeSearchable(cmbProduct, productList, "ProductName", "ProductID", "ProductName");
                 cmbProduct.SelectedIndex = 0; // Select "All Products"
             }
             catch (Exception ex)
@@ -228,9 +223,7 @@ namespace Vape_Store
                 ShowMessage($"Error loading products: {ex.Message}", "Error", MessageBoxIcon.Error);
                 // Ensure ComboBox has at least one item
                 var fallbackList = new List<Product> { new Product { ProductID = 0, ProductName = "All Products" } };
-                cmbProduct.DataSource = fallbackList;
-                cmbProduct.DisplayMember = "ProductName";
-                cmbProduct.ValueMember = "ProductID";
+                SearchableComboBoxHelper.MakeSearchable(cmbProduct, fallbackList, "ProductName", "ProductID", "ProductName");
                 cmbProduct.SelectedIndex = 0;
             }
         }

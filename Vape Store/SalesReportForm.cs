@@ -13,6 +13,7 @@ using Vape_Store.DataAccess;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using Vape_Store.Helpers;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 
@@ -26,6 +27,7 @@ namespace Vape_Store
         private ReportingService _reportingService;
         
         private List<SalesReportItem> _salesReportItems;
+        private List<SalesReportItem> _originalSalesReportItems; // Store original unfiltered data
         private List<Customer> _customers;
         private List<Product> _products;
         private bool _isItemWiseMode = false;
@@ -43,7 +45,6 @@ namespace Vape_Store
             SetupEventHandlers();
             InitializeDataGridView();
             LoadCustomers();
-            LoadProducts();
             InitializePaymentMethods();
             SetInitialState();
         }
@@ -60,7 +61,6 @@ namespace Vape_Store
             
             // Filter event handlers
             cmbCustomer.SelectedIndexChanged += CmbCustomer_SelectedIndexChanged;
-            cmbProduct.SelectedIndexChanged += CmbProduct_SelectedIndexChanged;
             cmbPaymentMethod.SelectedIndexChanged += CmbPaymentMethod_SelectedIndexChanged;
             
             // Date range event handlers
@@ -138,15 +138,6 @@ namespace Vape_Store
                     Name = "CustomerName",
                     HeaderText = "Customer",
                     DataPropertyName = "CustomerName",
-                    Width = 200,
-                    MinimumWidth = 150
-                });
-                
-                dgvSalesReport.Columns.Add(new DataGridViewTextBoxColumn
-                {
-                    Name = "ProductName",
-                    HeaderText = "Product",
-                    DataPropertyName = "ProductName",
                     Width = 200,
                     MinimumWidth = 150
                 });
@@ -235,9 +226,7 @@ namespace Vape_Store
                 {
                     customerList.AddRange(_customers);
                 }
-                cmbCustomer.DataSource = customerList;
-                cmbCustomer.DisplayMember = "CustomerName";
-                cmbCustomer.ValueMember = "CustomerID";
+                SearchableComboBoxHelper.MakeSearchable(cmbCustomer, customerList, "CustomerName", "CustomerID", "CustomerName");
                 cmbCustomer.SelectedIndex = 0; // Select "All Customers"
             }
             catch (Exception ex)
@@ -245,54 +234,18 @@ namespace Vape_Store
                 ShowMessage($"Error loading customers: {ex.Message}", "Error", MessageBoxIcon.Error);
                 // Ensure ComboBox has at least one item
                 var fallbackList = new List<Customer> { new Customer { CustomerID = 0, CustomerName = "All Customers" } };
-                cmbCustomer.DataSource = fallbackList;
-                cmbCustomer.DisplayMember = "CustomerName";
-                cmbCustomer.ValueMember = "CustomerID";
+                SearchableComboBoxHelper.MakeSearchable(cmbCustomer, fallbackList, "CustomerName", "CustomerID", "CustomerName");
                 cmbCustomer.SelectedIndex = 0;
             }
         }
 
-        private void LoadProducts()
-        {
-            try
-            {
-                _products = _productRepository.GetAllProducts();
-                var productList = new List<Product> { new Product { ProductID = 0, ProductName = "All Products" } };
-                if (_products != null && _products.Count > 0)
-                {
-                    productList.AddRange(_products);
-                }
-                cmbProduct.DataSource = productList;
-                cmbProduct.DisplayMember = "ProductName";
-                cmbProduct.ValueMember = "ProductID";
-                cmbProduct.SelectedIndex = 0; // Select "All Products"
-            }
-            catch (Exception ex)
-            {
-                ShowMessage($"Error loading products: {ex.Message}", "Error", MessageBoxIcon.Error);
-                // Ensure ComboBox has at least one item
-                var fallbackList = new List<Product> { new Product { ProductID = 0, ProductName = "All Products" } };
-                cmbProduct.DataSource = fallbackList;
-                cmbProduct.DisplayMember = "ProductName";
-                cmbProduct.ValueMember = "ProductID";
-                cmbProduct.SelectedIndex = 0;
-            }
-        }
 
         private void InitializePaymentMethods()
         {
             try
             {
-                cmbPaymentMethod.Items.Clear();
-                cmbPaymentMethod.Items.Add("All Payment Methods");
-                cmbPaymentMethod.Items.Add("Cash");
-                cmbPaymentMethod.Items.Add("Card");
-                cmbPaymentMethod.Items.Add("Credit Card");
-                cmbPaymentMethod.Items.Add("Debit Card");
-                cmbPaymentMethod.Items.Add("Bank Transfer");
-                cmbPaymentMethod.Items.Add("Check");
-                cmbPaymentMethod.Items.Add("Digital Wallet");
-                cmbPaymentMethod.Items.Add("Other");
+                var paymentMethods = new List<string> { "All Payment Methods", "Cash", "Card", "Credit Card", "Debit Card", "Bank Transfer", "Check", "Digital Wallet", "Other" };
+                SearchableComboBoxHelper.MakeSearchable(cmbPaymentMethod, paymentMethods);
                 cmbPaymentMethod.SelectedIndex = 0; // Select "All Payment Methods"
             }
             catch (Exception ex)
@@ -351,6 +304,9 @@ namespace Vape_Store
                 {
                     LoadDetailedSalesData(sales);
                 }
+                
+                // Store original unfiltered data
+                _originalSalesReportItems = new List<SalesReportItem>(_salesReportItems);
                 
                 ApplyFilters();
                 RefreshDataGridView();
@@ -443,7 +399,8 @@ namespace Vape_Store
         {
             try
             {
-                var filteredItems = _salesReportItems.AsEnumerable();
+                // Use original unfiltered data as base
+                var filteredItems = _originalSalesReportItems?.AsEnumerable() ?? _salesReportItems.AsEnumerable();
                 
                 // Customer filter
                 if (cmbCustomer.SelectedItem != null)
@@ -455,33 +412,28 @@ namespace Vape_Store
                     }
                 }
                 
-                // Product filter
-                if (cmbProduct.SelectedItem != null)
-                {
-                    var selectedProduct = (Product)cmbProduct.SelectedItem;
-                    if (selectedProduct != null && selectedProduct.ProductName != "All Products")
-                    {
-                        filteredItems = filteredItems.Where(item => item.ProductName == selectedProduct.ProductName);
-                    }
-                }
-                
                 // Payment method filter
                 if (!string.IsNullOrWhiteSpace(cmbPaymentMethod.SelectedItem?.ToString()) && cmbPaymentMethod.SelectedItem.ToString() != "All Payment Methods")
                 {
                     filteredItems = filteredItems.Where(item => item.PaymentMethod == cmbPaymentMethod.SelectedItem.ToString());
                 }
                 
-                // Search filter
+                // Search filter - search through multiple fields
                 if (!string.IsNullOrWhiteSpace(txtSearch.Text))
                 {
                     var searchTerm = txtSearch.Text.ToLower();
                     filteredItems = filteredItems.Where(item => 
-                        item.InvoiceNumber.ToLower().Contains(searchTerm) ||
-                        item.CustomerName.ToLower().Contains(searchTerm) ||
-                        item.ProductName.ToLower().Contains(searchTerm) ||
-                        item.PaymentMethod.ToLower().Contains(searchTerm));
+                        (item.InvoiceNumber?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.CustomerName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.ProductName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.PaymentMethod?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.SaleDate.ToString("yyyy-MM-dd").Contains(searchTerm)) ||
+                        (item.SaleDate.ToString("MM/dd/yyyy").Contains(searchTerm)) ||
+                        (item.TotalAmount.ToString("F2").Contains(searchTerm)) ||
+                        (item.Quantity.ToString().Contains(searchTerm)));
                 }
                 
+                // Update filtered list (preserve original)
                 _salesReportItems = filteredItems.ToList();
             }
             catch (Exception ex)
@@ -494,8 +446,21 @@ namespace Vape_Store
         {
             try
             {
+                bool hasSearchFilter = !string.IsNullOrWhiteSpace(txtSearch.Text);
+                bool hasDataButNoResults = hasSearchFilter && _originalSalesReportItems != null && 
+                                          _originalSalesReportItems.Count > 0 && _salesReportItems.Count == 0;
+                
                 dgvSalesReport.DataSource = null;
-                dgvSalesReport.DataSource = _salesReportItems;
+                
+                if (hasDataButNoResults)
+                {
+                    // Show empty grid - message will be in summary labels
+                    dgvSalesReport.DataSource = new List<SalesReportItem>();
+                }
+                else
+                {
+                    dgvSalesReport.DataSource = _salesReportItems;
+                }
                 
                 // Format decimal columns
                 if (dgvSalesReport.Columns["UnitPrice"] != null)
@@ -526,7 +491,6 @@ namespace Vape_Store
                     {
                         totalRow.Cells["InvoiceNumber"].Value = "TOTAL";
                         totalRow.Cells["CustomerName"].Value = "";
-                        totalRow.Cells["ProductName"].Value = "";
                         totalRow.Cells["Quantity"].Value = _salesReportItems.Sum(x => x.Quantity);
                         totalRow.Cells["UnitPrice"].Value = "";
                         totalRow.Cells["SubTotal"].Value = _salesReportItems.Sum(x => x.SubTotal);
@@ -547,21 +511,36 @@ namespace Vape_Store
         {
             try
             {
-                var totalSales = _salesReportItems.Sum(item => item.TotalAmount);
-                var totalQuantity = _salesReportItems.Sum(item => item.Quantity);
-                var totalTax = _salesReportItems.Sum(item => item.TaxAmount);
-                var totalPaid = _salesReportItems.Sum(item => item.PaidAmount);
-                var totalBalance = _salesReportItems.Sum(item => item.BalanceAmount);
-                var uniqueCustomers = _salesReportItems.Select(item => item.CustomerName).Distinct().Count();
-                var uniqueProducts = _salesReportItems.Select(item => item.ProductName).Distinct().Count();
+                bool hasSearchFilter = !string.IsNullOrWhiteSpace(txtSearch.Text);
+                bool hasDataButNoResults = hasSearchFilter && _originalSalesReportItems != null && 
+                                          _originalSalesReportItems.Count > 0 && _salesReportItems.Count == 0;
                 
-                lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
-                lblTotalQuantity.Text = $"Total Quantity: {totalQuantity}";
-                lblTotalTax.Text = $"Total Tax: {totalTax:F2}";
-                lblTotalPaid.Text = $"Total Paid: {totalPaid:F2}";
-                lblTotalBalance.Text = $"Total Balance: {totalBalance:F2}";
-                lblUniqueCustomers.Text = $"Unique Customers: {uniqueCustomers}";
-                lblUniqueProducts.Text = $"Unique Products: {uniqueProducts}";
+                if (hasDataButNoResults)
+                {
+                    // Show "No results" message in summary
+                    lblTotalSales.Text = $"Total Sales: No results found for '{txtSearch.Text}'";
+                    lblTotalQuantity.Text = "Total Quantity: No results found";
+                    lblTotalTax.Text = "Total Tax: No results found";
+                    lblTotalPaid.Text = "Total Paid: No results found";
+                    lblTotalBalance.Text = "Total Balance: No results found";
+                    lblUniqueCustomers.Text = "Unique Customers: 0";
+                }
+                else
+                {
+                    var totalSales = _salesReportItems.Sum(item => item.TotalAmount);
+                    var totalQuantity = _salesReportItems.Sum(item => item.Quantity);
+                    var totalTax = _salesReportItems.Sum(item => item.TaxAmount);
+                    var totalPaid = _salesReportItems.Sum(item => item.PaidAmount);
+                    var totalBalance = _salesReportItems.Sum(item => item.BalanceAmount);
+                    var uniqueCustomers = _salesReportItems.Select(item => item.CustomerName).Distinct().Count();
+                    
+                    lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
+                    lblTotalQuantity.Text = $"Total Quantity: {totalQuantity}";
+                    lblTotalTax.Text = $"Total Tax: {totalTax:F2}";
+                    lblTotalPaid.Text = $"Total Paid: {totalPaid:F2}";
+                    lblTotalBalance.Text = $"Total Balance: {totalBalance:F2}";
+                    lblUniqueCustomers.Text = $"Unique Customers: {uniqueCustomers}";
+                }
             }
             catch (Exception ex)
             {
@@ -580,9 +559,6 @@ namespace Vape_Store
                 // Only set SelectedIndex if ComboBoxes have items
                 if (cmbCustomer.Items.Count > 0)
                     cmbCustomer.SelectedIndex = 0;
-                
-                if (cmbProduct.Items.Count > 0)
-                    cmbProduct.SelectedIndex = 0;
                 
                 if (cmbPaymentMethod.Items.Count > 0)
                     cmbPaymentMethod.SelectedIndex = 0;
@@ -717,12 +693,6 @@ namespace Vape_Store
             UpdateSummaryLabels();
         }
 
-        private void CmbProduct_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            ApplyFilters();
-            RefreshDataGridView();
-            UpdateSummaryLabels();
-        }
 
         private void CmbPaymentMethod_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -766,8 +736,6 @@ namespace Vape_Store
             _isItemWiseMode = true;
 
             // Update column headers/visibility for item-wise view
-            if (dgvSalesReport.Columns["ProductName"] != null)
-                dgvSalesReport.Columns["ProductName"].HeaderText = "Product Name";
             if (dgvSalesReport.Columns["Quantity"] != null)
                 dgvSalesReport.Columns["Quantity"].HeaderText = "Total Quantity Sold";
             if (dgvSalesReport.Columns["UnitPrice"] != null)
@@ -885,7 +853,6 @@ namespace Vape_Store
                 html.AppendLine($"<div class='summary-item'>Total Paid: {_salesReportItems.Sum(x => x.PaidAmount):F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Balance: {_salesReportItems.Sum(x => x.BalanceAmount):F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Unique Customers: {_salesReportItems.Select(x => x.CustomerName).Distinct().Count()}</div>");
-                html.AppendLine($"<div class='summary-item'>Unique Products: {_salesReportItems.Select(x => x.ProductName).Distinct().Count()}</div>");
                 html.AppendLine("</div>");
                 
                 // Data table
@@ -895,7 +862,6 @@ namespace Vape_Store
                 html.AppendLine("<th>Invoice</th>");
                 html.AppendLine("<th>Date</th>");
                 html.AppendLine("<th>Customer</th>");
-                html.AppendLine("<th>Product</th>");
                 html.AppendLine("<th>Qty</th>");
                 html.AppendLine("<th>Unit Price</th>");
                 html.AppendLine("<th>Sub Total</th>");
@@ -911,7 +877,6 @@ namespace Vape_Store
                     html.AppendLine($"<td>{item.InvoiceNumber}</td>");
                     html.AppendLine($"<td>{item.SaleDate:yyyy-MM-dd}</td>");
                     html.AppendLine($"<td>{item.CustomerName}</td>");
-                    html.AppendLine($"<td>{item.ProductName}</td>");
                     html.AppendLine($"<td>{item.Quantity}</td>");
                     html.AppendLine($"<td>{item.UnitPrice:F2}</td>");
                     html.AppendLine($"<td>{item.SubTotal:F2}</td>");
@@ -975,12 +940,12 @@ namespace Vape_Store
             using (var writer = new System.IO.StreamWriter(filePath))
             {
                 // Write header
-                writer.WriteLine("Invoice Number,Sale Date,Customer Name,Product Name,Quantity,Unit Price,Sub Total,Tax Amount,Total Amount,Payment Method,Paid Amount");
+                writer.WriteLine("Invoice Number,Sale Date,Customer Name,Quantity,Unit Price,Sub Total,Tax Amount,Total Amount,Payment Method,Paid Amount");
                 
                 // Write data
                 foreach (var item in _salesReportItems)
                 {
-                    writer.WriteLine($"{item.InvoiceNumber},{item.SaleDate:yyyy-MM-dd},{item.CustomerName},{item.ProductName},{item.Quantity},{item.UnitPrice:F2},{item.SubTotal:F2},{item.TaxAmount:F2},{item.TotalAmount:F2},{item.PaymentMethod},{item.PaidAmount:F2}");
+                    writer.WriteLine($"{item.InvoiceNumber},{item.SaleDate:yyyy-MM-dd},{item.CustomerName},{item.Quantity},{item.UnitPrice:F2},{item.SubTotal:F2},{item.TaxAmount:F2},{item.TotalAmount:F2},{item.PaymentMethod},{item.PaidAmount:F2}");
                 }
                 
                 // Add total row if there are items
@@ -1031,7 +996,6 @@ namespace Vape_Store
                 var totalPaid = _salesReportItems.Sum(item => item.PaidAmount);
                 var totalBalance = _salesReportItems.Sum(item => item.BalanceAmount);
                 var uniqueCustomers = _salesReportItems.Select(item => item.CustomerName).Distinct().Count();
-                var uniqueProducts = _salesReportItems.Select(item => item.ProductName).Distinct().Count();
 
                 Paragraph summaryTitle = new Paragraph("SUMMARY", headerFont);
                 summaryTitle.SpacingAfter = 10f;
@@ -1054,8 +1018,6 @@ namespace Vape_Store
                 summaryTable.AddCell(new PdfPCell(new Phrase($"{totalBalance:F2}", normalFont)) { Border = 0, HorizontalAlignment = Element.ALIGN_RIGHT });
                 summaryTable.AddCell(new PdfPCell(new Phrase("Unique Customers:", normalFont)) { Border = 0 });
                 summaryTable.AddCell(new PdfPCell(new Phrase(uniqueCustomers.ToString(), normalFont)) { Border = 0, HorizontalAlignment = Element.ALIGN_RIGHT });
-                summaryTable.AddCell(new PdfPCell(new Phrase("Unique Products:", normalFont)) { Border = 0 });
-                summaryTable.AddCell(new PdfPCell(new Phrase(uniqueProducts.ToString(), normalFont)) { Border = 0, HorizontalAlignment = Element.ALIGN_RIGHT });
 
                 summaryTable.SpacingAfter = 20f;
                 document.Add(summaryTable);
@@ -1066,12 +1028,12 @@ namespace Vape_Store
                 document.Add(detailsTitle);
 
                 // Create sales table
-                PdfPTable salesTable = new PdfPTable(8);
+                PdfPTable salesTable = new PdfPTable(7);
                 salesTable.WidthPercentage = 100;
-                salesTable.SetWidths(new float[] { 1.5f, 1.2f, 2f, 2f, 0.8f, 1f, 1f, 1f });
+                salesTable.SetWidths(new float[] { 1.5f, 1.2f, 2f, 0.8f, 1f, 1f, 1f });
 
                 // Add headers
-                string[] headers = { "Invoice #", "Date", "Customer", "Product", "Qty", "Unit Price", "Sub Total", "Total" };
+                string[] headers = { "Invoice #", "Date", "Customer", "Qty", "Unit Price", "Sub Total", "Total" };
                 foreach (string header in headers)
                 {
                     PdfPCell headerCell = new PdfPCell(new Phrase(header, headerFont));
@@ -1087,7 +1049,6 @@ namespace Vape_Store
                     salesTable.AddCell(new PdfPCell(new Phrase(item.InvoiceNumber, smallFont)) { Padding = 3f });
                     salesTable.AddCell(new PdfPCell(new Phrase(item.SaleDate.ToString("yyyy-MM-dd"), smallFont)) { Padding = 3f });
                     salesTable.AddCell(new PdfPCell(new Phrase(item.CustomerName.Length > 20 ? item.CustomerName.Substring(0, 20) + "..." : item.CustomerName, smallFont)) { Padding = 3f });
-                    salesTable.AddCell(new PdfPCell(new Phrase(item.ProductName.Length > 20 ? item.ProductName.Substring(0, 20) + "..." : item.ProductName, smallFont)) { Padding = 3f });
                     salesTable.AddCell(new PdfPCell(new Phrase(item.Quantity.ToString(), smallFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_CENTER });
                     salesTable.AddCell(new PdfPCell(new Phrase($"{item.UnitPrice:F2}", smallFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
                     salesTable.AddCell(new PdfPCell(new Phrase($"{item.SubTotal:F2}", smallFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
@@ -1097,7 +1058,7 @@ namespace Vape_Store
                 // Add total row
                 if (_salesReportItems.Count > 0)
                 {
-                    salesTable.AddCell(new PdfPCell(new Phrase("TOTAL", headerFont)) { Padding = 3f, Colspan = 4, HorizontalAlignment = Element.ALIGN_CENTER });
+                    salesTable.AddCell(new PdfPCell(new Phrase("TOTAL", headerFont)) { Padding = 3f, Colspan = 3, HorizontalAlignment = Element.ALIGN_CENTER });
                     salesTable.AddCell(new PdfPCell(new Phrase(totalQuantity.ToString(), headerFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_CENTER });
                     salesTable.AddCell(new PdfPCell(new Phrase("", headerFont)) { Padding = 3f });
                     salesTable.AddCell(new PdfPCell(new Phrase($"{_salesReportItems.Sum(x => x.SubTotal):F2}", headerFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });

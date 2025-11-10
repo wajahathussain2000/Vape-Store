@@ -79,8 +79,16 @@ namespace Vape_Store
             ReportsDropdown.Items.Add("Purchase Report", null, (s, e) => OpenPurchaseReportForm());
             ReportsDropdown.Items.Add("Purchase Return Report", null, (s, e) => OpenPurchaseReturnReportForm());
 
+            ReportsDropdown.Items.Add("-"); // Separator
+            ReportsDropdown.Items.Add("Expense Report", null, (s, e) => OpenExpenseReportForm());
+            
+            ReportsDropdown.Items.Add("-"); // Separator
             ReportsDropdown.Items.Add("Profit Margin Report", null, (s, e) => OpenProfitMarginReportForm());
             ReportsDropdown.Items.Add("Profit And Loss Report", null, (s, e) => OpenProfitAndLossForm());
+            ReportsDropdown.Items.Add("Daily Report", null, (s, e) => OpenDailyReportForm());
+            ReportsDropdown.Items.Add("Daily Sale Report", null, (s, e) => OpenDailySaleReportForm());
+            
+            ReportsDropdown.Items.Add("-"); // Separator
             ReportsDropdown.Items.Add("Database Statistics", null, (s, e) => OpenDatabaseStatisticsForm());
 
 
@@ -329,6 +337,18 @@ namespace Vape_Store
             expenseReport.Show();
         }
 
+        private void OpenDailyReportForm()
+        {
+            DailyReportForm dailyReport = new DailyReportForm();
+            dailyReport.Show();
+        }
+
+        private void OpenDailySaleReportForm()
+        {
+            DailySaleReportForm dailySaleReport = new DailySaleReportForm();
+            dailySaleReport.Show();
+        }
+
         private void OpenSupplierDueReportForm()
         {
             SupplierDueReportForm supplierDueReport = new SupplierDueReportForm();
@@ -357,6 +377,8 @@ namespace Vape_Store
         }
         private void OpenUserManagementForm()
         {
+            // Check permission before opening Users form
+            if (!RequirePermission("users")) return;
             Users users = new Users();
             users.Show();
         }
@@ -365,12 +387,7 @@ namespace Vape_Store
         {
             try
             {
-                var role = (UserSession.CurrentUser?.Role ?? string.Empty).Trim().ToLower();
-                if (role != "superadmin" && role != "super admin")
-                {
-                    MessageBox.Show("Only SuperAdmin can manage roles & permissions.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
+                // All roles now have access to manage roles & permissions
                 var rp = new RolesPermissionsForm();
                 rp.ShowDialog();
             }
@@ -406,6 +423,22 @@ namespace Vape_Store
             SetupRefreshTimer();
             LoadDashboardData();
             SetupThemeSwitching();
+            
+            // Prevent closing the application when Dashboard is closed - redirect to logout
+            this.FormClosing += Dashboard_FormClosing;
+        }
+        
+        private void Dashboard_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Prevent closing the application - instead, trigger logout process
+            // If user cancels logout, form stays open (e.Cancel remains true)
+            // If user confirms logout, logout handler will hide this form and show login
+            e.Cancel = true;
+            
+            // Trigger logout (will show confirmation dialog)
+            // If user confirms, logout handler hides dashboard and shows login
+            // If user cancels, form stays open (which is what we want)
+            logoutBtn_Click(sender, e);
         }
 
         private void SetupThemeSwitching()
@@ -638,7 +671,7 @@ namespace Vape_Store
         }
         
         
-        private void RefreshDashboardData()
+        public void RefreshDashboardData()
         {
             try
             {
@@ -772,17 +805,65 @@ namespace Vape_Store
 
         private void logoutBtn_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show("Are you sure You want to Logout" , "Confirmation", MessageBoxButtons.OKCancel);
+            DialogResult result = MessageBox.Show("Are you sure you want to logout?", "Confirmation", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
             if (result == DialogResult.OK)
             {
-                Application.Exit();
+                try
+                {
+                    // Clear the user session
+                    UserSession.Logout();
+                    
+                    // Find or create the login form first
+                    Form1 loginForm = null;
+                    foreach (Form form in Application.OpenForms)
+                    {
+                        if (form is Form1)
+                        {
+                            loginForm = form as Form1;
+                            break;
+                        }
+                    }
+                    
+                    // Close all open child forms (but not the login form)
+                    var formsToClose = new List<Form>();
+                    foreach (Form form in Application.OpenForms)
+                    {
+                        if (form != null && form != this && !(form is Form1) && form != loginForm)
+                        {
+                            formsToClose.Add(form);
+                        }
+                    }
+                    
+                    // Dispose child forms
+                    foreach (var form in formsToClose)
+                    {
+                        form.Hide();
+                        form.Dispose();
+                    }
+                    
+                    // If login form doesn't exist, create a new one
+                    if (loginForm == null)
+                    {
+                        loginForm = new Form1();
+                    }
+                    
+                    // Clear login form fields
+                    loginForm.ClearLoginFields();
+                    
+                    // Show login form and hide dashboard
+                    loginForm.Show();
+                    loginForm.BringToFront();
+                    loginForm.WindowState = FormWindowState.Normal;
+                    loginForm.Activate();
+                    this.Hide();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error during logout: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
-            else 
-            {
-             
-            }
-
         }
+        
 
 
         private void Dashboard_Load(object sender, EventArgs e)
@@ -812,7 +893,9 @@ namespace Vape_Store
                 // Match actual field names from Designer
                 purchaseBtn.Enabled = UserSession.HasPermission("purchases");
                 inventoryBtn.Enabled = UserSession.HasPermission("inventory");
-                peopleBtn.Enabled = UserSession.HasPermission("people") || UserSession.HasPermission("users");
+                // People button should only be enabled if user has "people" permission
+                // Users button handles "users" permission separately
+                peopleBtn.Enabled = UserSession.HasPermission("people");
                 accountsBtn.Enabled = UserSession.HasPermission("accounts");
                 reportsBtn.Enabled = UserSession.HasPermission("reports") || UserSession.HasPermission("basic_reports");
                 utilitiesBtn.Enabled = UserSession.HasPermission("utilities") || UserSession.HasPermission("backup");

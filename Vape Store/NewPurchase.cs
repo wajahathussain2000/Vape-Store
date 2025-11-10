@@ -12,6 +12,7 @@ using Vape_Store.Repositories;
 using Vape_Store.Services;
 using Vape_Store.Models;
 using Vape_Store.DataAccess;
+using Vape_Store.Helpers;
 
 namespace Vape_Store
 {
@@ -24,6 +25,7 @@ namespace Vape_Store
         private CategoryRepository _categoryRepository;
         private BrandRepository _brandRepository;
         private InventoryService _inventoryService;
+        private BusinessDateService _businessDateService;
         
         private List<PurchaseItem> _purchaseItems;
         private List<Supplier> _suppliers;
@@ -89,6 +91,7 @@ namespace Vape_Store
                 _categoryRepository = new CategoryRepository();
                 _brandRepository = new BrandRepository();
                 _inventoryService = new InventoryService();
+                _businessDateService = new BusinessDateService();
                 
                 _purchaseItems = new List<PurchaseItem>();
             }
@@ -103,8 +106,8 @@ namespace Vape_Store
         {
             try
             {
-                // Set default values
-                dtpInvoiceDate.Value = DateTime.Now;
+                // Set default values to current business date (not calendar date)
+                dtpInvoiceDate.Value = _businessDateService.GetCurrentBusinessDate();
                 
                 // Set default selections
                 cmbPaymentTerms.SelectedIndex = 0; // Cash
@@ -574,8 +577,9 @@ namespace Vape_Store
                     
                     if (selectedProduct != null)
                     {
-                        // Display existing stock quantity
-                        txtExistingStock.Text = selectedProduct.StockQuantity.ToString();
+                        // Display existing stock quantity - refresh from database for accuracy
+                        int currentStock = GetCurrentStockFromDatabase(selectedProduct.ProductID);
+                        txtExistingStock.Text = currentStock.ToString();
                         
                         // Store selected product for later use
                         _selectedProduct = selectedProduct;
@@ -690,8 +694,9 @@ namespace Vape_Store
             btnClearForm.Click += BtnClearForm_Click;
             btnCancel.Click += BtnCancel_Click;
             
-            // Vendor selection event
+            // Vendor selection events
             cmbVendorName.SelectedIndexChanged += CmbVendorName_SelectedIndexChanged;
+            cmbVendorName.SelectionChangeCommitted += CmbVendorName_SelectionChangeCommitted;
             
             // Calculation events
             txtDiscountPercent.TextChanged += CalculateTotals;
@@ -725,6 +730,18 @@ namespace Vape_Store
                 if (dgvPurchaseItems.SelectedRows.Count > 0)
                 {
                     ShowPurchaseItemsDisplay();
+                    
+                    // Update existing stock for the selected row's product
+                    var selectedRow = dgvPurchaseItems.SelectedRows[0];
+                    if (selectedRow != null && !selectedRow.IsNewRow)
+                    {
+                        UpdateExistingStockForRow(selectedRow);
+                    }
+                }
+                else
+                {
+                    // Clear existing stock if no row is selected
+                    txtExistingStock.Clear();
                 }
                 // Ensure any stale popup is hidden when selection moves to a new row
                 HideProductSuggestions();
@@ -842,8 +859,8 @@ namespace Vape_Store
             {
                 _suppliers = _supplierRepository.GetAllSuppliers();
                 
-                // Use the refresh method to populate vendor dropdown (same pattern as products)
-                RefreshAllVendorsInComboBox(cmbVendorName);
+                // Make ComboBox searchable
+                SearchableComboBoxHelper.MakeSearchable(cmbVendorName, _suppliers, "SupplierName", "SupplierID", "SupplierName");
                 
                 cmbVendorName.SelectedIndex = -1;
             }
@@ -972,6 +989,39 @@ namespace Vape_Store
                 else
                 {
                     txtVendorCode.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error loading vendor details: {ex.Message}");
+            }
+        }
+
+        private void CmbVendorName_SelectionChangeCommitted(object sender, EventArgs e)
+        {
+            try
+            {
+                // This handler ensures vendor code is set when selection is committed via SearchableComboBoxHelper
+                if (cmbVendorName.SelectedItem != null)
+                {
+                    // Try to get supplier from SelectedItem
+                    if (cmbVendorName.SelectedItem is Supplier supplier)
+                    {
+                        txtVendorCode.Text = supplier.SupplierCode;
+                        SetDefaultPaymentTerms(supplier);
+                    }
+                    else
+                    {
+                        // Fallback: find by name
+                        string selectedVendorName = cmbVendorName.SelectedItem.ToString();
+                        var selectedSupplier = _suppliers.FirstOrDefault(s => s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
+                        if (selectedSupplier != null)
+                        {
+                            txtVendorCode.Text = selectedSupplier.SupplierCode;
+                            SetDefaultPaymentTerms(selectedSupplier);
+                        }
+                    }
+                    MarkFormDirty();
                 }
             }
             catch (Exception ex)
@@ -1221,6 +1271,13 @@ namespace Vape_Store
                 // Force SelectedIndex to the matching item if present
                 int idx = cmbVendorName.Items.IndexOf(supplier.SupplierName);
                 if (idx >= 0) cmbVendorName.SelectedIndex = idx;
+                
+                // Set vendor code when vendor is selected
+                txtVendorCode.Text = supplier.SupplierCode;
+                
+                // Set default payment terms based on supplier
+                SetDefaultPaymentTerms(supplier);
+                
                 MarkFormDirty();
             }
             catch { }
@@ -2454,9 +2511,30 @@ namespace Vape_Store
                     
                     // Filter items that contain the search text (case-insensitive substring match)
                     // Matches within name, code, or barcode
-                    var filteredItems = allItems
+                    // Sort by priority: exact match > starts with > contains, then alphabetically
+                    var filteredItemsWithPriority = allItems
                         .Where(x => !string.IsNullOrEmpty(x) && x.ToLower().Contains(filter))
+                        .Select(x => new
+                        {
+                            Item = x,
+                            // Extract product name (part before first |)
+                            ProductName = x.Split('|')[0].Trim().ToLower(),
+                            FullText = x.ToLower()
+                        })
+                        .Select(x => new
+                        {
+                            x.Item,
+                            Priority = x.ProductName == filter ? 0 : // Exact match
+                                       x.ProductName.StartsWith(filter) ? 1 : // Starts with
+                                       2, // Contains
+                            ProductName = x.ProductName
+                        })
+                        .OrderBy(x => x.Priority) // Sort by priority first
+                        .ThenBy(x => x.ProductName, StringComparer.OrdinalIgnoreCase) // Then alphabetically
+                        .Select(x => x.Item)
                         .ToList();
+                    
+                    var filteredItems = filteredItemsWithPriority;
                     
                     // Preserve current text and caret position BEFORE modifying
                     string currentText = cb.Text ?? string.Empty;
@@ -4106,18 +4184,94 @@ namespace Vape_Store
             }
         }
 
+        private void UpdateExistingStockForRow(DataGridViewRow row)
+        {
+            try
+            {
+                if (row == null || row.IsNewRow) return;
+                
+                var productNameValue = row.Cells["colProductName"]?.Value;
+                if (productNameValue != null)
+                {
+                    Product product = null;
+                    if (productNameValue is int productId && productId > 0)
+                    {
+                        product = _products?.FirstOrDefault(p => p.ProductID == productId);
+                    }
+                    
+                    if (product != null)
+                    {
+                        UpdateExistingStockDisplay(product);
+                    }
+                    else
+                    {
+                        txtExistingStock.Clear();
+                    }
+                }
+                else
+                {
+                    txtExistingStock.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Silently handle errors - don't show popup for every row click
+                System.Diagnostics.Debug.WriteLine($"Error updating stock for row: {ex.Message}");
+            }
+        }
+
         private void UpdateExistingStockDisplay(Product product)
         {
             try
             {
                 if (product != null)
                 {
-                    txtExistingStock.Text = product.StockQuantity.ToString();
+                    // Refresh stock from database to get the most current value
+                    int currentStock = GetCurrentStockFromDatabase(product.ProductID);
+                    txtExistingStock.Text = currentStock.ToString();
                 }
             }
             catch (Exception ex)
             {
                 ShowError($"Error updating existing stock display: {ex.Message}");
+            }
+        }
+
+        private int GetCurrentStockFromDatabase(int productID)
+        {
+            try
+            {
+                using (var connection = DataAccess.DatabaseConnection.GetConnection())
+                {
+                    connection.Open();
+                    
+                    string query = @"
+                        SELECT StockQuantity 
+                        FROM Products 
+                        WHERE ProductID = @ProductID AND IsActive = 1";
+                    
+                    using (var command = new System.Data.SqlClient.SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@ProductID", productID);
+                        command.CommandTimeout = 30;
+                        
+                        object result = command.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            return Convert.ToInt32(result);
+                        }
+                    }
+                }
+                
+                // Fallback to cached value if database query fails
+                var product = _products?.FirstOrDefault(p => p.ProductID == productID);
+                return product?.StockQuantity ?? 0;
+            }
+            catch
+            {
+                // Fallback to cached value if database query fails
+                var product = _products?.FirstOrDefault(p => p.ProductID == productID);
+                return product?.StockQuantity ?? 0;
             }
         }
 
@@ -4376,6 +4530,19 @@ namespace Vape_Store
                     }
                     catch { }
                 }
+                // Update existing stock when clicking on any cell in a row with a product
+                else if (e.RowIndex >= 0 && e.RowIndex < dgvPurchaseItems.Rows.Count)
+                {
+                    try
+                    {
+                        var row = dgvPurchaseItems.Rows[e.RowIndex];
+                        if (row != null && !row.IsNewRow)
+                        {
+                            UpdateExistingStockForRow(row);
+                        }
+                    }
+                    catch { }
+                }
             }
             catch (Exception ex)
             {
@@ -4609,6 +4776,15 @@ namespace Vape_Store
                 // Validate form
                 if (!ValidatePurchase())
                     return;
+                
+                // Validate date - check if the purchase date is closed
+                DateTime purchaseDate = dtpInvoiceDate.Value;
+                if (!_businessDateService.CanCreateTransaction(purchaseDate))
+                {
+                    string message = _businessDateService.GetValidationMessage(purchaseDate);
+                    ShowError(message);
+                    return;
+                }
                 
                 // Purchase confirmation removed to avoid annoying popups
                 
@@ -4997,7 +5173,7 @@ namespace Vape_Store
                 cmbVendorName.SelectedIndex = -1;
                 txtVendorCode.Clear();
                 txtInvoiceNo.Clear();
-                dtpInvoiceDate.Value = DateTime.Now;
+                dtpInvoiceDate.Value = _businessDateService.GetCurrentBusinessDate();
                 txtDescription.Clear();
                 cmbPaymentTerms.SelectedIndex = 0;
                 txtExistingStock.Clear();

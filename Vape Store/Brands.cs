@@ -67,6 +67,7 @@ namespace Vape_Store
             // Button event handlers
             addCategoryBtn.Click += AddBrandBtn_Click;
             Savebtn.Click += SaveBtn_Click;
+            Updatebtn.Click += UpdateBtn_Click;
             Deletebtn.Click += DeleteBtn_Click;
             
             // DataGridView event handlers
@@ -149,6 +150,11 @@ namespace Vape_Store
             SaveBrand();
         }
 
+        private void UpdateBtn_Click(object sender, EventArgs e)
+        {
+            UpdateBrand();
+        }
+
         private void SaveBrand()
         {
             try
@@ -185,6 +191,84 @@ namespace Vape_Store
                 }
 
                 // Check for duplicate brand name using database validation
+                bool brandExists = _brandRepository.BrandExists(txtCategoryName.Text.Trim(), -1);
+                if (brandExists)
+                {
+                    ShowMessage($"A brand with the name '{txtCategoryName.Text.Trim()}' already exists.", "Duplicate Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                // Add new brand
+                var brand = new Brand
+                {
+                    BrandName = txtCategoryName.Text.Trim(),
+                    Description = txtCategoryDesc.Text.Trim(),
+                    IsActive = true,
+                    CreatedDate = DateTime.Now
+                };
+
+                bool success = _brandRepository.AddBrand(brand);
+                
+                if (success)
+                {
+                    ShowMessage("Brand added successfully!", "Success", MessageBoxIcon.Information);
+                    LoadBrands();
+                    ClearForm();
+                }
+                else
+                {
+                    ShowMessage("Failed to add brand.", "Error", MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error saving brand: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateBrand()
+        {
+            try
+            {
+                if (selectedBrandId == -1)
+                {
+                    ShowMessage("Please select a brand to update.", "Selection Error", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Enhanced input validation
+                if (string.IsNullOrWhiteSpace(txtCategoryName.Text))
+                {
+                    ShowMessage("Please enter a brand name.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                // Validate brand name length
+                if (txtCategoryName.Text.Trim().Length < 2)
+                {
+                    ShowMessage("Brand name must be at least 2 characters long.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                if (txtCategoryName.Text.Trim().Length > 100)
+                {
+                    ShowMessage("Brand name cannot exceed 100 characters.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryName.Focus();
+                    return;
+                }
+
+                // Validate description length
+                if (txtCategoryDesc.Text.Trim().Length > 500)
+                {
+                    ShowMessage("Description cannot exceed 500 characters.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCategoryDesc.Focus();
+                    return;
+                }
+
+                // Check for duplicate brand name using database validation (excluding current brand)
                 bool brandExists = _brandRepository.BrandExists(txtCategoryName.Text.Trim(), selectedBrandId);
                 if (brandExists)
                 {
@@ -193,60 +277,33 @@ namespace Vape_Store
                     return;
                 }
 
-                if (isEditMode)
+                // Update existing brand
+                var brand = new Brand
                 {
-                    // Update existing brand
-                    var brand = new Brand
-                    {
-                        BrandID = selectedBrandId,
-                        BrandName = txtCategoryName.Text.Trim(),
-                        Description = txtCategoryDesc.Text.Trim(),
-                        IsActive = true,
-                        CreatedDate = _brands.First(b => b.BrandID == selectedBrandId).CreatedDate
-                    };
+                    BrandID = selectedBrandId,
+                    BrandName = txtCategoryName.Text.Trim(),
+                    Description = txtCategoryDesc.Text.Trim(),
+                    IsActive = true,
+                    CreatedDate = _brands.First(b => b.BrandID == selectedBrandId).CreatedDate
+                };
 
-                    bool success = _brandRepository.UpdateBrand(brand);
-                    
-                    if (success)
-                    {
-                        ShowMessage("Brand updated successfully!", "Success", MessageBoxIcon.Information);
-                        LoadBrands();
-                        ClearForm();
-                        SetEditMode(false);
-                    }
-                    else
-                    {
-                        ShowMessage("Failed to update brand.", "Error", MessageBoxIcon.Error);
-                    }
+                bool success = _brandRepository.UpdateBrand(brand);
+                
+                if (success)
+                {
+                    ShowMessage("Brand updated successfully!", "Success", MessageBoxIcon.Information);
+                    LoadBrands();
+                    ClearForm();
+                    SetEditMode(false);
                 }
                 else
                 {
-                    // Add new brand
-                    var brand = new Brand
-                    {
-                        BrandName = txtCategoryName.Text.Trim(),
-                        Description = txtCategoryDesc.Text.Trim(),
-                        IsActive = true,
-                        CreatedDate = DateTime.Now
-                    };
-
-                    bool success = _brandRepository.AddBrand(brand);
-                    
-                    if (success)
-                    {
-                        ShowMessage("Brand added successfully!", "Success", MessageBoxIcon.Information);
-                        LoadBrands();
-                        ClearForm();
-                    }
-                    else
-                    {
-                        ShowMessage("Failed to add brand.", "Error", MessageBoxIcon.Error);
-                    }
+                    ShowMessage("Failed to update brand.", "Error", MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error saving brand: {ex.Message}", "Error", MessageBoxIcon.Error);
+                ShowMessage($"Error updating brand: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
 
@@ -314,10 +371,15 @@ namespace Vape_Store
         {
             if (dgvBrands.SelectedRows.Count > 0)
             {
-                int rowIndex = dgvBrands.SelectedRows[0].Index;
-                if (rowIndex >= 0 && rowIndex < _brands.Count)
+                // Get BrandID directly from the DataGridView row instead of using row index
+                // This works correctly even when brands are filtered
+                DataGridViewRow selectedRow = dgvBrands.SelectedRows[0];
+                if (selectedRow.Cells["BrandID"].Value != null)
                 {
-                    selectedBrandId = _brands[rowIndex].BrandID;
+                    if (int.TryParse(selectedRow.Cells["BrandID"].Value.ToString(), out int brandId))
+                    {
+                        selectedBrandId = brandId;
+                    }
                 }
             }
         }
@@ -406,14 +468,16 @@ namespace Vape_Store
             if (editMode)
             {
                 addCategoryBtn.Text = "New Brand";
-                Savebtn.Text = "Update";
+                Savebtn.Enabled = false;
+                Updatebtn.Enabled = true;
                 Deletebtn.Enabled = true;
                 categoryInputGroup.Text = "Edit Brand";
             }
             else
             {
                 addCategoryBtn.Text = "Add Brand";
-                Savebtn.Text = "Save";
+                Savebtn.Enabled = true;
+                Updatebtn.Enabled = false;
                 Deletebtn.Enabled = false;
                 categoryInputGroup.Text = "Add New Brand";
             }

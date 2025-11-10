@@ -55,13 +55,19 @@ namespace Vape_Store.Services
 
         private Dictionary<string, HashSet<string>> GetDefaultRoleMap()
         {
+            // Give all roles full access like superadmin
             return new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
             {
                 { "superadmin", new HashSet<string>(new []{ "*" }) },
-                { "admin", new HashSet<string>(new []{ "sales","purchases","inventory","people","users","accounts","reports","utilities","backup","settings" }) },
-                { "manager", new HashSet<string>(new []{ "sales","purchases","inventory","people","reports" }) },
-                { "sales", new HashSet<string>(new []{ "sales","people","reports","basic_reports" }) },
-                { "cashier", new HashSet<string>(new []{ "sales","basic_reports" }) }
+                { "admin", new HashSet<string>(new []{ "*" }) },
+                { "manager", new HashSet<string>(new []{ "*" }) },
+                { "sales", new HashSet<string>(new []{ "*" }) },
+                { "cashier", new HashSet<string>(new []{ "*" }) },
+                { "cashcounter", new HashSet<string>(new []{ "*" }) },
+                { "hr", new HashSet<string>(new []{ "*" }) },
+                { "inventory", new HashSet<string>(new []{ "*" }) },
+                { "user", new HashSet<string>(new []{ "*" }) },
+                { "seller", new HashSet<string>(new []{ "*" }) }
             };
         }
 
@@ -81,8 +87,10 @@ namespace Vape_Store.Services
             role = role.Trim().ToLower();
             permission = permission.Trim().ToLower();
 
+            // SuperAdmin always has full access
             if (role == "superadmin" || role == "super admin") return true;
 
+            // Check JSON file permissions (respects database settings if synced)
             if (_roleToPermissions == null) LoadOrInitialize();
             if (!_roleToPermissions.TryGetValue(role, out var perms)) return false;
             if (perms.Contains("*")) return true;
@@ -112,6 +120,8 @@ namespace Vape_Store.Services
         }
     }
 }
+
+
 
 
 

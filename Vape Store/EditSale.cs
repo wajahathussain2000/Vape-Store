@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using Vape_Store.Helpers;
 
 namespace Vape_Store
 {
@@ -142,9 +143,7 @@ namespace Vape_Store
             try
             {
                 _customers = _customerRepository.GetAllCustomers();
-                cmbCustomer.DataSource = _customers;
-                cmbCustomer.DisplayMember = "CustomerName";
-                cmbCustomer.ValueMember = "CustomerID";
+                SearchableComboBoxHelper.MakeSearchable(cmbCustomer, _customers, "CustomerName", "CustomerID", "CustomerName");
                 cmbCustomer.SelectedIndex = -1;
             }
             catch (Exception ex)
@@ -171,9 +170,7 @@ namespace Vape_Store
             try
             {
                 _categories = _categoryRepository.GetAllCategories();
-                cmbCategory.DataSource = _categories;
-                cmbCategory.DisplayMember = "CategoryName";
-                cmbCategory.ValueMember = "CategoryID";
+                SearchableComboBoxHelper.MakeSearchable(cmbCategory, _categories, "CategoryName", "CategoryID", "CategoryName");
                 cmbCategory.SelectedIndex = -1;
             }
             catch (Exception ex)
@@ -187,9 +184,7 @@ namespace Vape_Store
             try
             {
                 _brands = _brandRepository.GetAllBrands();
-                cmbBrand.DataSource = _brands;
-                cmbBrand.DisplayMember = "BrandName";
-                cmbBrand.ValueMember = "BrandID";
+                SearchableComboBoxHelper.MakeSearchable(cmbBrand, _brands, "BrandName", "BrandID", "BrandName");
                 cmbBrand.SelectedIndex = -1;
             }
             catch (Exception ex)
@@ -214,17 +209,10 @@ namespace Vape_Store
         {
             try
             {
-                // Make Invoice Number ComboBox searchable using built-in autocomplete
-                txtinvoiceNo.DropDownStyle = ComboBoxStyle.DropDown;
-                txtinvoiceNo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                txtinvoiceNo.AutoCompleteSource = AutoCompleteSource.ListItems;
-                
-                // Set up data binding
+                // Make Invoice Number ComboBox searchable
                 if (_sales != null && _sales.Count > 0)
                 {
-                    txtinvoiceNo.DisplayMember = "InvoiceNumber";
-                    txtinvoiceNo.ValueMember = "SaleID";
-                    txtinvoiceNo.DataSource = _sales;
+                    SearchableComboBoxHelper.MakeSearchable(txtinvoiceNo, _sales, "InvoiceNumber", "SaleID", "InvoiceNumber");
                     txtinvoiceNo.SelectedIndex = -1;
                 }
             }

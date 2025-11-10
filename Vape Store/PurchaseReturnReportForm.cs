@@ -13,6 +13,7 @@ using Vape_Store.DataAccess;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using Vape_Store.Helpers;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 
@@ -206,9 +207,7 @@ namespace Vape_Store
                 {
                     supplierList.AddRange(_suppliers);
                 }
-                cmbSupplier.DataSource = supplierList;
-                cmbSupplier.DisplayMember = "SupplierName";
-                cmbSupplier.ValueMember = "SupplierID";
+                SearchableComboBoxHelper.MakeSearchable(cmbSupplier, supplierList, "SupplierName", "SupplierID", "SupplierName");
                 cmbSupplier.SelectedIndex = 0; // Select "All Suppliers"
             }
             catch (Exception ex)
@@ -216,9 +215,7 @@ namespace Vape_Store
                 ShowMessage($"Error loading suppliers: {ex.Message}", "Error", MessageBoxIcon.Error);
                 // Ensure ComboBox has at least one item
                 var fallbackList = new List<Supplier> { new Supplier { SupplierID = 0, SupplierName = "All Suppliers" } };
-                cmbSupplier.DataSource = fallbackList;
-                cmbSupplier.DisplayMember = "SupplierName";
-                cmbSupplier.ValueMember = "SupplierID";
+                SearchableComboBoxHelper.MakeSearchable(cmbSupplier, fallbackList, "SupplierName", "SupplierID", "SupplierName");
                 cmbSupplier.SelectedIndex = 0;
             }
         }
@@ -233,9 +230,7 @@ namespace Vape_Store
                 {
                     productList.AddRange(_products);
                 }
-                cmbProduct.DataSource = productList;
-                cmbProduct.DisplayMember = "ProductName";
-                cmbProduct.ValueMember = "ProductID";
+                SearchableComboBoxHelper.MakeSearchable(cmbProduct, productList, "ProductName", "ProductID", "ProductName");
                 cmbProduct.SelectedIndex = 0; // Select "All Products"
             }
             catch (Exception ex)
@@ -243,9 +238,7 @@ namespace Vape_Store
                 ShowMessage($"Error loading products: {ex.Message}", "Error", MessageBoxIcon.Error);
                 // Ensure ComboBox has at least one item
                 var fallbackList = new List<Product> { new Product { ProductID = 0, ProductName = "All Products" } };
-                cmbProduct.DataSource = fallbackList;
-                cmbProduct.DisplayMember = "ProductName";
-                cmbProduct.ValueMember = "ProductID";
+                SearchableComboBoxHelper.MakeSearchable(cmbProduct, fallbackList, "ProductName", "ProductID", "ProductName");
                 cmbProduct.SelectedIndex = 0;
             }
         }
@@ -374,16 +367,21 @@ namespace Vape_Store
                     }
                 }
                 
-                // Search filter
+                // Search filter - search through multiple fields
                 if (!string.IsNullOrWhiteSpace(txtSearch.Text))
                 {
                     var searchTerm = txtSearch.Text.ToLower();
                     filteredItems = filteredItems.Where(item => 
-                        item.ReturnNumber.ToLower().Contains(searchTerm) ||
-                        item.OriginalInvoiceNumber.ToLower().Contains(searchTerm) ||
-                        item.SupplierName.ToLower().Contains(searchTerm) ||
-                        item.ProductName.ToLower().Contains(searchTerm) ||
-                        item.ReturnReason.ToLower().Contains(searchTerm));
+                        (item.ReturnNumber?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.OriginalInvoiceNumber?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.SupplierName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.ProductName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.ReturnReason?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.ReturnDate.ToString("yyyy-MM-dd").Contains(searchTerm)) ||
+                        (item.ReturnDate.ToString("MM/dd/yyyy").Contains(searchTerm)) ||
+                        (item.TotalAmount.ToString("F2").Contains(searchTerm)) ||
+                        (item.UnitPrice.ToString("F2").Contains(searchTerm)) ||
+                        (item.Quantity.ToString().Contains(searchTerm)));
                 }
                 
                 _purchaseReturnReportItems = filteredItems.ToList();

@@ -246,13 +246,19 @@ namespace Vape_Store
             {
                 var filteredData = _customerReportData.AsEnumerable();
                 
+                // Search filter - search through multiple fields
                 if (!string.IsNullOrWhiteSpace(txtSearch.Text))
                 {
                     var searchTerm = txtSearch.Text.ToLower();
                     filteredData = filteredData.Where(item => 
-                        item.CustomerCode.ToLower().Contains(searchTerm) ||
-                        item.CustomerName.ToLower().Contains(searchTerm) ||
-                        item.Phone.ToLower().Contains(searchTerm));
+                        (item.CustomerCode?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.CustomerName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.Phone?.ToLower().Contains(searchTerm) ?? false) ||
+                        (item.TotalPurchases.ToString("F2").Contains(searchTerm)) ||
+                        (item.TotalPaid.ToString("F2").Contains(searchTerm)) ||
+                        (item.TotalDue.ToString("F2").Contains(searchTerm)) ||
+                        (item.TotalOrders.ToString().Contains(searchTerm)) ||
+                        (item.AverageOrderValue.ToString("F2").Contains(searchTerm)));
                 }
                 
                 _customerReportData = filteredData.OrderByDescending(x => x.TotalPurchases).ToList();

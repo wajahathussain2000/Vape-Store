@@ -59,15 +59,42 @@ namespace Vape_Store
                         };
 
                         // Load roles and permissions from DB (if tables present)
+                        // IMPORTANT: Always reload from database to get latest permissions
                         try
                         {
                             var roleRepo = new RoleRepository();
+                            
+                            // First try UserRoles, then fallback to role name
                             var dbRoles = roleRepo.GetRolesForUser(user.UserID);
                             var dbPerms = roleRepo.GetEffectivePermissionsForUser(user.UserID);
+                            
+                            // If no permissions through UserRoles, get by role name
+                            if (dbPerms == null || dbPerms.Count == 0)
+                            {
+                                if (!string.IsNullOrWhiteSpace(user.Role))
+                                {
+                                    dbPerms = roleRepo.GetPermissionsByRoleName(user.Role);
+                                }
+                            }
+                            
+                            // Clear old cached permissions and set fresh ones from database
                             UserSession.CurrentUser.Roles = dbRoles ?? new List<string>();
-                            UserSession.CurrentUser.Permissions = new System.Collections.Generic.HashSet<string>((dbPerms ?? new List<string>()).Select(p => (p ?? string.Empty).Trim().ToLower()));
+                            UserSession.CurrentUser.Permissions = new System.Collections.Generic.HashSet<string>(
+                                (dbPerms ?? new List<string>()).Select(p => (p ?? string.Empty).Trim().ToLower()),
+                                StringComparer.OrdinalIgnoreCase);
+                            
+                            // Debug log
+                            System.Diagnostics.Debug.WriteLine($"[LOGIN] User: {user.Username}, Role: {user.Role}");
+                            System.Diagnostics.Debug.WriteLine($"[LOGIN] Permissions loaded from DB: {string.Join(", ", UserSession.CurrentUser.Permissions)}");
                         }
-                        catch { /* ignore if schema not present */ }
+                        catch (Exception ex)
+                        {
+                            // Log error but don't block login
+                            System.Diagnostics.Debug.WriteLine($"[LOGIN] Error loading permissions: {ex.Message}");
+                            // Initialize empty permissions
+                            UserSession.CurrentUser.Roles = new List<string>();
+                            UserSession.CurrentUser.Permissions = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        }
                         
                         LoadingHelper.HideLoading();
                         
@@ -107,6 +134,15 @@ namespace Vape_Store
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Clears all login form fields - called when user logs out
+        /// </summary>
+        public void ClearLoginFields()
+        {
+            txtEmail.Clear();
+            txtPassword.Clear();
         }
 
 

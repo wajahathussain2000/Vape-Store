@@ -14,7 +14,8 @@ namespace Vape_Store.Repositories
             try
             {
                 var roles = new List<Role>();
-                const string sql = "SELECT RoleId, Name, ISNULL(IsSystem,0) AS IsSystem, ISNULL(CreatedDate,GETDATE()) AS CreatedDate FROM Roles ORDER BY Name";
+                // Use RoleName if Name is NULL, and handle CreatedDate if column doesn't exist
+                const string sql = "SELECT RoleID, ISNULL(Name, RoleName) AS Name, ISNULL(IsSystem,0) AS IsSystem, GETDATE() AS CreatedDate FROM Roles ORDER BY ISNULL(Name, RoleName)";
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(sql, conn))
                 {
@@ -25,7 +26,7 @@ namespace Vape_Store.Repositories
                         {
                             roles.Add(new Role
                             {
-                                RoleId = Convert.ToInt32(r["RoleId"]),
+                                RoleId = Convert.ToInt32(r["RoleID"]),
                                 Name = r["Name"].ToString(),
                                 IsSystem = Convert.ToBoolean(r["IsSystem"]),
                                 CreatedDate = Convert.ToDateTime(r["CreatedDate"]) 
@@ -46,9 +47,9 @@ namespace Vape_Store.Repositories
         {
             try
             {
-                const string sql = @"IF EXISTS(SELECT 1 FROM Roles WHERE RoleId=@RoleId)
-UPDATE Roles SET Name=@Name WHERE RoleId=@RoleId; 
-ELSE INSERT INTO Roles(Name, IsSystem, CreatedDate) VALUES(@Name, 0, GETDATE()); 
+                const string sql = @"IF EXISTS(SELECT 1 FROM Roles WHERE RoleID=@RoleId)
+UPDATE Roles SET Name=@Name, RoleName=@Name WHERE RoleID=@RoleId; 
+ELSE INSERT INTO Roles(RoleName, Name, IsSystem) VALUES(@Name, @Name, 0); 
 SELECT ISNULL(@RoleId, SCOPE_IDENTITY());";
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(sql, conn))
@@ -68,7 +69,7 @@ SELECT ISNULL(@RoleId, SCOPE_IDENTITY());";
 
         public void DeleteRole(int roleId)
         {
-            const string sql = @"DELETE FROM RolePermissions WHERE RoleId=@RoleId; DELETE FROM UserRoles WHERE RoleId=@RoleId; DELETE FROM Roles WHERE RoleId=@RoleId;";
+            const string sql = @"DELETE FROM RolePermissions WHERE RoleID=@RoleId; DELETE FROM UserRoles WHERE RoleID=@RoleId; DELETE FROM Roles WHERE RoleID=@RoleId;";
             using (var conn = DatabaseConnection.GetConnection())
             using (var cmd = new SqlCommand(sql, conn))
             {
@@ -84,7 +85,8 @@ SELECT ISNULL(@RoleId, SCOPE_IDENTITY());";
             try
             {
                 var permissions = new List<Permission>();
-                const string sql = "SELECT PermissionId, Name, ISNULL(Description,'') AS Description, ISNULL(CreatedDate,GETDATE()) AS CreatedDate FROM Permissions ORDER BY Name";
+                // Use PermissionKey if Name is NULL, and handle CreatedDate if column doesn't exist
+                const string sql = "SELECT PermissionID, ISNULL(Name, PermissionKey) AS Name, ISNULL(Description,'') AS Description, GETDATE() AS CreatedDate FROM Permissions ORDER BY ISNULL(Name, PermissionKey)";
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(sql, conn))
                 {
@@ -95,7 +97,7 @@ SELECT ISNULL(@RoleId, SCOPE_IDENTITY());";
                         {
                             permissions.Add(new Permission
                             {
-                                PermissionId = Convert.ToInt32(r["PermissionId"]),
+                                PermissionId = Convert.ToInt32(r["PermissionID"]),
                                 Name = r["Name"].ToString(),
                                 Description = r["Description"].ToString(),
                                 CreatedDate = Convert.ToDateTime(r["CreatedDate"]) 
@@ -114,9 +116,9 @@ SELECT ISNULL(@RoleId, SCOPE_IDENTITY());";
 
         public int UpsertPermission(Permission permission)
         {
-            const string sql = @"IF EXISTS(SELECT 1 FROM Permissions WHERE PermissionId=@PermissionId)
-UPDATE Permissions SET Name=@Name, Description=@Description WHERE PermissionId=@PermissionId; 
-ELSE INSERT INTO Permissions(Name, Description, CreatedDate) VALUES(@Name, @Description, GETDATE()); 
+            const string sql = @"IF EXISTS(SELECT 1 FROM Permissions WHERE PermissionID=@PermissionId)
+UPDATE Permissions SET Name=@Name, Description=@Description WHERE PermissionID=@PermissionId; 
+ELSE INSERT INTO Permissions(PermissionKey, Name, Description) VALUES(@Name, @Name, @Description); 
 SELECT ISNULL(@PermissionId, SCOPE_IDENTITY());";
             using (var conn = DatabaseConnection.GetConnection())
             using (var cmd = new SqlCommand(sql, conn))
@@ -132,7 +134,7 @@ SELECT ISNULL(@PermissionId, SCOPE_IDENTITY());";
 
         public void DeletePermission(int permissionId)
         {
-            const string sql = @"DELETE FROM RolePermissions WHERE PermissionId=@PermissionId; DELETE FROM Permissions WHERE PermissionId=@PermissionId;";
+            const string sql = @"DELETE FROM RolePermissions WHERE PermissionID=@PermissionId; DELETE FROM Permissions WHERE PermissionID=@PermissionId;";
             using (var conn = DatabaseConnection.GetConnection())
             using (var cmd = new SqlCommand(sql, conn))
             {
@@ -148,8 +150,8 @@ SELECT ISNULL(@PermissionId, SCOPE_IDENTITY());";
             try
             {
                 var list = new List<string>();
-                const string sql = @"SELECT p.Name FROM RolePermissions rp 
-JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE rp.RoleId=@RoleId ORDER BY p.Name";
+                const string sql = @"SELECT ISNULL(p.Name, p.PermissionKey) AS Name FROM RolePermissions rp 
+JOIN Permissions p ON p.PermissionID = rp.PermissionID WHERE rp.RoleID = @RoleId ORDER BY ISNULL(p.Name, p.PermissionKey)";
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(sql, conn))
                 {
@@ -175,7 +177,7 @@ JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE rp.RoleId=@RoleId O
         {
             try
             {
-                const string del = "DELETE FROM RolePermissions WHERE RoleId=@RoleId";
+                const string del = "DELETE FROM RolePermissions WHERE RoleID=@RoleId";
                 using (var conn = DatabaseConnection.GetConnection())
                 {
                     conn.Open();
@@ -189,7 +191,7 @@ JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE rp.RoleId=@RoleId O
 
                         foreach (var pid in permissionIds)
                         {
-                            using (var cmdIns = new SqlCommand("INSERT INTO RolePermissions(RoleId, PermissionId) VALUES(@RoleId, @PermissionId)", conn, tx))
+                            using (var cmdIns = new SqlCommand("INSERT INTO RolePermissions(RoleID, PermissionID) VALUES(@RoleId, @PermissionId)", conn, tx))
                             {
                                 cmdIns.Parameters.AddWithValue("@RoleId", roleId);
                                 cmdIns.Parameters.AddWithValue("@PermissionId", pid);
@@ -213,7 +215,7 @@ JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE rp.RoleId=@RoleId O
             try
             {
                 var roles = new List<string>();
-                const string sql = @"SELECT r.Name FROM UserRoles ur JOIN Roles r ON r.RoleId = ur.RoleId WHERE ur.UserId=@UserId ORDER BY r.Name";
+                const string sql = @"SELECT ISNULL(r.Name, r.RoleName) AS Name FROM UserRoles ur JOIN Roles r ON r.RoleID = ur.RoleID WHERE ur.UserID = @UserId ORDER BY ISNULL(r.Name, r.RoleName)";
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(sql, conn))
                 {
@@ -239,7 +241,7 @@ JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE rp.RoleId=@RoleId O
         {
             try
             {
-                const string del = "DELETE FROM UserRoles WHERE UserId=@UserId";
+                const string del = "DELETE FROM UserRoles WHERE UserID=@UserId";
                 using (var conn = DatabaseConnection.GetConnection())
                 {
                     conn.Open();
@@ -253,7 +255,7 @@ JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE rp.RoleId=@RoleId O
 
                         foreach (var rid in roleIds)
                         {
-                            using (var cmdIns = new SqlCommand("INSERT INTO UserRoles(UserId, RoleId) VALUES(@UserId,@RoleId)", conn, tx))
+                            using (var cmdIns = new SqlCommand("INSERT INTO UserRoles(UserID, RoleID) VALUES(@UserId,@RoleId)", conn, tx))
                             {
                                 cmdIns.Parameters.AddWithValue("@UserId", userId);
                                 cmdIns.Parameters.AddWithValue("@RoleId", rid);
@@ -270,15 +272,50 @@ JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE rp.RoleId=@RoleId O
             }
         }
 
+        // Get permissions by role name (for users without UserRoles entries)
+        public List<string> GetPermissionsByRoleName(string roleName)
+        {
+            try
+            {
+                var list = new List<string>();
+                const string sql = @"SELECT DISTINCT ISNULL(p.Name, p.PermissionKey) AS Name 
+FROM Roles r
+JOIN RolePermissions rp ON rp.RoleID = r.RoleID 
+JOIN Permissions p ON p.PermissionID = rp.PermissionID 
+WHERE r.RoleName = @RoleName OR ISNULL(r.Name, r.RoleName) = @RoleName
+ORDER BY ISNULL(p.Name, p.PermissionKey)";
+                using (var conn = DatabaseConnection.GetConnection())
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@RoleName", roleName ?? string.Empty);
+                    conn.Open();
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            list.Add((r[0].ToString() ?? string.Empty).Trim());
+                        }
+                    }
+                }
+                return list;
+            }
+            catch (SqlException ex) when (ex.Message.Contains("Invalid object name") || ex.Message.Contains("Invalid column name"))
+            {
+                return new List<string>();
+            }
+        }
+
         // Effective permissions for user
         public List<string> GetEffectivePermissionsForUser(int userId)
         {
             try
             {
                 var list = new List<string>();
-                const string sql = @"SELECT DISTINCT p.Name FROM UserRoles ur 
-JOIN RolePermissions rp ON rp.RoleId = ur.RoleId 
-JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE ur.UserId=@UserId ORDER BY p.Name";
+                
+                // First, try to get permissions through UserRoles table
+                const string sql = @"SELECT DISTINCT ISNULL(p.Name, p.PermissionKey) AS Name FROM UserRoles ur 
+JOIN RolePermissions rp ON rp.RoleID = ur.RoleID 
+JOIN Permissions p ON p.PermissionID = rp.PermissionID WHERE ur.UserID = @UserId ORDER BY ISNULL(p.Name, p.PermissionKey)";
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(sql, conn))
                 {
@@ -292,6 +329,26 @@ JOIN Permissions p ON p.PermissionId = rp.PermissionId WHERE ur.UserId=@UserId O
                         }
                     }
                 }
+                
+                // If no permissions found through UserRoles, try getting role from Users table
+                if (list.Count == 0)
+                {
+                    const string userRoleSql = "SELECT Role FROM Users WHERE UserID = @UserId";
+                    using (var conn = DatabaseConnection.GetConnection())
+                    using (var cmd = new SqlCommand(userRoleSql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@UserId", userId);
+                        conn.Open();
+                        var roleName = cmd.ExecuteScalar()?.ToString();
+                        
+                        if (!string.IsNullOrWhiteSpace(roleName))
+                        {
+                            // Get permissions by role name
+                            list = GetPermissionsByRoleName(roleName);
+                        }
+                    }
+                }
+                
                 return list;
             }
             catch (SqlException ex) when (ex.Message.Contains("Invalid object name") || ex.Message.Contains("Invalid column name"))

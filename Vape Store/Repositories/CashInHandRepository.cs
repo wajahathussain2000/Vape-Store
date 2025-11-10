@@ -244,7 +244,13 @@ namespace Vape_Store.Repositories
                                 command.Parameters.AddWithValue("@CreatedBy", cashInHand.CreatedBy ?? (object)DBNull.Value);
                                 command.Parameters.AddWithValue("@UserID", cashInHand.UserID);
 
-                                command.ExecuteNonQuery();
+                                int rowsAffected = command.ExecuteNonQuery();
+                                
+                                if (rowsAffected == 0)
+                                {
+                                    transaction.Rollback();
+                                    return false;
+                                }
                             }
 
                             transaction.Commit();
@@ -279,7 +285,13 @@ namespace Vape_Store.Repositories
                             using (var command = new SqlCommand(query, connection, transaction))
                             {
                                 command.Parameters.AddWithValue("@CashInHandID", cashInHandId);
-                                command.ExecuteNonQuery();
+                                int rowsAffected = command.ExecuteNonQuery();
+                                
+                                if (rowsAffected == 0)
+                                {
+                                    transaction.Rollback();
+                                    return false;
+                                }
                             }
 
                             transaction.Commit();
@@ -299,24 +311,30 @@ namespace Vape_Store.Repositories
             }
         }
 
+        /// <summary>
+        /// Gets the closing cash from the most recent transaction before the specified date
+        /// This is used as the opening cash for a new transaction
+        /// </summary>
         public decimal GetPreviousDayClosingCash(DateTime date)
         {
             try
             {
                 using (var connection = DatabaseConnection.GetConnection())
                 {
+                    // Get the most recent transaction's closing cash before the specified date
+                    // This ensures we get the correct opening balance for the new day
                     var query = @"
                         SELECT TOP 1 ClosingCash 
                         FROM CashInHand 
                         WHERE CAST(TransactionDate AS DATE) < CAST(@Date AS DATE)
-                        ORDER BY TransactionDate DESC";
+                        ORDER BY TransactionDate DESC, CashInHandID DESC";
 
                     using (var command = new SqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@Date", date);
                         connection.Open();
                         var result = command.ExecuteScalar();
-                        return result != null ? Convert.ToDecimal(result) : 0;
+                        return result != null && result != DBNull.Value ? Convert.ToDecimal(result) : 0;
                     }
                 }
             }

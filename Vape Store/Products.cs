@@ -13,6 +13,7 @@ using System.Drawing.Printing;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
 using Vape_Store.Models;
+using Vape_Store.Helpers;
 using ZXing;
 using ZXing.Common;
 
@@ -141,9 +142,7 @@ namespace Vape_Store
             try
             {
                 _categories = _categoryRepository.GetAllCategories();
-                cmbCategory.DataSource = _categories;
-                cmbCategory.DisplayMember = "CategoryName";
-                cmbCategory.ValueMember = "CategoryID";
+                SearchableComboBoxHelper.MakeSearchable(cmbCategory, _categories, "CategoryName", "CategoryID", "CategoryName");
                 cmbCategory.SelectedIndex = -1; // No default selection
             }
             catch (Exception ex)
@@ -157,9 +156,7 @@ namespace Vape_Store
             try
             {
                 _brands = _brandRepository.GetAllBrands();
-                cmbBrand.DataSource = _brands;
-                cmbBrand.DisplayMember = "BrandName";
-                cmbBrand.ValueMember = "BrandID";
+                SearchableComboBoxHelper.MakeSearchable(cmbBrand, _brands, "BrandName", "BrandID", "BrandName");
                 cmbBrand.SelectedIndex = -1; // No default selection
             }
             catch (Exception ex)

@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 using Vape_Store.Services;
+using Vape_Store.Helpers;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 
@@ -24,6 +25,7 @@ namespace Vape_Store
         private ReportingService _reportingService;
         
         private List<PurchaseReportItem> _purchaseReportItems;
+        private List<PurchaseReportItem> _originalPurchaseReportItems; // Store original unfiltered data
         private List<Supplier> _suppliers;
         private List<Product> _products;
 
@@ -249,9 +251,7 @@ namespace Vape_Store
                 {
                     supplierList.AddRange(_suppliers);
                 }
-                cmbSupplier.DataSource = supplierList;
-                cmbSupplier.DisplayMember = "SupplierName";
-                cmbSupplier.ValueMember = "SupplierID";
+                SearchableComboBoxHelper.MakeSearchable(cmbSupplier, supplierList, "SupplierName", "SupplierID", "SupplierName");
                 cmbSupplier.SelectedIndex = 0; // Select "All Suppliers"
             }
             catch (Exception ex)
@@ -259,9 +259,7 @@ namespace Vape_Store
                 ShowMessage($"Error loading suppliers: {ex.Message}", "Error", MessageBoxIcon.Error);
                 // Ensure ComboBox has at least one item
                 var fallbackList = new List<Supplier> { new Supplier { SupplierID = 0, SupplierName = "All Suppliers" } };
-                cmbSupplier.DataSource = fallbackList;
-                cmbSupplier.DisplayMember = "SupplierName";
-                cmbSupplier.ValueMember = "SupplierID";
+                SearchableComboBoxHelper.MakeSearchable(cmbSupplier, fallbackList, "SupplierName", "SupplierID", "SupplierName");
                 cmbSupplier.SelectedIndex = 0;
             }
         }
@@ -276,9 +274,7 @@ namespace Vape_Store
                 {
                     productList.AddRange(_products);
                 }
-                cmbProduct.DataSource = productList;
-                cmbProduct.DisplayMember = "ProductName";
-                cmbProduct.ValueMember = "ProductID";
+                SearchableComboBoxHelper.MakeSearchable(cmbProduct, productList, "ProductName", "ProductID", "ProductName");
                 cmbProduct.SelectedIndex = 0; // Select "All Products"
             }
             catch (Exception ex)
@@ -286,9 +282,7 @@ namespace Vape_Store
                 ShowMessage($"Error loading products: {ex.Message}", "Error", MessageBoxIcon.Error);
                 // Ensure ComboBox has at least one item
                 var fallbackList = new List<Product> { new Product { ProductID = 0, ProductName = "All Products" } };
-                cmbProduct.DataSource = fallbackList;
-                cmbProduct.DisplayMember = "ProductName";
-                cmbProduct.ValueMember = "ProductID";
+                SearchableComboBoxHelper.MakeSearchable(cmbProduct, fallbackList, "ProductName", "ProductID", "ProductName");
                 cmbProduct.SelectedIndex = 0;
             }
         }
@@ -300,12 +294,8 @@ namespace Vape_Store
             dtpFromDate.Value = DateTime.Now.AddDays(-30);
             
             // Initialize payment method filter
-            cmbPaymentMethod.Items.Clear();
-            cmbPaymentMethod.Items.Add("All Payment Methods");
-            cmbPaymentMethod.Items.Add("Cash");
-            cmbPaymentMethod.Items.Add("Credit Card");
-            cmbPaymentMethod.Items.Add("Bank Transfer");
-            cmbPaymentMethod.Items.Add("Cheque");
+            var paymentMethods = new List<string> { "All Payment Methods", "Cash", "Credit Card", "Bank Transfer", "Cheque" };
+            SearchableComboBoxHelper.MakeSearchable(cmbPaymentMethod, paymentMethods);
             cmbPaymentMethod.SelectedIndex = 0;
             
             // Clear search
@@ -323,6 +313,24 @@ namespace Vape_Store
         {
             try
             {
+                bool hasSearchFilter = !string.IsNullOrWhiteSpace(txtSearch.Text);
+                bool hasDataButNoResults = hasSearchFilter && _originalPurchaseReportItems != null && 
+                                          _originalPurchaseReportItems.Count > 0 && 
+                                          (_purchaseReportItems == null || _purchaseReportItems.Count == 0);
+                
+                if (hasDataButNoResults)
+                {
+                    // Show "No results" message in summary
+                    lblTotalPurchases.Text = $"Total Purchases: No results found for '{txtSearch.Text}'";
+                    lblTotalQuantity.Text = "Total Quantity: No results found";
+                    lblTotalTax.Text = "Total Tax: No results found";
+                    lblTotalPaid.Text = "Total Paid: No results found";
+                    lblTotalBalance.Text = "Total Balance: No results found";
+                    lblUniqueSuppliers.Text = "Unique Suppliers: 0";
+                    lblUniqueProducts.Text = "Unique Products: 0";
+                    return;
+                }
+                
                 if (_purchaseReportItems == null || _purchaseReportItems.Count == 0)
                 {
                     lblTotalPurchases.Text = "Total Purchases: 0.00";
@@ -447,21 +455,43 @@ namespace Vape_Store
                     }
                 }
                 
+                // Store original unfiltered data before applying search
+                _originalPurchaseReportItems = new List<PurchaseReportItem>(_purchaseReportItems);
+                
                 // Apply search filter
+                // Search filter - search through multiple fields
                 if (!string.IsNullOrWhiteSpace(txtSearch.Text))
                 {
                     var searchTerm = txtSearch.Text.ToLower();
                     _purchaseReportItems = _purchaseReportItems.Where(x => 
-                        x.InvoiceNumber.ToLower().Contains(searchTerm) ||
-                        x.SupplierName.ToLower().Contains(searchTerm) ||
-                        x.ProductName.ToLower().Contains(searchTerm) ||
-                        x.PaymentMethod.ToLower().Contains(searchTerm)
+                        (x.InvoiceNumber?.ToLower().Contains(searchTerm) ?? false) ||
+                        (x.SupplierName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (x.ProductName?.ToLower().Contains(searchTerm) ?? false) ||
+                        (x.PaymentMethod?.ToLower().Contains(searchTerm) ?? false) ||
+                        (x.PurchaseDate.ToString("yyyy-MM-dd").Contains(searchTerm)) ||
+                        (x.PurchaseDate.ToString("MM/dd/yyyy").Contains(searchTerm)) ||
+                        (x.TotalAmount.ToString("F2").Contains(searchTerm)) ||
+                        (x.Quantity.ToString().Contains(searchTerm)) ||
+                        (x.Bonus.ToString().Contains(searchTerm)) ||
+                        (x.UnitPrice.ToString("F2").Contains(searchTerm))
                     ).ToList();
                 }
                 
                 // Bind to DataGridView (reset first to avoid CurrencyManager index mismatches)
                 dgvPurchaseReport.DataSource = null;
-                dgvPurchaseReport.DataSource = _purchaseReportItems;
+                bool hasSearchFilter = !string.IsNullOrWhiteSpace(txtSearch.Text);
+                bool hasDataButNoResults = hasSearchFilter && _originalPurchaseReportItems != null && 
+                                          _originalPurchaseReportItems.Count > 0 && _purchaseReportItems.Count == 0;
+                
+                if (hasDataButNoResults)
+                {
+                    // Show empty grid - message will be in summary labels
+                    dgvPurchaseReport.DataSource = new List<PurchaseReportItem>();
+                }
+                else
+                {
+                    dgvPurchaseReport.DataSource = _purchaseReportItems;
+                }
                 
                 // Update summary
                 UpdateSummaryLabels();

@@ -11,15 +11,24 @@ namespace Vape_Store.Services
     {
         private readonly ProductRepository _productRepository;
         private readonly CustomerRepository _customerRepository;
+        private readonly BusinessDateService _businessDateService;
         
         public SalesService()
         {
             _productRepository = new ProductRepository();
             _customerRepository = new CustomerRepository();
+            _businessDateService = new BusinessDateService();
         }
         
         public bool ProcessSale(Sale sale)
         {
+            // Validate date - check if the sale date is closed
+            if (!_businessDateService.CanCreateTransaction(sale.SaleDate))
+            {
+                string message = _businessDateService.GetValidationMessage(sale.SaleDate);
+                throw new InvalidOperationException(message);
+            }
+
             // Validate sale items for negative or zero quantities
             foreach (var item in sale.SaleItems)
             {

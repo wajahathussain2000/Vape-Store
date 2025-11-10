@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace Vape_Store
 {
@@ -96,48 +97,133 @@ namespace Vape_Store
             var role = (CurrentUser.Role ?? string.Empty).Trim().ToLower();
             var perm = (permission ?? string.Empty).Trim().ToLower();
 
-            // Super admin: everything
+            // SuperAdmin always has full access
             if (role == "superadmin" || role == "super admin") return true;
 
-            // If permissions loaded from DB, prefer them
+            // PRIORITY 1: Always check database permissions first (most important)
+            // This ensures changes in Roles & Permissions form are respected immediately
+            bool dbCheckPerformed = false;
+            bool dbCheckResult = false;
+            
+            try
+            {
+                var roleRepo = new Vape_Store.Repositories.RoleRepository();
+                
+                // First try to get permissions through UserRoles (if user has role assignments)
+                var dbPerms = roleRepo.GetEffectivePermissionsForUser(CurrentUser?.UserID ?? 0);
+                
+                // If no permissions found through UserRoles, try by role name from Users table
+                if ((dbPerms == null || dbPerms.Count == 0) && !string.IsNullOrWhiteSpace(role))
+                {
+                    dbPerms = roleRepo.GetPermissionsByRoleName(role);
+                }
+                
+                dbCheckPerformed = true;
+                
+                // DEBUG: Log what permissions were retrieved
+                if (dbPerms != null && dbPerms.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] User: {CurrentUser?.Username}, Role: {role}, Requested: {perm}");
+                    System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] DB Permissions Retrieved: {string.Join(", ", dbPerms)}");
+                    
+                    // Update the session permissions cache for future checks
+                    if (CurrentUser != null)
+                    {
+                        CurrentUser.Permissions = new System.Collections.Generic.HashSet<string>(
+                            dbPerms.Select(p => (p ?? string.Empty).Trim().ToLower()), 
+                            StringComparer.OrdinalIgnoreCase);
+                    }
+                    
+                    // Check if user has the specific permission
+                    var hasSpecificPermission = dbPerms.Any(p => (p ?? string.Empty).Trim().ToLower() == perm);
+                    if (hasSpecificPermission)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✓ GRANTED: User has specific permission '{perm}'");
+                        dbCheckResult = true;
+                        return true; // Return immediately - don't check fallbacks
+                    }
+                    
+                    // Check for "*" wildcard (all access) - but only if specific permission not found
+                    // IMPORTANT: If you want granular control, remove "*" from the role permissions
+                    var hasWildcard = dbPerms.Any(p => (p ?? string.Empty).Trim().ToLower() == "*");
+                    if (hasWildcard)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✓ GRANTED: User has '*' wildcard permission");
+                        dbCheckResult = true;
+                        return true; // Return immediately - don't check fallbacks
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✗ DENIED: Permission '{perm}' not found in database permissions: [{string.Join(", ", dbPerms)}]");
+                    dbCheckResult = false;
+                    return false; // Permission not found - return false immediately
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ⚠ No permissions found in database for user {CurrentUser?.Username}, role: {role}");
+                    dbCheckResult = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log exception for debugging
+                System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ERROR in database check: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] StackTrace: {ex.StackTrace}");
+                dbCheckPerformed = true;
+                dbCheckResult = false;
+            }
+            
+            // If database check was performed and returned a result, DON'T use fallbacks
+            if (dbCheckPerformed)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] Database check completed. Result: {(dbCheckResult ? "GRANTED" : "DENIED")}. Not checking fallbacks.");
+                return dbCheckResult;
+            }
+            
+            // PRIORITY 2: Fallback to cached session permissions (ONLY if DB check returned empty)
+            // This is only used if database query failed or returned no results
             try
             {
                 if (CurrentUser?.Permissions != null && CurrentUser.Permissions.Count > 0)
                 {
-                    return CurrentUser.Permissions.Contains(perm) || CurrentUser.Permissions.Contains("*");
+                    System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] Using cached permissions (DB check may have failed)");
+                    
+                    // If user has "*" permission, grant all access
+                    if (CurrentUser.Permissions.Contains("*"))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✓ GRANTED: Cached '*' wildcard permission");
+                        return true;
+                    }
+                    
+                    // Check if user has the specific permission
+                    var hasCached = CurrentUser.Permissions.Contains(perm);
+                    System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] {(hasCached ? "✓ GRANTED" : "✗ DENIED")}: Cached permission check for '{perm}'");
+                    return hasCached;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] Error checking cached permissions: {ex.Message}");
+            }
 
-            // Dynamic role manager (JSON-backed). If it answers, use it.
+            // PRIORITY 3: Dynamic role manager (JSON-backed) - ONLY if no DB permissions found
             try
             {
                 if (Vape_Store.Services.RoleManagerService.Instance.HasPermission(role, perm))
                 {
+                    System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✓ GRANTED: RoleManagerService allows '{perm}' for role '{role}'");
                     return true;
                 }
             }
-            catch { }
-
-            // Define role ladders and permissions
-            // - admin: all except system-level settings if you want to lock that down (here we allow all app permissions)
-            // - manager: sales, purchases, inventory, people, reports
-            // - sales: sales, customers, basic reports
-            // - cashier: sales only
-            switch (role)
+            catch (Exception ex)
             {
-                case "admin":
-                    return true;
-                case "manager":
-                    return perm == "sales" || perm == "purchases" || perm == "inventory" || perm == "people" || perm == "reports";
-                case "sales":
-                case "seller":
-                    return perm == "sales" || perm == "people" || perm == "reports" || perm == "basic_reports";
-                case "cashier":
-                    return perm == "sales" || perm == "basic_reports";
-                default:
-                    return false;
+                System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] Error checking RoleManagerService: {ex.Message}");
             }
+
+            // PRIORITY 4: STRICT - No fallback defaults
+            // If database permissions are not found, DENY access by default
+            // This ensures that permissions MUST be explicitly set in the database
+            System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✗ DENIED: No database permissions found, denying access by default (strict mode)");
+            return false;
         }
 
         /// <summary>

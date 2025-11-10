@@ -23,6 +23,15 @@ namespace Vape_Store
         public Users()
         {
             InitializeComponent();
+            
+            // Check if user has "users" permission before allowing access
+            if (!Vape_Store.UserSession.HasPermission("users"))
+            {
+                MessageBox.Show("You do not have permission to access User Management.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                this.Close();
+                return;
+            }
+            
             _userRepository = new UserRepository();
             
             SetupEventHandlers();
@@ -124,8 +133,8 @@ namespace Vape_Store
         {
             try
             {
-                cmbRole.Items.Clear();
-                cmbRole.Items.AddRange(new string[] { "Admin", "Manager", "Cashier", "Sales", "Inventory", "User" });
+                var roles = new List<string> { "Admin", "Manager", "Cashier", "Sales", "Inventory", "User" };
+                Vape_Store.Helpers.SearchableComboBoxHelper.MakeSearchable(cmbRole, roles);
             }
             catch (Exception ex)
             {
@@ -173,6 +182,9 @@ namespace Vape_Store
             isEditMode = false;
             selectedUserId = -1;
             _currentUser = null;
+            
+            // Re-check SuperAdmin access after clearing
+            CheckSuperAdminAccess();
         }
 
         private void BtnSave_Click(object sender, EventArgs e)
@@ -199,6 +211,15 @@ namespace Vape_Store
         {
             try
             {
+                // Check if user is SuperAdmin for password operations
+                bool isSuperAdmin = IsSuperAdmin();
+                
+                if (!isSuperAdmin)
+                {
+                    ShowMessage("Only SuperAdmin can view and change user passwords.", "Access Denied", MessageBoxIcon.Warning);
+                    return;
+                }
+                
                 if (!ValidateForm())
                 {
                     return;
@@ -317,10 +338,18 @@ namespace Vape_Store
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(txtPassword.Text))
+            // Only validate password if SuperAdmin (and password field is visible)
+            if (txtPassword.Visible && string.IsNullOrWhiteSpace(txtPassword.Text))
             {
                 ShowMessage("Please enter a password.", "Validation Error", MessageBoxIcon.Warning);
                 txtPassword.Focus();
+                return false;
+            }
+            
+            // If not SuperAdmin, don't allow password operations
+            if (!IsSuperAdmin() && txtPassword.Visible)
+            {
+                ShowMessage("Only SuperAdmin can set or change passwords.", "Access Denied", MessageBoxIcon.Warning);
                 return false;
             }
 
@@ -451,7 +480,34 @@ namespace Vape_Store
                 txtFirstName.Text = nameParts.Length > 0 ? nameParts[0] : "";
                 txtLastName.Text = nameParts.Length > 1 ? string.Join(" ", nameParts.Skip(1)) : "";
                 
-                txtPassword.Text = user.Password;
+                // Only SuperAdmin can view and update passwords
+                if (IsSuperAdmin())
+                {
+                    // Fetch full user data with password from database
+                    var fullUser = _userRepository.GetUserById(user.UserID);
+                    if (fullUser != null)
+                    {
+                        txtPassword.Text = fullUser.Password ?? ""; // Show existing password
+                    }
+                    else
+                    {
+                        txtPassword.Text = user.Password ?? ""; // Fallback
+                    }
+                    
+                    txtPassword.Visible = true;
+                    lblPassword.Visible = true;
+                    txtPassword.Enabled = true;
+                    txtPassword.UseSystemPasswordChar = false; // Show password in plain text for SuperAdmin
+                    txtPassword.ReadOnly = false; // Allow editing
+                }
+                else
+                {
+                    txtPassword.Text = ""; // Clear password field for non-SuperAdmin
+                    txtPassword.Visible = false;
+                    lblPassword.Visible = false;
+                    txtPassword.Enabled = false;
+                }
+                
                 cmbRole.SelectedItem = user.Role;
                 chkIsActive.Checked = user.IsActive;
                 chkIsAdmin.Checked = user.Role == "Admin";
@@ -491,6 +547,47 @@ namespace Vape_Store
         {
             // Set initial state
             SetInitialState();
+            // Check if current user is SuperAdmin and adjust UI accordingly
+            CheckSuperAdminAccess();
+        }
+
+        private bool IsSuperAdmin()
+        {
+            try
+            {
+                var currentUser = UserSession.CurrentUser;
+                if (currentUser == null) return false;
+                
+                var role = (currentUser.Role ?? string.Empty).Trim();
+                return role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) || 
+                       role.Equals("Super Admin", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void CheckSuperAdminAccess()
+        {
+            bool isSuperAdmin = IsSuperAdmin();
+            
+            // If not SuperAdmin, hide password field completely
+            if (!isSuperAdmin)
+            {
+                txtPassword.Visible = false;
+                lblPassword.Visible = false;
+                txtPassword.Enabled = false;
+            }
+            else
+            {
+                // SuperAdmin can see and edit passwords
+                txtPassword.Visible = true;
+                lblPassword.Visible = true;
+                txtPassword.Enabled = true;
+                txtPassword.ReadOnly = false;
+                txtPassword.UseSystemPasswordChar = false; // Show password in plain text for SuperAdmin
+            }
         }
     }
 }
