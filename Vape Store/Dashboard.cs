@@ -512,14 +512,12 @@ namespace Vape_Store
                 int newToDateX = newApplyBtnX - controlSpacing - 130;
                 int newToLabelX = newToDateX - controlSpacing - 25;
                 int newFromDateX = newToLabelX - controlSpacing - 130;
-                int newDateRangeLabelX = newFromDateX - controlSpacing - 90;
                 
                 // Update row 1 position
                 int newViewingStatsX = formWidth - rightMargin - viewingStatsLabelWidth;
                 
                 // Apply new positions
                 lblDateRange.Location = new Point(newViewingStatsX, lblDateRange.Location.Y);
-                lblDateRangeTitle.Location = new Point(newDateRangeLabelX, lblDateRangeTitle.Location.Y);
                 dtpFromDate.Location = new Point(newFromDateX, dtpFromDate.Location.Y);
                 lblTo.Location = new Point(newToLabelX, lblTo.Location.Y);
                 dtpToDate.Location = new Point(newToDateX, dtpToDate.Location.Y);
