@@ -79,6 +79,7 @@ namespace Vape_Store
         {
             // Button event handlers
             btnSave.Click += BtnSave_Click;
+            btnUpdate.Click += BtnUpdate_Click;
             btnDelete.Click += BtnDelete_Click;
             btnClear.Click += BtnClear_Click;
             
@@ -149,6 +150,11 @@ namespace Vape_Store
             SaveCustomer();
         }
 
+        private void BtnUpdate_Click(object sender, EventArgs e)
+        {
+            UpdateCustomer();
+        }
+
         private void SaveCustomer()
         {
             try
@@ -188,71 +194,117 @@ namespace Vape_Store
                     return;
                 }
 
-                if (isEditMode)
+                // Add new customer
+                var customer = new Customer
                 {
-                    // Update existing customer
-                    var customer = new Customer
-                    {
-                        CustomerID = selectedCustomerId,
-                        CustomerCode = txtCustomerCode.Text.Trim(),
-                        CustomerName = txtCustomerName.Text.Trim(),
-                        Phone = txtPhone.Text.Trim(),
-                        Email = txtEmail.Text.Trim(),
-                        Address = txtAddress.Text.Trim(),
-                        City = txtCity.Text.Trim(),
-                        PostalCode = txtPostalCode.Text.Trim(),
-                        IsActive = checkBox1.Checked,
-                        CreatedDate = _customers.First(c => c.CustomerID == selectedCustomerId).CreatedDate
-                    };
+                    CustomerCode = txtCustomerCode.Text.Trim(),
+                    CustomerName = txtCustomerName.Text.Trim(),
+                    Phone = txtPhone.Text.Trim(),
+                    Email = txtEmail.Text.Trim(),
+                    Address = txtAddress.Text.Trim(),
+                    City = txtCity.Text.Trim(),
+                    PostalCode = txtPostalCode.Text.Trim(),
+                    IsActive = checkBox1.Checked,
+                    CreatedDate = DateTime.Now
+                };
 
-                    bool success = _customerRepository.UpdateCustomer(customer);
-                    
-                    if (success)
-                    {
-                        ShowMessage("Customer updated successfully!", "Success", MessageBoxIcon.Information);
-                        LoadCustomers();
-                        ClearForm();
-                        SetEditMode(false);
-                    }
-                    else
-                    {
-                        ShowMessage("Failed to update customer.", "Error", MessageBoxIcon.Error);
-                    }
+                bool success = _customerRepository.AddCustomer(customer);
+                
+                if (success)
+                {
+                    ShowMessage("Customer added successfully!", "Success", MessageBoxIcon.Information);
+                    LoadCustomers();
+                    ClearForm();
+                    GenerateCustomerCode();
                 }
                 else
                 {
-                    // Add new customer
-                    var customer = new Customer
-                    {
-                        CustomerCode = txtCustomerCode.Text.Trim(),
-                        CustomerName = txtCustomerName.Text.Trim(),
-                        Phone = txtPhone.Text.Trim(),
-                        Email = txtEmail.Text.Trim(),
-                        Address = txtAddress.Text.Trim(),
-                        City = txtCity.Text.Trim(),
-                        PostalCode = txtPostalCode.Text.Trim(),
-                        IsActive = checkBox1.Checked,
-                        CreatedDate = DateTime.Now
-                    };
-
-                    bool success = _customerRepository.AddCustomer(customer);
-                    
-                    if (success)
-                    {
-                        ShowMessage("Customer added successfully!", "Success", MessageBoxIcon.Information);
-                        LoadCustomers();
-                        ClearForm();
-                        GenerateCustomerCode();
-                    }
-                    else
-                    {
-                        ShowMessage("Failed to add customer.", "Error", MessageBoxIcon.Error);
-                    }
+                    ShowMessage("Failed to add customer.", "Error", MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error saving customer: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateCustomer()
+        {
+            try
+            {
+                if (selectedCustomerId == -1)
+                {
+                    ShowMessage("Please select a customer to update.", "Selection Error", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Validate input
+                if (string.IsNullOrWhiteSpace(txtCustomerName.Text))
+                {
+                    ShowMessage("Please enter a customer name.", "Validation Error", MessageBoxIcon.Warning);
+                    txtCustomerName.Focus();
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(txtPhone.Text))
+                {
+                    ShowMessage("Please enter a phone number.", "Validation Error", MessageBoxIcon.Warning);
+                    txtPhone.Focus();
+                    return;
+                }
+
+                // Validate email format if provided
+                if (!string.IsNullOrWhiteSpace(txtEmail.Text) && !IsValidEmail(txtEmail.Text))
+                {
+                    ShowMessage("Please enter a valid email address.", "Validation Error", MessageBoxIcon.Warning);
+                    txtEmail.Focus();
+                    return;
+                }
+
+                // Check for duplicate customer name
+                var existingCustomer = _customers.FirstOrDefault(c => 
+                    c.CustomerName.ToLower() == txtCustomerName.Text.ToLower() && 
+                    c.CustomerID != selectedCustomerId);
+
+                if (existingCustomer != null)
+                {
+                    ShowMessage("A customer with this name already exists.", "Duplicate Error", MessageBoxIcon.Warning);
+                    txtCustomerName.Focus();
+                    return;
+                }
+
+                // Update existing customer
+                var customer = new Customer
+                {
+                    CustomerID = selectedCustomerId,
+                    CustomerCode = txtCustomerCode.Text.Trim(),
+                    CustomerName = txtCustomerName.Text.Trim(),
+                    Phone = txtPhone.Text.Trim(),
+                    Email = txtEmail.Text.Trim(),
+                    Address = txtAddress.Text.Trim(),
+                    City = txtCity.Text.Trim(),
+                    PostalCode = txtPostalCode.Text.Trim(),
+                    IsActive = checkBox1.Checked,
+                    CreatedDate = _customers.First(c => c.CustomerID == selectedCustomerId).CreatedDate
+                };
+
+                bool success = _customerRepository.UpdateCustomer(customer);
+                
+                if (success)
+                {
+                    ShowMessage("Customer updated successfully!", "Success", MessageBoxIcon.Information);
+                    LoadCustomers();
+                    ClearForm();
+                    SetEditMode(false);
+                }
+                else
+                {
+                    ShowMessage("Failed to update customer.", "Error", MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error updating customer: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
 
@@ -332,7 +384,17 @@ namespace Vape_Store
         {
             if (e.RowIndex >= 0 && e.RowIndex < dgvCustomers.Rows.Count)
             {
-                EditSelectedCustomer();
+                // Get CustomerID directly from the clicked row
+                DataGridViewRow clickedRow = dgvCustomers.Rows[e.RowIndex];
+                if (clickedRow.Cells["CustomerID"].Value != null)
+                {
+                    int customerId;
+                    if (int.TryParse(clickedRow.Cells["CustomerID"].Value.ToString(), out customerId))
+                    {
+                        selectedCustomerId = customerId;
+                        EditSelectedCustomer();
+                    }
+                }
             }
         }
 
@@ -340,10 +402,15 @@ namespace Vape_Store
         {
             if (dgvCustomers.SelectedRows.Count > 0)
             {
-                int rowIndex = dgvCustomers.SelectedRows[0].Index;
-                if (rowIndex >= 0 && rowIndex < _customers.Count)
+                DataGridViewRow selectedRow = dgvCustomers.SelectedRows[0];
+                // Get CustomerID directly from the row's first column (CustomerID column)
+                if (selectedRow.Cells["CustomerID"].Value != null)
                 {
-                    selectedCustomerId = _customers[rowIndex].CustomerID;
+                    int customerId;
+                    if (int.TryParse(selectedRow.Cells["CustomerID"].Value.ToString(), out customerId))
+                    {
+                        selectedCustomerId = customerId;
+                    }
                 }
             }
         }
@@ -438,12 +505,16 @@ namespace Vape_Store
             
             if (editMode)
             {
-                btnSave.Text = "Update";
+                // When editing: disable Save, enable Update and Delete
+                btnSave.Enabled = false;
+                btnUpdate.Enabled = true;
                 btnDelete.Enabled = true;
             }
             else
             {
-                btnSave.Text = "Save";
+                // When creating new: enable Save, disable Update and Delete
+                btnSave.Enabled = true;
+                btnUpdate.Enabled = false;
                 btnDelete.Enabled = false;
             }
         }

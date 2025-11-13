@@ -36,6 +36,7 @@ namespace Vape_Store
         {
             // Button event handlers
             btnSave.Click += BtnSave_Click;
+            btnUpdate.Click += BtnUpdate_Click;
             btnClear.Click += BtnClear_Click;
             btnDelete.Click += BtnDelete_Click;
             
@@ -177,11 +178,37 @@ namespace Vape_Store
             isEditMode = false;
             selectedSupplierId = -1;
             _currentSupplier = null;
+            SetEditMode(false);
+        }
+
+        private void SetEditMode(bool editMode)
+        {
+            isEditMode = editMode;
+            
+            if (editMode)
+            {
+                // When editing: disable Save, enable Update and Delete
+                btnSave.Enabled = false;
+                btnUpdate.Enabled = true;
+                btnDelete.Enabled = true;
+            }
+            else
+            {
+                // When creating new: enable Save, disable Update and Delete
+                btnSave.Enabled = true;
+                btnUpdate.Enabled = false;
+                btnDelete.Enabled = false;
+            }
         }
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
             SaveSupplier();
+        }
+
+        private void BtnUpdate_Click(object sender, EventArgs e)
+        {
+            UpdateSupplier();
         }
 
         private void BtnClear_Click(object sender, EventArgs e)
@@ -216,31 +243,72 @@ namespace Vape_Store
                     IsActive = checkBox1.Checked
                 };
 
-                bool success;
-                if (isEditMode)
-                {
-                    supplier.SupplierID = selectedSupplierId;
-                    success = _supplierRepository.UpdateSupplier(supplier);
-                }
-                else
-                {
-                    success = _supplierRepository.AddSupplier(supplier);
-                }
+                bool success = _supplierRepository.AddSupplier(supplier);
                 
                 if (success)
                 {
-                    ShowMessage("Supplier saved successfully!", "Success", MessageBoxIcon.Information);
+                    ShowMessage("Supplier added successfully!", "Success", MessageBoxIcon.Information);
                     LoadSuppliers();
                     ClearForm();
+                    GenerateSupplierCode();
                 }
                 else
                 {
-                    ShowMessage("Failed to save supplier.", "Error", MessageBoxIcon.Error);
+                    ShowMessage("Failed to add supplier.", "Error", MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error saving supplier: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateSupplier()
+        {
+            try
+            {
+                if (selectedSupplierId == -1)
+                {
+                    ShowMessage("Please select a supplier to update.", "Selection Error", MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (!ValidateForm())
+                {
+                    return;
+                }
+
+                var supplier = new Supplier
+                {
+                    SupplierID = selectedSupplierId,
+                    SupplierCode = txtCustomerCode.Text.Trim(),
+                    SupplierName = txtCustomerName.Text.Trim(),
+                    ContactPerson = "", // Not in the form, can be added later
+                    Phone = txtPhone.Text.Trim(),
+                    Email = txtEmail.Text.Trim(),
+                    Address = txtAddress.Text.Trim(),
+                    City = txtCity.Text.Trim(),
+                    PostalCode = txtPostalCode.Text.Trim(),
+                    IsActive = checkBox1.Checked
+                };
+
+                bool success = _supplierRepository.UpdateSupplier(supplier);
+                
+                if (success)
+                {
+                    ShowMessage("Supplier updated successfully!", "Success", MessageBoxIcon.Information);
+                    LoadSuppliers();
+                    ClearForm();
+                    SetEditMode(false);
+                }
+                else
+                {
+                    ShowMessage("Failed to update supplier.", "Error", MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error updating supplier: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
 
@@ -269,6 +337,7 @@ namespace Vape_Store
                         ShowMessage("Supplier deactivated successfully!", "Success", MessageBoxIcon.Information);
                         LoadSuppliers();
                         ClearForm();
+                        SetEditMode(false);
                     }
                     else
                     {
@@ -371,6 +440,7 @@ namespace Vape_Store
             isEditMode = false;
             selectedSupplierId = -1;
             _currentSupplier = null;
+            SetEditMode(false);
         }
 
         private void DgvSuppliers_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -421,6 +491,9 @@ namespace Vape_Store
                 txtCity.Text = supplier.City;
                 txtPostalCode.Text = supplier.PostalCode;
                 checkBox1.Checked = supplier.IsActive;
+                
+                SetEditMode(true);
+                txtCustomerName.Focus();
             }
             catch (Exception ex)
             {
@@ -457,6 +530,7 @@ namespace Vape_Store
         {
             // Set initial state
             SetInitialState();
+            txtSearch.Focus();
         }
 
         private void panel2_Paint(object sender, PaintEventArgs e)

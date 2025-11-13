@@ -51,11 +51,18 @@ namespace Vape_Store
             ADD_button.Text = "Save";
             Save_button.Text = "Update";
             
-            // Hide barcode section
+            // Show barcode section - make it visible and enabled
             if (barcodeGroup != null)
             {
-                barcodeGroup.Visible = false;
-                barcodeGroup.Enabled = false;
+                barcodeGroup.Visible = true;
+                barcodeGroup.Enabled = true;
+            }
+            
+            // Ensure barcode panel is visible
+            if (pnlBarcode != null)
+            {
+                pnlBarcode.Visible = true;
+                pnlBarcode.Enabled = true;
             }
         }
 
@@ -172,13 +179,32 @@ namespace Vape_Store
                 Application.DoEvents(); // Keep UI responsive
                 _products = _productRepository.GetAllProducts();
                 Application.DoEvents();
+                
+                // Check if products were loaded
+                if (_products == null)
+                {
+                    _products = new List<Product>();
+                }
+                
                 RefreshDataGridView();
                 Application.DoEvents();
                 UpdateSearchAutoComplete();
+                
+                // Optional: Show info if no products found (only on initial load, not on every refresh)
+                // Uncomment the line below if you want to be notified when there are no products
+                // if (_products.Count == 0)
+                // {
+                //     System.Diagnostics.Debug.WriteLine("No active products found in database.");
+                // }
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error loading products: {ex.Message}", "Error", MessageBoxIcon.Error);
+                // Ensure _products is initialized even on error
+                if (_products == null)
+                {
+                    _products = new List<Product>();
+                }
             }
         }
 
@@ -186,46 +212,110 @@ namespace Vape_Store
         {
             try
             {
-                dgvProducts.Rows.Clear();
-                
-                if (_products == null || _products.Count == 0)
+                // Check if form and controls are still valid
+                if (this.IsDisposed)
                     return;
-                
-                foreach (var product in _products)
+                    
+                if (dgvProducts == null || dgvProducts.IsDisposed)
+                    return;
+
+                // Temporarily disable SelectionChanged to prevent errors during clear
+                dgvProducts.SelectionChanged -= DgvProducts_SelectionChanged;
+                try
                 {
-                    string categoryName = "";
-                    if (_categories != null && _categories.Count > 0)
-                    {
-                        var cat = _categories.FirstOrDefault(c => c.CategoryID == product.CategoryID);
-                        categoryName = cat?.CategoryName ?? "";
-                    }
+                    dgvProducts.Rows.Clear();
+                    selectedProductId = -1; // Reset selection
                     
-                    string brandName = "";
-                    if (_brands != null && _brands.Count > 0)
-                    {
-                        var brand = _brands.FirstOrDefault(b => b.BrandID == product.BrandID);
-                        brandName = brand?.BrandName ?? "";
-                    }
+                    if (_products == null || _products.Count == 0)
+                        return;
                     
-                    dgvProducts.Rows.Add(
-                        product.ProductID,
-                        product.ProductCode,
-                        product.ProductName,
-                        categoryName,
-                        brandName,
-                        product.CostPrice,
-                        product.RetailPrice,
-                        product.StockQuantity,
-                        product.ReorderLevel,
-                        product.Barcode,
-                        product.IsActive ? "Active" : "Inactive"
-                    );
+                    foreach (var product in _products)
+                    {
+                        // Check again in loop in case control gets disposed
+                        if (dgvProducts.IsDisposed)
+                            break;
+                            
+                        string categoryName = "";
+                        if (_categories != null && _categories.Count > 0)
+                        {
+                            var cat = _categories.FirstOrDefault(c => c.CategoryID == product.CategoryID);
+                            categoryName = cat?.CategoryName ?? "";
+                        }
+                        
+                        string brandName = "";
+                        if (_brands != null && _brands.Count > 0)
+                        {
+                            var brand = _brands.FirstOrDefault(b => b.BrandID == product.BrandID);
+                            brandName = brand?.BrandName ?? "";
+                        }
+                        
+                        dgvProducts.Rows.Add(
+                            product.ProductID,
+                            product.ProductCode,
+                            product.ProductName,
+                            categoryName,
+                            brandName,
+                            product.CostPrice,
+                            product.RetailPrice,
+                            product.StockQuantity,
+                            product.ReorderLevel,
+                            product.Barcode,
+                            product.IsActive ? "Active" : "Inactive"
+                        );
+                    }
                 }
+                catch (ObjectDisposedException)
+                {
+                    // Control was disposed during operation, silently exit
+                    return;
+                }
+                catch (AccessViolationException)
+                {
+                    // Memory access violation, silently exit
+                    return;
+                }
+                finally
+                {
+                    // Re-enable SelectionChanged after refresh (only if control is still valid)
+                    if (!dgvProducts.IsDisposed)
+                    {
+                        try
+                        {
+                            dgvProducts.SelectionChanged += DgvProducts_SelectionChanged;
+                        }
+                        catch
+                        {
+                            // Silently handle if event handler can't be reattached
+                        }
+                    }
+                }
+                
                 UpdateSearchAutoComplete();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Form or control was disposed, silently exit
+                return;
+            }
+            catch (AccessViolationException)
+            {
+                // Memory access violation, silently exit
+                return;
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error refreshing data: {ex.Message}", "Error", MessageBoxIcon.Error);
+                // Only show message for unexpected errors, not disposal/access violations
+                if (!this.IsDisposed)
+                {
+                    try
+                    {
+                        ShowMessage($"Error refreshing data: {ex.Message}", "Error", MessageBoxIcon.Error);
+                    }
+                    catch
+                    {
+                        // Silently handle if we can't show message
+                    }
+                }
             }
         }
 
@@ -686,11 +776,29 @@ namespace Vape_Store
         {
             try
             {
-                if (string.IsNullOrEmpty(barcodeText))
+                if (pnlBarcode == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("pnlBarcode is null in DisplayBarcodeImage");
                     return;
+                }
+                
+                if (string.IsNullOrEmpty(barcodeText))
+                {
+                    pnlBarcode.Controls.Clear();
+                    return;
+                }
+
+                // Ensure barcode group and panel are visible
+                if (barcodeGroup != null)
+                {
+                    barcodeGroup.Visible = true;
+                    barcodeGroup.Enabled = true;
+                }
+                pnlBarcode.Visible = true;
+                pnlBarcode.BringToFront();
 
                 // Generate barcode image using BarcodeService
-                var barcodeImage = _barcodeService.GenerateBarcodeImageObject(barcodeText, 600, 100);
+                var barcodeImage = _barcodeService.GenerateBarcodeImageObject(barcodeText, 440, 80);
                 
                 if (barcodeImage != null)
                 {
@@ -711,18 +819,32 @@ namespace Vape_Store
                     var label = new Label
                     {
                         Text = barcodeText,
-                        Font = new Font("Arial", 10, FontStyle.Bold),
+                        Font = new Font("Segoe UI", 9, FontStyle.Bold),
                         TextAlign = ContentAlignment.MiddleCenter,
                         Dock = DockStyle.Bottom,
                         Height = 25,
-                        BackColor = Color.White
+                        BackColor = Color.White,
+                        ForeColor = Color.Black
                     };
                     
                     pnlBarcode.Controls.Add(label);
+                    
+                    // Force refresh
+                    pnlBarcode.Invalidate();
+                    pnlBarcode.Refresh();
+                    pnlBarcode.Update();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Barcode image displayed: {barcodeText}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Failed to generate barcode image");
                 }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Error displaying barcode image: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                 ShowMessage($"Error displaying barcode image: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
@@ -781,18 +903,44 @@ namespace Vape_Store
 
         private void DgvProducts_SelectionChanged(object sender, EventArgs e)
         {
-            if (dgvProducts.SelectedRows.Count > 0)
+            try
             {
-                // Get ProductID directly from the DataGridView row instead of using row index
-                // This works correctly even when products are filtered
-                DataGridViewRow selectedRow = dgvProducts.SelectedRows[0];
-                if (selectedRow.Cells["ProductID"].Value != null)
+                if (dgvProducts == null || dgvProducts.Rows.Count == 0)
                 {
-                    if (int.TryParse(selectedRow.Cells["ProductID"].Value.ToString(), out int productId))
+                    selectedProductId = -1;
+                    return;
+                }
+
+                if (dgvProducts.SelectedRows.Count > 0)
+                {
+                    // Get ProductID directly from the DataGridView row instead of using row index
+                    // This works correctly even when products are filtered
+                    DataGridViewRow selectedRow = dgvProducts.SelectedRows[0];
+                    if (selectedRow != null && selectedRow.Cells["ProductID"] != null && selectedRow.Cells["ProductID"].Value != null)
                     {
-                        selectedProductId = productId;
+                        if (int.TryParse(selectedRow.Cells["ProductID"].Value.ToString(), out int productId))
+                        {
+                            selectedProductId = productId;
+                        }
+                        else
+                        {
+                            selectedProductId = -1;
+                        }
+                    }
+                    else
+                    {
+                        selectedProductId = -1;
                     }
                 }
+                else
+                {
+                    selectedProductId = -1;
+                }
+            }
+            catch
+            {
+                // Silently handle errors during selection change (e.g., when grid is being cleared)
+                selectedProductId = -1;
             }
         }
 
@@ -856,7 +1004,21 @@ namespace Vape_Store
                 txtPrice.Text = product.CostPrice.ToString("F2");
                 txtretailprice.Text = product.RetailPrice.ToString("F2");
                 txtReorderLevel.Text = product.ReorderLevel.ToString();
-                // Barcode UI removed - stored but not displayed
+                
+                // Load and display barcode
+                if (!string.IsNullOrEmpty(product.Barcode))
+                {
+                    txtBarcode.Text = product.Barcode;
+                    DisplayBarcodeImage(product.Barcode);
+                }
+                else
+                {
+                    // Generate new barcode if product doesn't have one
+                    string barcodeText = GenerateBarcodeFromCode(product.ProductCode ?? "PROD");
+                    txtBarcode.Text = barcodeText;
+                    DisplayBarcodeImage(barcodeText);
+                }
+                
                 checkBox1.Checked = product.IsActive;
                 
                 SetEditMode(true);
@@ -870,6 +1032,17 @@ namespace Vape_Store
 
         private void TxtSearch_TextChanged(object sender, EventArgs e)
         {
+            // Prevent recursive calls and ensure thread safety
+            if (this.IsDisposed)
+                return;
+                
+            // Use BeginInvoke to ensure we're on the UI thread
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() => FilterProducts()));
+                return;
+            }
+            
             FilterProducts();
         }
 
@@ -877,10 +1050,33 @@ namespace Vape_Store
         {
             try
             {
+                // Check if form and controls are still valid
+                if (this.IsDisposed)
+                    return;
+                    
+                if (txtSearch == null || txtSearch.IsDisposed)
+                    return;
+                    
+                if (dgvProducts == null || dgvProducts.IsDisposed)
+                    return;
+
                 if (_products == null || _products.Count == 0)
                     return;
 
-                string searchText = txtSearch.Text.ToLower();
+                // Safely get search text
+                string searchText = "";
+                try
+                {
+                    searchText = txtSearch.Text?.ToLower() ?? "";
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+                catch (AccessViolationException)
+                {
+                    return;
+                }
                 
                 if (string.IsNullOrWhiteSpace(searchText))
                 {
@@ -895,43 +1091,102 @@ namespace Vape_Store
                     (_categories != null && _categories.Count > 0 && (_categories.FirstOrDefault(c => c.CategoryID == p.CategoryID)?.CategoryName ?? "").ToLower().Contains(searchText)) ||
                     (_brands != null && _brands.Count > 0 && (_brands.FirstOrDefault(b => b.BrandID == p.BrandID)?.BrandName ?? "").ToLower().Contains(searchText))).ToList();
 
-                dgvProducts.Rows.Clear();
-                
-                foreach (var product in filteredProducts)
+                // Check again before manipulating DataGridView
+                if (dgvProducts.IsDisposed)
+                    return;
+
+                // Temporarily disable SelectionChanged to prevent errors during clear
+                dgvProducts.SelectionChanged -= DgvProducts_SelectionChanged;
+                try
                 {
-                    string categoryName = "";
-                    if (_categories != null && _categories.Count > 0)
-                    {
-                        var cat = _categories.FirstOrDefault(c => c.CategoryID == product.CategoryID);
-                        categoryName = cat?.CategoryName ?? "";
-                    }
+                    dgvProducts.Rows.Clear();
+                    selectedProductId = -1; // Reset selection
                     
-                    string brandName = "";
-                    if (_brands != null && _brands.Count > 0)
+                    foreach (var product in filteredProducts)
                     {
-                        var brand = _brands.FirstOrDefault(b => b.BrandID == product.BrandID);
-                        brandName = brand?.BrandName ?? "";
+                        // Check again in loop in case control gets disposed
+                        if (dgvProducts.IsDisposed)
+                            break;
+                            
+                        string categoryName = "";
+                        if (_categories != null && _categories.Count > 0)
+                        {
+                            var cat = _categories.FirstOrDefault(c => c.CategoryID == product.CategoryID);
+                            categoryName = cat?.CategoryName ?? "";
+                        }
+                        
+                        string brandName = "";
+                        if (_brands != null && _brands.Count > 0)
+                        {
+                            var brand = _brands.FirstOrDefault(b => b.BrandID == product.BrandID);
+                            brandName = brand?.BrandName ?? "";
+                        }
+                        
+                        dgvProducts.Rows.Add(
+                            product.ProductID,
+                            product.ProductCode,
+                            product.ProductName,
+                            categoryName,
+                            brandName,
+                            product.CostPrice,
+                            product.RetailPrice,
+                            product.StockQuantity,
+                            product.ReorderLevel,
+                            product.Barcode,
+                            product.IsActive ? "Active" : "Inactive"
+                        );
                     }
-                    
-                    dgvProducts.Rows.Add(
-                        product.ProductID,
-                        product.ProductCode,
-                        product.ProductName,
-                        categoryName,
-                        brandName,
-                        product.CostPrice,
-                        product.RetailPrice,
-                        product.StockQuantity,
-                        product.ReorderLevel,
-                        product.Barcode,
-                        product.IsActive ? "Active" : "Inactive"
-                    );
                 }
-                UpdateSearchAutoComplete();
+                catch (ObjectDisposedException)
+                {
+                    // Control was disposed during operation, silently exit
+                    return;
+                }
+                catch (AccessViolationException)
+                {
+                    // Memory access violation, silently exit
+                    return;
+                }
+                finally
+                {
+                    // Re-enable SelectionChanged after filtering (only if control is still valid)
+                    if (!dgvProducts.IsDisposed)
+                    {
+                        try
+                        {
+                            dgvProducts.SelectionChanged += DgvProducts_SelectionChanged;
+                        }
+                        catch
+                        {
+                            // Silently handle if event handler can't be reattached
+                        }
+                    }
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Form or control was disposed, silently exit
+                return;
+            }
+            catch (AccessViolationException)
+            {
+                // Memory access violation, silently exit
+                return;
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error filtering products: {ex.Message}", "Error", MessageBoxIcon.Error);
+                // Only show message for unexpected errors, not disposal/access violations
+                if (!this.IsDisposed)
+                {
+                    try
+                    {
+                        ShowMessage($"Error filtering products: {ex.Message}", "Error", MessageBoxIcon.Error);
+                    }
+                    catch
+                    {
+                        // Silently handle if we can't show message
+                    }
+                }
             }
         }
 
@@ -939,21 +1194,39 @@ namespace Vape_Store
         {
             try
             {
+                // Check if search textbox is available
+                if (txtSearch == null || txtSearch.IsDisposed)
+                    return;
+
                 var collection = new AutoCompleteStringCollection();
-                if (_products != null)
+                if (_products != null && _products.Count > 0)
                 {
                     foreach (var p in _products)
                     {
-                        if (!string.IsNullOrWhiteSpace(p.ProductName)) collection.Add(p.ProductName);
-                        if (!string.IsNullOrWhiteSpace(p.ProductCode)) collection.Add(p.ProductCode);
-                        if (!string.IsNullOrWhiteSpace(p.Barcode)) collection.Add(p.Barcode);
+                        if (p == null) continue;
+                        
+                        if (!string.IsNullOrWhiteSpace(p.ProductName)) 
+                            collection.Add(p.ProductName);
+                        if (!string.IsNullOrWhiteSpace(p.ProductCode)) 
+                            collection.Add(p.ProductCode);
+                        if (!string.IsNullOrWhiteSpace(p.Barcode)) 
+                            collection.Add(p.Barcode);
                     }
                 }
-                txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
-                txtSearch.AutoCompleteCustomSource = collection;
+                
+                // Only update autocomplete if textbox is still valid
+                if (!txtSearch.IsDisposed)
+                {
+                    txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                    txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
+                    txtSearch.AutoCompleteCustomSource = collection;
+                }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Silently handle autocomplete errors to prevent "code blast"
+                System.Diagnostics.Debug.WriteLine($"Error updating autocomplete: {ex.Message}");
+            }
         }
 
         private void SetEditMode(bool editMode)

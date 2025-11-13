@@ -280,7 +280,12 @@ namespace Vape_Store.Services
                 {
                     connection.Open();
                     var result = command.ExecuteScalar();
-                    return $"INV-{DateTime.Now.Year}-{result:D3}";
+                    string invoiceNumber = $"INV-{DateTime.Now.Year}-{result:D3}";
+                    
+                    // Debug output to track invoice number generation
+                    System.Diagnostics.Debug.WriteLine($"[GetNextInvoiceNumber] Generated: {invoiceNumber} (Result from DB: {result})");
+                    
+                    return invoiceNumber;
                 }
             }
         }

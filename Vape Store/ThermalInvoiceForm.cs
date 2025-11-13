@@ -282,19 +282,15 @@ namespace Vape_Store
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
 
             // Header - Store Info
-            g.DrawString("VAPE STORE", headerFont, Brushes.Black, 
+            g.DrawString("MADNI MOBILE & PHOTOSTATE", headerFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("Electronic Cigarettes & Accessories", bodyFont, Brushes.Black, 
+            g.DrawString("Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("123 Main Street, City, State 12345", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight;
-
-            g.DrawString("Phone: (555) 123-4567", bodyFont, Brushes.Black, 
+            g.DrawString("Ph: 0345-5518744", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight * 2;
 
@@ -406,11 +402,23 @@ namespace Vape_Store
             currentY += lineHeight;
 
             // Footer
-            g.DrawString("Thank you for your business!", bodyFont, Brushes.Black, 
+            g.DrawString("Note:", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("Please come again!", bodyFont, Brushes.Black, 
+            g.DrawString("1. Goods once sold are only exchangeable within 3 days", bodyFont, Brushes.Black, 
+                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
+            currentY += lineHeight;
+
+            g.DrawString("2. No return policy", bodyFont, Brushes.Black, 
+                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
+            currentY += lineHeight;
+
+            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", bodyFont, Brushes.Black, 
+                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
+            currentY += lineHeight * 2;
+
+            g.DrawString("Developed By: DevFleet Technologies | +923225347757", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
 
             // Clean up fonts
@@ -558,11 +566,9 @@ namespace Vape_Store
 
         private void PrintHeader(Graphics g)
         {
-            string header = "VAPE STORE";
-            string subHeader = "Electronic Cigarettes & Accessories";
-            string address = "123 Main Street, City, State 12345";
-            string phone = "Phone: (555) 123-4567";
-            string email = "Email: info@vapestore.com";
+            string header = "MADNI MOBILE & PHOTOSTATE";
+            string address = "Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP";
+            string phone = "Ph: 0345-5518744";
 
             // Center align header
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
@@ -570,16 +576,10 @@ namespace Vape_Store
             g.DrawString(header, _headerFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString(subHeader, _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
             g.DrawString(address, _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
             g.DrawString(phone, _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
-            g.DrawString(email, _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight * 2;
 
             // Draw line
@@ -798,16 +798,22 @@ namespace Vape_Store
             g.DrawString("----------------------------------------", _bodyFont, Brushes.Black, 0, _currentY);
             _currentY += _lineHeight;
             
-            g.DrawString("Thank you for your business!", _bodyFont, Brushes.Black, 0, _currentY);
+            StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
+            
+            g.DrawString("Note:", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString("Please come again!", _bodyFont, Brushes.Black, 0, _currentY);
+            g.DrawString("1. Goods once sold are only exchangeable within 3 days", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString("", _bodyFont, Brushes.Black, 0, _currentY);
+            g.DrawString("2. No return policy", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString("", _bodyFont, Brushes.Black, 0, _currentY);
+            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            _currentY += _lineHeight * 2;
+            
+            g.DrawString("Developed By: DevFleet Technologies | +923225347757", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            _currentY += _lineHeight;
         }
 
         private void BtnClose_Click(object sender, EventArgs e)
@@ -919,16 +925,13 @@ namespace Vape_Store
             Font bodyFont = new Font("Courier New", 9, FontStyle.Regular);
             Font footerFont = new Font("Courier New", 10, FontStyle.Bold);
 
-            g.DrawString("VAPE STORE", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("MADNI MOBILE & PHOTOSTATE", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             
-            g.DrawString("Electronic Cigarettes & Accessories", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             
-            g.DrawString("123 Main Street, City, State 12345", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            
-            g.DrawString("Phone: (555) 123-4567", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("Ph: 0345-5518744", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight * 2;
 
             g.DrawLine(Pens.Black, 0, currentY, paperWidth, currentY);
@@ -1011,10 +1014,19 @@ namespace Vape_Store
             g.DrawString("----------------------------------------", bodyFont, Brushes.Black, 0, currentY);
             currentY += lineHeight;
             
-            g.DrawString("Thank you for your business!", bodyFont, Brushes.Black, 0, currentY);
+            g.DrawString("Note:", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             
-            g.DrawString("Please come again!", bodyFont, Brushes.Black, 0, currentY);
+            g.DrawString("1. Goods once sold are only exchangeable within 3 days", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            currentY += lineHeight;
+            
+            g.DrawString("2. No return policy", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            currentY += lineHeight;
+            
+            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            currentY += lineHeight * 2;
+            
+            g.DrawString("Developed By: DevFleet Technologies | +923225347757", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
         }
 
     }

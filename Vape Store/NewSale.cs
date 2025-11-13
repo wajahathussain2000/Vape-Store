@@ -397,15 +397,20 @@ namespace Vape_Store
         {
             try
             {
+                string oldInvoiceNumber = invoiceNumber;
                 invoiceNumber = _salesService.GetNextInvoiceNumber();
                 label4.Text = invoiceNumber;
                 
-                // Generate and display barcode
+                // Debug output to verify invoice number is changing
+                System.Diagnostics.Debug.WriteLine($"[Invoice] Old: {oldInvoiceNumber}, New: {invoiceNumber}");
+                
+                // Generate and display barcode with new invoice number
                 GenerateAndDisplayBarcode();
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error generating invoice number: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"[Invoice] Error: {ex.Message}");
             }
         }
 
@@ -478,7 +483,15 @@ namespace Vape_Store
             {
                 if (!string.IsNullOrEmpty(invoiceNumber) && picBarcode != null)
                 {
-                    // Generate barcode image
+                    // Dispose of old image to prevent memory leaks and ensure new barcode is displayed
+                    if (picBarcode.Image != null)
+                    {
+                        var oldImage = picBarcode.Image;
+                        picBarcode.Image = null;
+                        oldImage.Dispose();
+                    }
+                    
+                    // Generate barcode image with current invoice number
                     var barcodeImage = _barcodeService.GenerateBarcodeImageObject(invoiceNumber, 150, 50);
                     
                     if (barcodeImage != null)
@@ -492,20 +505,26 @@ namespace Vape_Store
                         // Force refresh
                         picBarcode.Invalidate();
                         picBarcode.Refresh();
+                        
+                        // Debug output to verify invoice number is changing
+                        System.Diagnostics.Debug.WriteLine($"[Barcode] Generated barcode for invoice: {invoiceNumber}");
                     }
                     else
                     {
                         // Failed to generate barcode image
+                        System.Diagnostics.Debug.WriteLine($"[Barcode] Failed to generate barcode for invoice: {invoiceNumber}");
                     }
                 }
                 else
                 {
                     // Silently handle missing components
+                    System.Diagnostics.Debug.WriteLine($"[Barcode] Cannot generate barcode - InvoiceNumber: {invoiceNumber ?? "null"}, picBarcode: {picBarcode != null}");
                 }
             }
             catch (Exception ex)
             {
                 ShowMessage($"Error generating barcode: {ex.Message}", "Error", MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"[Barcode] Error: {ex.Message}");
             }
         }
 
@@ -902,6 +921,7 @@ namespace Vape_Store
                 };
 
                 // Debug output
+                System.Diagnostics.Debug.WriteLine($"[SaveSale] Invoice Number: {invoiceNumber}");
                 System.Diagnostics.Debug.WriteLine($"Save Sale Data: Subtotal={sale.SubTotal}, TaxAmount={sale.TaxAmount}, TaxPercent={sale.TaxPercent}, Total={sale.TotalAmount}");
 
                 // Process sale

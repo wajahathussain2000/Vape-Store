@@ -111,11 +111,10 @@ namespace Vape_Store
                 float centerX = 225;
 
                 // Store header with better formatting
-                yPosition = DrawCenteredText(g, "VAPE STORE", new Font("Arial", 18, FontStyle.Bold), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "MADNI MOBILE & PHOTOSTATE", new Font("Arial", 18, FontStyle.Bold), centerX, yPosition);
                 yPosition += 5;
-                yPosition = DrawCenteredText(g, "123 Main Street, City, State 12345", new Font("Arial", 9), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Phone: (555) 123-4567", new Font("Arial", 9), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "info@vapestore.com", new Font("Arial", 9), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP", new Font("Arial", 9), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Ph: 0345-5518744", new Font("Arial", 9), centerX, yPosition);
                 
                 yPosition += 15;
                 DrawDashedLine(g, leftMargin, yPosition, rightMargin, yPosition);
@@ -275,10 +274,14 @@ namespace Vape_Store
                 yPosition += 10;
 
                 // Footer with better styling
-                yPosition = DrawCenteredText(g, "Thank you for your business!", new Font("Arial", 9, FontStyle.Bold), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Please come again!", new Font("Arial", 8), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Note:", new Font("Arial", 9, FontStyle.Bold), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "1. Goods once sold are only exchangeable within 3 days", new Font("Arial", 8), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "2. No return policy", new Font("Arial", 8), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", new Font("Arial", 8), centerX, yPosition);
                 yPosition += 10;
                 yPosition = DrawCenteredText(g, "---", new Font("Arial", 8), centerX, yPosition);
+                yPosition += 5;
+                yPosition = DrawCenteredText(g, "Developed By: DevFleet Technologies | +923225347757", new Font("Arial", 8), centerX, yPosition);
             }
             catch (Exception ex)
             {

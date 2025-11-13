@@ -21,9 +21,13 @@ namespace Vape_Store.Services
         /// <summary>
         /// Gets the current business date - the date when work should start
         /// This is the last closed date + 1, or today if no dates are closed
+        /// Never returns a date in the past - always returns today or a future date
         /// </summary>
         public DateTime GetCurrentBusinessDate()
         {
+            DateTime today = DateTime.Now.Date;
+            DateTime businessDate = today;
+            
             try
             {
                 using (var connection = DatabaseConnection.GetConnection())
@@ -44,7 +48,7 @@ namespace Vape_Store.Services
                         {
                             DateTime lastClosedDate = Convert.ToDateTime(result).Date;
                             // Return the day after the last closed date
-                            return lastClosedDate.AddDays(1);
+                            businessDate = lastClosedDate.AddDays(1);
                         }
                     }
                 }
@@ -53,10 +57,17 @@ namespace Vape_Store.Services
             {
                 // If table doesn't exist or error, return today's date
                 System.Diagnostics.Debug.WriteLine($"Error getting business date: {ex.Message}");
+                return today;
             }
 
-            // Default to today if no closed dates found
-            return DateTime.Now.Date;
+            // Never return a date in the past - always use today if business date is older
+            // This ensures new purchases always get today's date
+            if (businessDate < today)
+            {
+                return today;
+            }
+
+            return businessDate;
         }
 
         /// <summary>

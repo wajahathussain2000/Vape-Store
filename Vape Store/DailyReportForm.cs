@@ -197,8 +197,9 @@ namespace Vape_Store
             try
             {
                 var selectedDate = dtpDate.Value.Date;
-                var fromDate = selectedDate;
-                var toDate = selectedDate.AddDays(1).AddSeconds(-1); // End of selected day
+                // Use proper date range: from start of day (00:00:00) to end of day (23:59:59.999)
+                var fromDate = selectedDate; // Start of day
+                var toDate = selectedDate.AddDays(1).AddTicks(-1); // End of day (23:59:59.9999999)
                 
                 // Always start with 0 balance (fresh start each day)
                 _openingBalance = 0;
@@ -221,20 +222,33 @@ namespace Vape_Store
                     });
                 }
                 
-                // Load Purchases (DEBIT)
+                // Load Purchases (DEBIT) - CRITICAL: Ensure purchases are loaded correctly
                 var purchases = _purchaseRepository.GetPurchasesByDateRange(fromDate, toDate);
-                foreach (var purchase in purchases)
+                
+                // Debug: Log purchase count
+                System.Diagnostics.Debug.WriteLine($"Daily Report - Date: {selectedDate:yyyy-MM-dd}, Purchases found: {purchases?.Count ?? 0}");
+                
+                if (purchases != null && purchases.Count > 0)
                 {
-                    _dailyReportItems.Add(new DailyReportItem
+                    foreach (var purchase in purchases)
                     {
-                        Date = purchase.PurchaseDate,
-                        Type = "Purchase",
-                        Reference = purchase.InvoiceNumber,
-                        Description = $"Purchase from {(purchase.SupplierName ?? "Supplier")}",
-                        Debit = purchase.TotalAmount,
-                        Credit = 0,
-                        Balance = 0 // Will be calculated after sorting
-                    });
+                        System.Diagnostics.Debug.WriteLine($"Purchase found - Invoice: {purchase.InvoiceNumber}, Date: {purchase.PurchaseDate:yyyy-MM-dd HH:mm:ss}, Amount: {purchase.TotalAmount}");
+                        
+                        _dailyReportItems.Add(new DailyReportItem
+                        {
+                            Date = purchase.PurchaseDate,
+                            Type = "Purchase",
+                            Reference = purchase.InvoiceNumber,
+                            Description = $"Purchase from {(purchase.SupplierName ?? "Supplier")}",
+                            Debit = purchase.TotalAmount,
+                            Credit = 0,
+                            Balance = 0 // Will be calculated after sorting
+                        });
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"No purchases found for date range: {fromDate:yyyy-MM-dd HH:mm:ss} to {toDate:yyyy-MM-dd HH:mm:ss}");
                 }
                 
                 // Load Expenses (DEBIT)
@@ -417,18 +431,18 @@ namespace Vape_Store
                 }
                 else
                 {
-                    foreach (var item in (itemsToDisplay ?? new List<DailyReportItem>()))
-                    {
-                        int newRowIndex = dgvDailyReport.Rows.Add();
-                        DataGridViewRow row = dgvDailyReport.Rows[newRowIndex];
-                        row.Cells["Date"].Value = item.Date.ToString("MM/dd/yyyy");
-                        row.Cells["Type"].Value = item.Type;
-                        row.Cells["Reference"].Value = item.Reference;
-                        row.Cells["Description"].Value = item.Description;
-                        row.Cells["Debit"].Value = item.Debit.ToString("F2");
-                        row.Cells["Credit"].Value = item.Credit.ToString("F2");
-                        row.Cells["Balance"].Value = item.Balance.ToString("F2");
-                        row.ReadOnly = true;
+                foreach (var item in (itemsToDisplay ?? new List<DailyReportItem>()))
+                {
+                    int newRowIndex = dgvDailyReport.Rows.Add();
+                    DataGridViewRow row = dgvDailyReport.Rows[newRowIndex];
+                    row.Cells["Date"].Value = item.Date.ToString("MM/dd/yyyy");
+                    row.Cells["Type"].Value = item.Type;
+                    row.Cells["Reference"].Value = item.Reference;
+                    row.Cells["Description"].Value = item.Description;
+                    row.Cells["Debit"].Value = item.Debit.ToString("F2");
+                    row.Cells["Credit"].Value = item.Credit.ToString("F2");
+                    row.Cells["Balance"].Value = item.Balance.ToString("F2");
+                    row.ReadOnly = true;
                     }
                 }
 
@@ -450,17 +464,17 @@ namespace Vape_Store
                 if (totalsRow.Cells["Balance"] != null)
                     totalsRow.Cells["Balance"].Style.Alignment = DataGridViewContentAlignment.MiddleRight;
 
-                    // Set values for totals row
-                    totalsRow.Cells["Date"].Value = "";
-                    totalsRow.Cells["Type"].Value = "TOTAL";
-                    totalsRow.Cells["Reference"].Value = "";
-                    totalsRow.Cells["Description"].Value = "TOTAL";
-                    totalsRow.Cells["Debit"].Value = totalDebit.ToString("F2");
-                    totalsRow.Cells["Credit"].Value = totalCredit.ToString("F2");
-                    totalsRow.Cells["Balance"].Value = finalBalance.ToString("F2");
+                // Set values for totals row
+                totalsRow.Cells["Date"].Value = "";
+                totalsRow.Cells["Type"].Value = "TOTAL";
+                totalsRow.Cells["Reference"].Value = "";
+                totalsRow.Cells["Description"].Value = "TOTAL";
+                totalsRow.Cells["Debit"].Value = totalDebit.ToString("F2");
+                totalsRow.Cells["Credit"].Value = totalCredit.ToString("F2");
+                totalsRow.Cells["Balance"].Value = finalBalance.ToString("F2");
 
-                    // Make the totals row read-only
-                    totalsRow.ReadOnly = true;
+                // Make the totals row read-only
+                totalsRow.ReadOnly = true;
                 }
             }
             catch (Exception ex)
@@ -494,28 +508,28 @@ namespace Vape_Store
                 {
                     var totalDebit = itemsForSummary.Sum(item => item.Debit);
                     var totalCredit = itemsForSummary.Sum(item => item.Credit);
-                    var netBalance = totalCredit - totalDebit;
+                var netBalance = totalCredit - totalDebit;
                     var totalSales = itemsForSummary.Where(x => x.Type == "Sale").Sum(x => x.Credit);
                     var totalPurchases = itemsForSummary.Where(x => x.Type == "Purchase").Sum(x => x.Debit);
                     var totalExpenses = itemsForSummary.Where(x => x.Type == "Expense").Sum(x => x.Debit);
-                    
-                    lblTotalDebit.Text = $"Total Debit: {totalDebit:F2}";
-                    lblTotalCredit.Text = $"Total Credit: {totalCredit:F2}";
-                    lblOpeningBalance.Text = $"Opening Balance: {_openingBalance:F2}";
+                
+                lblTotalDebit.Text = $"Total Debit: {totalDebit:F2}";
+                lblTotalCredit.Text = $"Total Credit: {totalCredit:F2}";
+                lblOpeningBalance.Text = $"Opening Balance: {_openingBalance:F2}";
                     // For closing balance, use actual closing balance if showing all data, otherwise calculate from filtered
                     if (!hasSearchFilter || itemsForSummary.Count == _dailyReportItems.Count)
                     {
-                        lblClosingBalance.Text = $"Closing Balance: {_closingBalance:F2}";
+                lblClosingBalance.Text = $"Closing Balance: {_closingBalance:F2}";
                     }
                     else
                     {
                         decimal filteredBalance = _openingBalance + totalCredit - totalDebit;
                         lblClosingBalance.Text = $"Closing Balance: {filteredBalance:F2} (filtered)";
                     }
-                    lblNetBalance.Text = $"Net Balance: {netBalance:F2}";
-                    lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
-                    lblTotalPurchases.Text = $"Total Purchases: {totalPurchases:F2}";
-                    lblTotalExpenses.Text = $"Total Expenses: {totalExpenses:F2}";
+                lblNetBalance.Text = $"Net Balance: {netBalance:F2}";
+                lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
+                lblTotalPurchases.Text = $"Total Purchases: {totalPurchases:F2}";
+                lblTotalExpenses.Text = $"Total Expenses: {totalExpenses:F2}";
                 }
             }
             catch (Exception ex)
@@ -529,20 +543,20 @@ namespace Vape_Store
             try
             {
                 var selectedDate = dtpDate.Value.Date;
-                bool isClosed = _dayClosingRepository.IsDayClosed(selectedDate);
-                if (isClosed)
-                {
-                    lblDayStatus.Text = "Day Status: CLOSED";
-                    lblDayStatus.ForeColor = Color.FromArgb(231, 76, 60); // Red
-                    btnEndDay.Enabled = false;
-                    btnEndDay.Text = "Day Already Closed";
-                }
-                else
-                {
-                    lblDayStatus.Text = "Day Status: OPEN";
-                    lblDayStatus.ForeColor = Color.FromArgb(46, 204, 113); // Green
-                    btnEndDay.Enabled = true;
-                    btnEndDay.Text = "End Day";
+                    bool isClosed = _dayClosingRepository.IsDayClosed(selectedDate);
+                    if (isClosed)
+                    {
+                        lblDayStatus.Text = "Day Status: CLOSED";
+                        lblDayStatus.ForeColor = Color.FromArgb(231, 76, 60); // Red
+                        btnEndDay.Enabled = false;
+                        btnEndDay.Text = "Day Already Closed";
+                    }
+                    else
+                    {
+                        lblDayStatus.Text = "Day Status: OPEN";
+                        lblDayStatus.ForeColor = Color.FromArgb(46, 204, 113); // Green
+                        btnEndDay.Enabled = true;
+                        btnEndDay.Text = "End Day";
                 }
             }
             catch (Exception ex)
@@ -591,14 +605,15 @@ namespace Vape_Store
                     
                     if (success)
                     {
+                        // Notify Dashboard to clear/refresh data IMMEDIATELY before showing message
+                        // This ensures dashboard resets to 0 right away
+                        NotifyDashboardDayEnd();
+                        
                         ShowMessage($"Day closed successfully!\nClosing Balance: {_closingBalance:F2}\nNext day will start with this balance.", "Day Closed", MessageBoxIcon.Information);
                         CheckDayClosingStatus();
                         
                         // Refresh data to show updated status
                         LoadDailyData();
-                        
-                        // Notify Dashboard to clear/refresh data
-                        NotifyDashboardDayEnd();
                     }
                     else
                     {
@@ -742,7 +757,7 @@ namespace Vape_Store
         private void DtpDate_ValueChanged(object sender, EventArgs e)
         {
             // Refresh day status when date changes
-            CheckDayClosingStatus();
+                CheckDayClosingStatus();
         }
 
         private void TxtSearch_TextChanged(object sender, EventArgs e)

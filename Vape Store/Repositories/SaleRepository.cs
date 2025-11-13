@@ -522,9 +522,9 @@ namespace Vape_Store.Repositories
                             s.SaleDate,
                             c.CustomerName,
                             p.ProductName,
-                            si.Quantity,
+                            si.Quantity - ISNULL(SUM(sri.Quantity), 0) as Quantity,
                             si.UnitPrice,
-                            si.SubTotal,
+                            si.SubTotal - ISNULL(SUM(sri.SubTotal), 0) as SubTotal,
                             s.TaxAmount,
                             s.TotalAmount,
                             s.PaymentMethod,
@@ -534,7 +534,14 @@ namespace Vape_Store.Repositories
                         INNER JOIN SaleItems si ON s.SaleID = si.SaleID
                         INNER JOIN Products p ON si.ProductID = p.ProductID
                         LEFT JOIN Customers c ON s.CustomerID = c.CustomerID
+                        LEFT JOIN SalesReturns sr ON s.SaleID = sr.SaleID
+                        LEFT JOIN SalesReturnItems sri ON sr.ReturnID = sri.ReturnID 
+                            AND si.ProductID = sri.ProductID
                         WHERE s.SaleDate >= @FromDate AND s.SaleDate <= @ToDate
+                        GROUP BY s.SaleID, s.InvoiceNumber, s.SaleDate, c.CustomerName, p.ProductName,
+                                 si.Quantity, si.UnitPrice, si.SubTotal, s.TaxAmount, s.TotalAmount,
+                                 s.PaymentMethod, s.PaidAmount
+                        HAVING si.Quantity - ISNULL(SUM(sri.Quantity), 0) > 0
                         ORDER BY s.SaleDate DESC, s.InvoiceNumber";
 
                     using (var command = new SqlCommand(query, connection))

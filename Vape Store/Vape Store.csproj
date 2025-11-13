@@ -439,6 +439,9 @@
     <EmbeddedResource Include="SupplierPayment.resx">
       <DependentUpon>SupplierPayment.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="ThermalInvoiceForm.resx">
+      <DependentUpon>ThermalInvoiceForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Users.resx">
       <DependentUpon>Users.cs</DependentUpon>
     </EmbeddedResource>

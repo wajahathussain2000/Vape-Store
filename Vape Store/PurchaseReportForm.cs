@@ -490,7 +490,7 @@ namespace Vape_Store
                 }
                 else
                 {
-                    dgvPurchaseReport.DataSource = _purchaseReportItems;
+                dgvPurchaseReport.DataSource = _purchaseReportItems;
                 }
                 
                 // Update summary

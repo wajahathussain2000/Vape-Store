@@ -85,17 +85,17 @@ namespace Vape_Store.Services
                 float centerX = e.PageBounds.Width / 2;
 
                 // Store name and header
-                string storeName = "VAPE STORE";
-                string storeAddress = "123 Main Street, City, State 12345";
-                string storePhone = "Phone: (555) 123-4567";
-                string storeEmail = "info@vapestore.com";
+                string storeName = "MADNI MOBILE & PHOTOSTATE";
+                string storeAddress = "Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP";
+                string storePhone = "Ph: 0345-5518744";
+                //string storeEmail = "info@vapestore.com";
 
                 // Draw store header
                 yPosition = DrawCenteredText(g, storeName, _titleFont, centerX, yPosition);
                 yPosition += 5;
                 yPosition = DrawCenteredText(g, storeAddress, _bodyFont, centerX, yPosition);
                 yPosition = DrawCenteredText(g, storePhone, _bodyFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, storeEmail, _bodyFont, centerX, yPosition);
+                //yPosition = DrawCenteredText(g, storeEmail, _bodyFont, centerX, yPosition);
                 
                 // Draw separator line
                 yPosition += 10;
@@ -180,10 +180,14 @@ namespace Vape_Store.Services
                 yPosition += 20;
 
                 // Footer
-                yPosition = DrawCenteredText(g, "Thank you for your business!", _footerFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Please come again!", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Note:", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "1. Goods once sold are only exchangeable within 3 days", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "2. No return policy", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", _footerFont, centerX, yPosition);
                 yPosition += 10;
                 yPosition = DrawCenteredText(g, "---", _footerFont, centerX, yPosition);
+                yPosition += 5;
+                yPosition = DrawCenteredText(g, "Developed By: DevFleet Technologies | +923225347757", _footerFont, centerX, yPosition);
             }
             catch (Exception ex)
             {
@@ -222,4 +226,6 @@ namespace Vape_Store.Services
         }
     }
 }
+
+
 

@@ -246,13 +246,60 @@ namespace Vape_Store
                 txtOriginalInvoiceTotal.Text = _selectedSale.TotalAmount.ToString("F2");
 
                 // Populate customer details
-                cmbCustomer.SelectedValue = _selectedSale.CustomerID;
+                try
+                {
+                    cmbCustomer.SelectedValue = _selectedSale.CustomerID;
+                }
+                catch
+                {
+                    // If customer ID not found in combo box, try to find and select by value
+                    for (int i = 0; i < cmbCustomer.Items.Count; i++)
+                    {
+                        if (cmbCustomer.Items[i] is Customer customer && customer.CustomerID == _selectedSale.CustomerID)
+                        {
+                            cmbCustomer.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
                 LoadCustomerDetails();
+
+                // Populate tax and discount from original invoice
+                // Set discount percentage (txtTaxPercent is used for discount in this form)
+                if (_selectedSale.DiscountPercent > 0)
+                {
+                    txtTaxPercent.Text = _selectedSale.DiscountPercent.ToString("F2");
+                }
+                else
+                {
+                    txtTaxPercent.Text = "0";
+                }
+
+                // Set tax percentage in combo box - only if combo box has items
+                if (cmbTax.Items.Count > 0)
+                {
+                    string taxPercentText = _selectedSale.TaxPercent.ToString("F0") + "%";
+                    bool found = false;
+                    for (int i = 0; i < cmbTax.Items.Count; i++)
+                    {
+                        if (cmbTax.Items[i].ToString() == taxPercentText)
+                        {
+                            cmbTax.SelectedIndex = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                    // If exact match not found, set to first item (0%) only if items exist
+                    if (!found && cmbTax.Items.Count > 0)
+                    {
+                        cmbTax.SelectedIndex = 0; // Default to 0%
+                    }
+                }
 
                 // Populate DataGridView with sale items
                 PopulateReturnItems();
 
-                // Calculate totals
+                // Calculate totals (this will use the tax and discount values we just set)
                 CalculateTotals();
             }
             catch (Exception ex)

@@ -33,6 +33,9 @@ namespace Vape_Store
         private List<RecentActivity> recentActivities;
         private DashboardStats currentStats;
         private DashboardService _dashboardService;
+        
+        // Date range controls (declared in Designer)
+        private bool isDateRangeActive = false;
 
         private void InitializeDropdownMenus() //method for adding list in the all Menu dropdown.
         {
@@ -474,6 +477,126 @@ namespace Vape_Store
             
             // Initialize recent forms panel
             InitializeRecentFormsPanel();
+            
+            // Initialize date range controls - attach event handlers
+            InitializeDateRangeControls();
+        }
+        
+        private void InitializeDateRangeControls()
+        {
+            // Set initial values
+            dtpFromDate.Value = DateTime.Now.Date;
+            dtpToDate.Value = DateTime.Now.Date;
+            lblDateRange.Text = "Viewing Stats:";
+            
+            // Attach event handlers
+            btnApplyDateRange.Click += BtnApplyDateRange_Click;
+            btnResetDateRange.Click += BtnResetDateRange_Click;
+            
+            // Handle form resize to keep controls on right
+            this.Resize += Dashboard_Resize;
+        }
+        
+        private void Dashboard_Resize(object sender, EventArgs e)
+        {
+            if (dtpFromDate != null && dtpToDate != null && btnApplyDateRange != null && btnResetDateRange != null && lblDateRange != null)
+            {
+                int formWidth = this.ClientSize.Width;
+                int rightMargin = 20;
+                int controlSpacing = 8;
+                int viewingStatsLabelWidth = 250;
+                
+                // Update row 2 positions
+                int newResetBtnX = formWidth - rightMargin - 70;
+                int newApplyBtnX = newResetBtnX - controlSpacing - 70;
+                int newToDateX = newApplyBtnX - controlSpacing - 130;
+                int newToLabelX = newToDateX - controlSpacing - 25;
+                int newFromDateX = newToLabelX - controlSpacing - 130;
+                int newDateRangeLabelX = newFromDateX - controlSpacing - 90;
+                
+                // Update row 1 position
+                int newViewingStatsX = formWidth - rightMargin - viewingStatsLabelWidth;
+                
+                // Apply new positions
+                lblDateRange.Location = new Point(newViewingStatsX, lblDateRange.Location.Y);
+                lblDateRangeTitle.Location = new Point(newDateRangeLabelX, lblDateRangeTitle.Location.Y);
+                dtpFromDate.Location = new Point(newFromDateX, dtpFromDate.Location.Y);
+                lblTo.Location = new Point(newToLabelX, lblTo.Location.Y);
+                dtpToDate.Location = new Point(newToDateX, dtpToDate.Location.Y);
+                btnApplyDateRange.Location = new Point(newApplyBtnX, btnApplyDateRange.Location.Y);
+                btnResetDateRange.Location = new Point(newResetBtnX, btnResetDateRange.Location.Y);
+            }
+        }
+        
+        private void BtnApplyDateRange_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dtpFromDate.Value > dtpToDate.Value)
+                {
+                    MessageBox.Show("From date cannot be greater than To date.", "Invalid Date Range", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                isDateRangeActive = true;
+                LoadDashboardDataWithDateRange(dtpFromDate.Value.Date, dtpToDate.Value.Date);
+                
+                // Update label to show active filter
+                if (dtpFromDate.Value.Date == dtpToDate.Value.Date)
+                {
+                    lblDateRange.Text = $"Viewing Stats: {dtpFromDate.Value:MM/dd/yyyy}";
+                }
+                else
+                {
+                    lblDateRange.Text = $"Viewing Stats: {dtpFromDate.Value:MM/dd/yyyy} to {dtpToDate.Value:MM/dd/yyyy}";
+                }
+                lblDateRange.ForeColor = Color.FromArgb(46, 204, 113);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error applying date range: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void BtnResetDateRange_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                isDateRangeActive = false;
+                dtpFromDate.Value = DateTime.Now.Date;
+                dtpToDate.Value = DateTime.Now.Date;
+                lblDateRange.Text = "Viewing Stats:";
+                lblDateRange.ForeColor = Color.FromArgb(52, 73, 94);
+                LoadDashboardData();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error resetting date range: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void LoadDashboardDataWithDateRange(DateTime fromDate, DateTime toDate)
+        {
+            try
+            {
+                // Load dashboard data for the specified date range
+                currentStats = _dashboardService.GetDashboardStatsByDateRange(fromDate, toDate);
+                recentActivities = _dashboardService.GetRecentActivities(10);
+                
+                // Update UI with real data
+                UpdateKPIDisplay();
+                UpdateRecentActivityDisplay();
+                LoadSalesData();
+                LoadInventoryData();
+                
+                // Force UI update
+                this.Invalidate();
+                this.Update();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading dashboard data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void InitializeRecentFormsPanel()
@@ -534,15 +657,23 @@ namespace Vape_Store
         {
             try
             {
-                // Load all dashboard data using the service
-                currentStats = _dashboardService.GetDashboardStats();
-                recentActivities = _dashboardService.GetRecentActivities(10);
-                
-                // Update UI with real data
-                UpdateKPIDisplay();
-                UpdateRecentActivityDisplay();
-                LoadSalesData();
-                LoadInventoryData();
+                // If date range is active, use it; otherwise load current stats
+                if (isDateRangeActive && dtpFromDate != null && dtpToDate != null)
+                {
+                    LoadDashboardDataWithDateRange(dtpFromDate.Value.Date, dtpToDate.Value.Date);
+                }
+                else
+                {
+                    // Load all dashboard data using the service
+                    currentStats = _dashboardService.GetDashboardStats();
+                    recentActivities = _dashboardService.GetRecentActivities(10);
+                    
+                    // Update UI with real data
+                    UpdateKPIDisplay();
+                    UpdateRecentActivityDisplay();
+                    LoadSalesData();
+                    LoadInventoryData();
+                }
             }
             catch (Exception ex)
             {
@@ -675,7 +806,13 @@ namespace Vape_Store
         {
             try
             {
+                // Force immediate refresh of dashboard data
                 LoadDashboardData();
+                
+                // Force UI update to show changes immediately
+                this.Invalidate();
+                this.Update();
+                Application.DoEvents();
             }
             catch (Exception ex)
             {
@@ -922,6 +1059,10 @@ namespace Vape_Store
                 SalesDropdown.Show(BtnSales, new Point(0, BtnSales.Height));
         }
 
+        private void lblDateRange_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 
     // Data classes for dashboard

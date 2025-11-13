@@ -26,6 +26,7 @@ namespace Vape_Store
         private BrandRepository _brandRepository;
         private InventoryService _inventoryService;
         private BusinessDateService _businessDateService;
+        private BarcodeService _barcodeService;
         
         private List<PurchaseItem> _purchaseItems;
         private List<Supplier> _suppliers;
@@ -57,6 +58,12 @@ namespace Vape_Store
         private ListBox _productSuggestList;
         // Popup suggestions for vendor search
         private ListBox _vendorSuggestList;
+        // Barcode scanner input field
+        private TextBox txtBarcodeScanner;
+        // Barcode display and editing
+        private TextBox txtBarcode;
+        private Panel pnlBarcode;
+        private int _currentProductIdForBarcode = -1;
         #endregion
 
         #region Constructor
@@ -92,6 +99,7 @@ namespace Vape_Store
                 _brandRepository = new BrandRepository();
                 _inventoryService = new InventoryService();
                 _businessDateService = new BusinessDateService();
+                _barcodeService = new BarcodeService();
                 
                 _purchaseItems = new List<PurchaseItem>();
             }
@@ -152,6 +160,12 @@ namespace Vape_Store
                 _vendorSuggestList.Click += VendorSuggestList_Click;
                 _vendorSuggestList.KeyDown += VendorSuggestList_KeyDown;
                 this.Controls.Add(_vendorSuggestList);
+                
+                // Create barcode scanner
+                CreateBarcodeScanner();
+                
+                // Create barcode display and editing UI
+                CreateBarcodeDisplay();
             }
             catch (Exception ex)
             {
@@ -234,7 +248,7 @@ namespace Vape_Store
                 cmbVendorName.KeyDown += CmbVendorName_KeyDown;
                 cmbVendorName.KeyPress += CmbVendorName_KeyPress;
                 cmbVendorName.PreviewKeyDown += CmbVendorName_PreviewKeyDown;
-                cmbVendorName.Leave += (s, e2) => { HideVendorSuggestions(); };
+                cmbVendorName.Leave += CmbVendorName_Leave;
                 
                 // Make Payment Terms ComboBox searchable
                 cmbPaymentTerms.DropDownStyle = ComboBoxStyle.DropDown;
@@ -584,6 +598,9 @@ namespace Vape_Store
                         // Store selected product for later use
                         _selectedProduct = selectedProduct;
                         
+                        // Update barcode display
+                        UpdateBarcodeDisplay(selectedProduct);
+                        
                         MarkFormDirty();
                     }
                 }
@@ -591,6 +608,7 @@ namespace Vape_Store
                 {
                     txtExistingStock.Clear();
                     _selectedProduct = null;
+                    UpdateBarcodeDisplay(null);
                 }
             }
             catch (Exception ex)
@@ -681,6 +699,550 @@ namespace Vape_Store
             }
         }
 
+        private void CreateBarcodeScanner()
+        {
+            try
+            {
+                // Create barcode scanner input field
+                txtBarcodeScanner = new TextBox
+                {
+                    Name = "txtBarcodeScanner",
+                    Text = "Scan or enter product barcode...",
+                    Location = new Point(20, 100),
+                    Size = new Size(200, 25),
+                    TabIndex = 0,
+                    Font = new Font("Arial", 10),
+                    ForeColor = Color.Gray
+                };
+                
+                // Add placeholder functionality
+                txtBarcodeScanner.Enter += (s, e) => {
+                    if (txtBarcodeScanner.Text == "Scan or enter product barcode...")
+                    {
+                        txtBarcodeScanner.Text = "";
+                        txtBarcodeScanner.ForeColor = Color.Black;
+                    }
+                };
+                
+                txtBarcodeScanner.Leave += (s, e) => {
+                    if (string.IsNullOrWhiteSpace(txtBarcodeScanner.Text))
+                    {
+                        txtBarcodeScanner.Text = "Scan or enter product barcode...";
+                        txtBarcodeScanner.ForeColor = Color.Gray;
+                    }
+                };
+                
+                // Add to the first panel if available, otherwise add to form
+                if (this.Controls.Count > 0 && this.Controls[0] is Panel panel1)
+                {
+                    panel1.Controls.Add(txtBarcodeScanner);
+                    txtBarcodeScanner.BringToFront();
+                }
+                else
+                {
+                    // Add to form if no panel found
+                    this.Controls.Add(txtBarcodeScanner);
+                    txtBarcodeScanner.BringToFront();
+                }
+                
+                // Add event handler for barcode scanning
+                txtBarcodeScanner.KeyPress += TxtBarcodeScanner_KeyPress;
+                txtBarcodeScanner.TextChanged += TxtBarcodeScanner_TextChanged;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error creating barcode scanner: {ex.Message}");
+            }
+        }
+
+        private void TxtBarcodeScanner_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            // Handle Enter key to process barcode
+            if (e.KeyChar == (char)Keys.Enter)
+            {
+                e.Handled = true;
+                ProcessBarcodeScan();
+            }
+        }
+
+        private void TxtBarcodeScanner_TextChanged(object sender, EventArgs e)
+        {
+            // Auto-process barcode when text is entered (for barcode scanners that don't send Enter)
+            // Note: Barcodes can be auto-generated or user-edited, so we use a reasonable minimum length
+            if (txtBarcodeScanner != null && !string.IsNullOrWhiteSpace(txtBarcodeScanner.Text) 
+                && txtBarcodeScanner.Text != "Scan or enter product barcode..."
+                && txtBarcodeScanner.Text.Length >= 3) // Minimum barcode length (supports both auto-generated and custom barcodes)
+            {
+                // Use a timer to avoid processing while user is still typing
+                Timer processTimer = new Timer();
+                processTimer.Interval = 500; // 500ms delay
+                processTimer.Tick += (s, args) => {
+                    processTimer.Stop();
+                    processTimer.Dispose();
+                    ProcessBarcodeScan();
+                };
+                processTimer.Start();
+            }
+        }
+
+        private void ProcessBarcodeScan()
+        {
+            try
+            {
+                if (txtBarcodeScanner == null) return;
+                
+                string scannedBarcode = txtBarcodeScanner.Text.Trim();
+                
+                // Ignore placeholder text
+                if (string.IsNullOrEmpty(scannedBarcode) || scannedBarcode == "Scan or enter product barcode...")
+                    return;
+
+                // Find product by barcode (works with both auto-generated and user-edited barcodes)
+                // Barcodes are unique per product, so exact match is required
+                var product = _products?.FirstOrDefault(p => 
+                    !string.IsNullOrEmpty(p.Barcode) && 
+                    p.Barcode.Trim().Equals(scannedBarcode, StringComparison.OrdinalIgnoreCase));
+                
+                if (product != null)
+                {
+                    // Product found - add to purchase items automatically
+                    AddOrIncrementPurchaseProduct(product);
+                    
+                    // Clear scanner input
+                    txtBarcodeScanner.Clear();
+                    txtBarcodeScanner.Focus();
+                }
+                else
+                {
+                    ShowError($"Product not found for barcode: {scannedBarcode}");
+                    txtBarcodeScanner.Clear();
+                    txtBarcodeScanner.Focus();
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error processing barcode: {ex.Message}");
+            }
+        }
+
+        private void CreateBarcodeDisplay()
+        {
+            try
+            {
+                // Find panelVendorInfo where product controls are located
+                Panel panelVendorInfo = null;
+                foreach (Control control in this.Controls)
+                {
+                    if (control is Panel panel && panel.Name == "panelVendorInfo")
+                    {
+                        panelVendorInfo = panel;
+                        break;
+                    }
+                    // Also check nested panels (panelMainContainer contains panelVendorInfo)
+                    if (control is Panel mainPanel)
+                    {
+                        foreach (Control nestedControl in mainPanel.Controls)
+                        {
+                            if (nestedControl is Panel nestedPanel && nestedPanel.Name == "panelVendorInfo")
+                            {
+                                panelVendorInfo = nestedPanel;
+                                break;
+                            }
+                        }
+                        if (panelVendorInfo != null) break;
+                    }
+                }
+                
+                // If panelVendorInfo not found, try to find it by searching all controls recursively
+                if (panelVendorInfo == null)
+                {
+                    panelVendorInfo = FindControlByName<Panel>(this, "panelVendorInfo");
+                }
+                
+                // If still not found, use panelMainContainer or form itself
+                Panel targetPanel = panelVendorInfo;
+                if (targetPanel == null)
+                {
+                    // Try to find panelMainContainer
+                    targetPanel = FindControlByName<Panel>(this, "panelMainContainer");
+                    if (targetPanel == null && this.Controls.Count > 0 && this.Controls[0] is Panel firstPanel)
+                    {
+                        targetPanel = firstPanel;
+                    }
+                }
+                
+                // Position barcode controls next to existing stock field (around y=180 based on typical layout)
+                int barcodeY = 180; // Position below existing stock field
+                int barcodeX = 600;  // Position to the right of product name field
+                
+                // Create label for barcode field
+                var lblBarcode = new Label
+                {
+                    Text = "Product Barcode:",
+                    Location = new Point(barcodeX, barcodeY - 25),
+                    Size = new Size(150, 20),
+                    Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                    ForeColor = Color.Black,
+                    AutoSize = true
+                };
+                
+                // Create barcode text input field
+                txtBarcode = new TextBox
+                {
+                    Name = "txtBarcode",
+                    Location = new Point(barcodeX, barcodeY),
+                    Size = new Size(250, 25),
+                    TabIndex = 1,
+                    Font = new Font("Segoe UI", 9)
+                };
+                
+                // Create barcode display panel
+                pnlBarcode = new Panel
+                {
+                    Name = "pnlBarcode",
+                    Location = new Point(barcodeX, barcodeY + 30),
+                    Size = new Size(300, 120),
+                    BorderStyle = BorderStyle.FixedSingle,
+                    BackColor = Color.White,
+                    Visible = true
+                };
+                
+                // Add controls to the target panel
+                if (targetPanel != null)
+                {
+                    targetPanel.Controls.Add(lblBarcode);
+                    targetPanel.Controls.Add(txtBarcode);
+                    targetPanel.Controls.Add(pnlBarcode);
+                    lblBarcode.BringToFront();
+                    txtBarcode.BringToFront();
+                    pnlBarcode.BringToFront();
+                }
+                else
+                {
+                    // Fallback: add to form
+                    this.Controls.Add(lblBarcode);
+                    this.Controls.Add(txtBarcode);
+                    this.Controls.Add(pnlBarcode);
+                    lblBarcode.BringToFront();
+                    txtBarcode.BringToFront();
+                    pnlBarcode.BringToFront();
+                }
+                
+                // Add event handlers
+                txtBarcode.TextChanged += TxtBarcode_TextChanged;
+                txtBarcode.KeyDown += TxtBarcode_KeyDown;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error creating barcode display: {ex.Message}");
+            }
+        }
+
+        private T FindControlByName<T>(Control parent, string name) where T : Control
+        {
+            try
+            {
+                if (parent == null) return null;
+                
+                if (parent is T control && parent.Name == name)
+                {
+                    return control;
+                }
+                
+                foreach (Control child in parent.Controls)
+                {
+                    var found = FindControlByName<T>(child, name);
+                    if (found != null) return found;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private void TxtBarcode_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (txtBarcode == null) return;
+                
+                string barcodeText = txtBarcode.Text.Trim();
+                
+                if (string.IsNullOrEmpty(barcodeText))
+                {
+                    // Clear barcode display if text is empty
+                    if (pnlBarcode != null)
+                        pnlBarcode.Controls.Clear();
+                    return;
+                }
+
+                // Validate barcode format in real-time
+                if (!_barcodeService.ValidateBarcode(barcodeText))
+                {
+                    // Don't show error message on every keystroke, just clear the display
+                    if (pnlBarcode != null)
+                        pnlBarcode.Controls.Clear();
+                    return;
+                }
+
+                // If validation passes, generate and display the barcode
+                if (_barcodeService.TestBarcodeGeneration(barcodeText))
+                {
+                    DisplayBarcodeImage(barcodeText);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Silently handle errors during real-time validation
+                System.Diagnostics.Debug.WriteLine($"Barcode validation error: {ex.Message}");
+            }
+        }
+
+        private void TxtBarcode_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Allow Enter key to generate/update barcode
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.Handled = true;
+                GenerateBarcode();
+            }
+        }
+
+        private void DisplayBarcodeImage(string barcodeText)
+        {
+            try
+            {
+                if (pnlBarcode == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("pnlBarcode is null");
+                    return;
+                }
+                
+                if (string.IsNullOrEmpty(barcodeText))
+                {
+                    pnlBarcode.Controls.Clear();
+                    return;
+                }
+
+                // Ensure panel is visible
+                pnlBarcode.Visible = true;
+                pnlBarcode.BringToFront();
+
+                // Generate barcode image using BarcodeService
+                var barcodeImage = _barcodeService.GenerateBarcodeImageObject(barcodeText, 280, 80);
+                
+                if (barcodeImage != null)
+                {
+                    // Clear the panel and add the barcode image
+                    pnlBarcode.Controls.Clear();
+                    
+                    var pictureBox = new PictureBox
+                    {
+                        Image = barcodeImage,
+                        SizeMode = PictureBoxSizeMode.Zoom,
+                        Dock = DockStyle.Fill,
+                        BackColor = Color.White
+                    };
+                    
+                    pnlBarcode.Controls.Add(pictureBox);
+                    
+                    // Add barcode text below the image
+                    var label = new Label
+                    {
+                        Text = barcodeText,
+                        Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Dock = DockStyle.Bottom,
+                        Height = 25,
+                        BackColor = Color.White,
+                        ForeColor = Color.Black
+                    };
+                    
+                    pnlBarcode.Controls.Add(label);
+                    
+                    // Force refresh
+                    pnlBarcode.Invalidate();
+                    pnlBarcode.Refresh();
+                    pnlBarcode.Update();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Barcode image displayed: {barcodeText}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Failed to generate barcode image");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error displaying barcode image: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        private void GenerateBarcode()
+        {
+            try
+            {
+                if (txtBarcode == null) return;
+                
+                // Check if user has entered custom barcode text
+                if (!string.IsNullOrWhiteSpace(txtBarcode.Text))
+                {
+                    // User wants to use custom barcode
+                    string customBarcode = txtBarcode.Text.Trim();
+                    
+                    // Validate custom barcode
+                    if (!_barcodeService.ValidateBarcode(customBarcode))
+                    {
+                        ShowError("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.");
+                        txtBarcode.Focus();
+                        return;
+                    }
+                    
+                    // Test barcode generation
+                    if (!_barcodeService.TestBarcodeGeneration(customBarcode))
+                    {
+                        ShowError("Invalid barcode format! Cannot generate barcode with this text.");
+                        txtBarcode.Focus();
+                        return;
+                    }
+                    
+                    // Display the custom barcode
+                    DisplayBarcodeImage(customBarcode);
+                }
+                else
+                {
+                    // Generate automatic barcode for new product
+                    string productCode = GetCurrentProductCode();
+                    if (string.IsNullOrWhiteSpace(productCode))
+                    {
+                        productCode = "PROD" + DateTime.Now.ToString("yyyyMMddHHmmss").Substring(0, 8);
+                    }
+                    
+                    // Generate barcode text
+                    string barcodeText = GenerateBarcodeFromCode(productCode);
+                    txtBarcode.Text = barcodeText;
+                    
+                    // Generate and display barcode image
+                    DisplayBarcodeImage(barcodeText);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error generating barcode: {ex.Message}");
+            }
+        }
+
+        private string GenerateBarcodeFromCode(string productCode)
+        {
+            try
+            {
+                // Generate a unique barcode using product code + timestamp
+                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                string uniqueBarcode = $"PRD{productCode}{timestamp.Substring(timestamp.Length - 6)}";
+                
+                // Ensure uniqueness by checking against existing barcodes
+                if (_products != null && _products.Count > 0)
+                {
+                    int attempts = 0;
+                    while (_products.Any(p => !string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(uniqueBarcode, StringComparison.OrdinalIgnoreCase)) && attempts < 10)
+                    {
+                        uniqueBarcode = $"PRD{productCode}{DateTime.Now.Ticks.ToString().Substring(Math.Max(0, DateTime.Now.Ticks.ToString().Length - 6))}";
+                        attempts++;
+                    }
+                }
+                
+                return uniqueBarcode;
+            }
+            catch (Exception ex)
+            {
+                // Fallback to simple barcode if generation fails
+                return $"PRD{productCode}{DateTime.Now.Ticks}";
+            }
+        }
+
+        private string GetCurrentProductCode()
+        {
+            try
+            {
+                // Try to get product code from selected row in DataGridView
+                if (dgvPurchaseItems != null && dgvPurchaseItems.CurrentCell != null)
+                {
+                    int rowIndex = dgvPurchaseItems.CurrentCell.RowIndex;
+                    if (rowIndex >= 0 && rowIndex < dgvPurchaseItems.Rows.Count)
+                    {
+                        var row = dgvPurchaseItems.Rows[rowIndex];
+                        var productCodeCell = row.Cells["colProductCode"];
+                        if (productCodeCell != null && productCodeCell.Value != null)
+                        {
+                            return productCodeCell.Value.ToString();
+                        }
+                    }
+                }
+                
+                // Try to get from selected product
+                if (_selectedProduct != null && !string.IsNullOrEmpty(_selectedProduct.ProductCode))
+                {
+                    return _selectedProduct.ProductCode;
+                }
+                
+                return string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private void UpdateBarcodeDisplay(Product product)
+        {
+            try
+            {
+                if (txtBarcode == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("txtBarcode is null in UpdateBarcodeDisplay");
+                    return;
+                }
+                
+                if (product != null)
+                {
+                    _currentProductIdForBarcode = product.ProductID;
+                    
+                    // Display existing barcode if available
+                    if (!string.IsNullOrEmpty(product.Barcode))
+                    {
+                        txtBarcode.Text = product.Barcode;
+                        System.Diagnostics.Debug.WriteLine($"Displaying existing barcode: {product.Barcode}");
+                        DisplayBarcodeImage(product.Barcode);
+                    }
+                    else
+                    {
+                        // Generate new barcode for product without one
+                        string productCode = product.ProductCode ?? "PROD" + DateTime.Now.ToString("yyyyMMddHHmmss").Substring(0, 8);
+                        string newBarcode = GenerateBarcodeFromCode(productCode);
+                        txtBarcode.Text = newBarcode;
+                        System.Diagnostics.Debug.WriteLine($"Generated new barcode: {newBarcode}");
+                        DisplayBarcodeImage(newBarcode);
+                    }
+                }
+                else
+                {
+                    // Clear barcode display when no product is selected
+                    txtBarcode.Clear();
+                    if (pnlBarcode != null)
+                    {
+                        pnlBarcode.Controls.Clear();
+                        pnlBarcode.Invalidate();
+                    }
+                    _currentProductIdForBarcode = -1;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating barcode display: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                ShowError($"Error updating barcode display: {ex.Message}");
+            }
+        }
 
         private void SetupEventHandlers()
         {
@@ -742,6 +1304,7 @@ namespace Vape_Store
                 {
                     // Clear existing stock if no row is selected
                     txtExistingStock.Clear();
+                    UpdateBarcodeDisplay(null);
                 }
                 // Ensure any stale popup is hidden when selection moves to a new row
                 HideProductSuggestions();
@@ -973,17 +1536,45 @@ namespace Vape_Store
             {
                 if (cmbVendorName.SelectedItem != null)
                 {
-                    string selectedVendorName = cmbVendorName.SelectedItem.ToString();
-                    var selectedSupplier = _suppliers.FirstOrDefault(s => s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
+                    Supplier selectedSupplier = null;
+                    
+                    // First try: SelectedItem is already a Supplier object
+                    if (cmbVendorName.SelectedItem is Supplier supplier)
+                    {
+                        selectedSupplier = supplier;
+                    }
+                    else
+                    {
+                        // Second try: SelectedItem is a string (vendor name)
+                        string selectedVendorName = cmbVendorName.SelectedItem.ToString();
+                        selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                            s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
+                    }
                     
                     if (selectedSupplier != null)
                     {
-                    txtVendorCode.Text = selectedSupplier.SupplierCode;
-                    
-                    // Set default payment terms based on supplier
-                    SetDefaultPaymentTerms(selectedSupplier);
-                    
-                    MarkFormDirty();
+                        txtVendorCode.Text = selectedSupplier.SupplierCode ?? string.Empty;
+                        
+                        // Set default payment terms based on supplier
+                        SetDefaultPaymentTerms(selectedSupplier);
+                        
+                        MarkFormDirty();
+                    }
+                    else
+                    {
+                        // If we can't find the supplier, try to match by text
+                        string vendorText = cmbVendorName.Text;
+                        if (!string.IsNullOrWhiteSpace(vendorText))
+                        {
+                            selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                                s.SupplierName.Equals(vendorText, StringComparison.OrdinalIgnoreCase));
+                            if (selectedSupplier != null)
+                            {
+                                txtVendorCode.Text = selectedSupplier.SupplierCode ?? string.Empty;
+                                SetDefaultPaymentTerms(selectedSupplier);
+                                MarkFormDirty();
+                            }
+                        }
                     }
                 }
                 else
@@ -1002,32 +1593,87 @@ namespace Vape_Store
             try
             {
                 // This handler ensures vendor code is set when selection is committed via SearchableComboBoxHelper
+                Supplier selectedSupplier = null;
+                
                 if (cmbVendorName.SelectedItem != null)
                 {
                     // Try to get supplier from SelectedItem
                     if (cmbVendorName.SelectedItem is Supplier supplier)
                     {
-                        txtVendorCode.Text = supplier.SupplierCode;
-                        SetDefaultPaymentTerms(supplier);
+                        selectedSupplier = supplier;
                     }
                     else
                     {
                         // Fallback: find by name
                         string selectedVendorName = cmbVendorName.SelectedItem.ToString();
-                        var selectedSupplier = _suppliers.FirstOrDefault(s => s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
-                        if (selectedSupplier != null)
-                        {
-                            txtVendorCode.Text = selectedSupplier.SupplierCode;
-                            SetDefaultPaymentTerms(selectedSupplier);
-                        }
+                        selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                            s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
                     }
+                }
+                
+                // Also try to match by text if SelectedItem didn't work
+                if (selectedSupplier == null && !string.IsNullOrWhiteSpace(cmbVendorName.Text))
+                {
+                    selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                        s.SupplierName.Equals(cmbVendorName.Text, StringComparison.OrdinalIgnoreCase));
+                }
+                
+                if (selectedSupplier != null)
+                {
+                    txtVendorCode.Text = selectedSupplier.SupplierCode ?? string.Empty;
+                    SetDefaultPaymentTerms(selectedSupplier);
                     MarkFormDirty();
+                }
+                else if (cmbVendorName.SelectedItem == null)
+                {
+                    txtVendorCode.Clear();
                 }
             }
             catch (Exception ex)
             {
                 ShowError($"Error loading vendor details: {ex.Message}");
             }
+        }
+
+        private void CmbVendorName_Leave(object sender, EventArgs e)
+        {
+            try
+            {
+                // When leaving the vendor combo box, ensure vendor code is updated
+                // This handles cases where SearchableComboBoxHelper might not trigger selection events
+                if (!string.IsNullOrWhiteSpace(cmbVendorName.Text))
+                {
+                    Supplier selectedSupplier = null;
+                    
+                    // Try to get from SelectedItem first
+                    if (cmbVendorName.SelectedItem is Supplier supplier)
+                    {
+                        selectedSupplier = supplier;
+                    }
+                    else if (cmbVendorName.SelectedItem != null)
+                    {
+                        string selectedVendorName = cmbVendorName.SelectedItem.ToString();
+                        selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                            s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
+                    }
+                    
+                    // If still not found, try to match by text
+                    if (selectedSupplier == null)
+                    {
+                        selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                            s.SupplierName.Equals(cmbVendorName.Text, StringComparison.OrdinalIgnoreCase));
+                    }
+                    
+                    if (selectedSupplier != null)
+                    {
+                        txtVendorCode.Text = selectedSupplier.SupplierCode ?? string.Empty;
+                        SetDefaultPaymentTerms(selectedSupplier);
+                    }
+                }
+                
+                HideVendorSuggestions();
+            }
+            catch { }
         }
 
         private void SetDefaultPaymentTerms(Supplier supplier)
@@ -1267,13 +1913,26 @@ namespace Vape_Store
             try
             {
                 if (supplier == null) return;
+                
+                // Set vendor code immediately - this is the most important part
+                txtVendorCode.Text = supplier.SupplierCode ?? string.Empty;
+                
+                // Set the combo box text and selection
                 cmbVendorName.Text = supplier.SupplierName;
+                
+                // Try to set SelectedItem directly if possible (for SearchableComboBoxHelper)
+                try
+                {
+                    cmbVendorName.SelectedItem = supplier;
+                }
+                catch { }
+                
                 // Force SelectedIndex to the matching item if present
                 int idx = cmbVendorName.Items.IndexOf(supplier.SupplierName);
-                if (idx >= 0) cmbVendorName.SelectedIndex = idx;
-                
-                // Set vendor code when vendor is selected
-                txtVendorCode.Text = supplier.SupplierCode;
+                if (idx >= 0) 
+                {
+                    cmbVendorName.SelectedIndex = idx;
+                }
                 
                 // Set default payment terms based on supplier
                 SetDefaultPaymentTerms(supplier);
@@ -2398,6 +3057,10 @@ namespace Vape_Store
                     try { UpdateExistingStockDisplay(selectedProduct); } catch { }
                     try { CalculateRowTotal(rowIndex); } catch { }
                 }
+                
+                // Update barcode display for selected product
+                _selectedProduct = selectedProduct;
+                UpdateBarcodeDisplay(selectedProduct);
 
                 // Automatically move to the next empty row for quick entry
                 // Only move if the current row now has a product (we just filled it)
@@ -4102,6 +4765,10 @@ namespace Vape_Store
 
                             // Update existing stock display
                             UpdateExistingStockDisplay(product);
+                            
+                            // Update barcode display for selected product
+                            _selectedProduct = product;
+                            UpdateBarcodeDisplay(product);
 
                             // Calculate total for this row (with validation)
                             if (e.RowIndex >= 0 && e.RowIndex < dgvPurchaseItems.Rows.Count)
@@ -4112,6 +4779,7 @@ namespace Vape_Store
                         else if (row != null)
                         {
                             // Product not found - clear the fields (with validation)
+                            UpdateBarcodeDisplay(null);
                             // Use the cached row reference instead of accessing by index again
                             try
                             {
@@ -4202,15 +4870,19 @@ namespace Vape_Store
                     if (product != null)
                     {
                         UpdateExistingStockDisplay(product);
+                        _selectedProduct = product;
+                        UpdateBarcodeDisplay(product);
                     }
                     else
                     {
                         txtExistingStock.Clear();
+                        UpdateBarcodeDisplay(null);
                     }
                 }
                 else
                 {
                     txtExistingStock.Clear();
+                    UpdateBarcodeDisplay(null);
                 }
             }
             catch (Exception ex)
@@ -4806,18 +5478,50 @@ namespace Vape_Store
                     System.Diagnostics.Debug.WriteLine($"Created Item: {item.ProductName} - Qty: {item.Quantity} - Price: {item.UnitPrice}");
                 }
                 
-                // Validate inventory and business rules
-                if (!ValidateBusinessRules(purchase, purchaseItems))
+                // CRITICAL: Check if purchase items list is empty
+                if (purchaseItems == null || purchaseItems.Count == 0)
                 {
+                    ShowError("No valid purchase items found. Please add at least one product with quantity and price.");
                     this.Cursor = Cursors.Default;
                     return;
                 }
                 
+                // Validate inventory and business rules
+                System.Diagnostics.Debug.WriteLine("Validating business rules...");
+                if (!ValidateBusinessRules(purchase, purchaseItems))
+                {
+                    System.Diagnostics.Debug.WriteLine("Business rules validation FAILED - purchase will not be saved");
+                    this.Cursor = Cursors.Default;
+                    return;
+                }
+                System.Diagnostics.Debug.WriteLine("Business rules validation PASSED");
+                
+                // Debug: Log purchase details before saving
+                System.Diagnostics.Debug.WriteLine($"Saving Purchase - Invoice: {purchase.InvoiceNumber}, Date: {purchase.PurchaseDate:yyyy-MM-dd HH:mm:ss}, Total: {purchase.TotalAmount}, Items: {purchaseItems.Count}");
+                System.Diagnostics.Debug.WriteLine($"Purchase Details - SupplierID: {purchase.SupplierID}, UserID: {purchase.UserID}, SubTotal: {purchase.SubTotal}, TaxAmount: {purchase.TaxAmount}");
+                
                 // Process purchase with inventory updates
-                bool success = _purchaseRepository.ProcessPurchase(purchase, purchaseItems);
+                bool success = false;
+                try
+                {
+                    success = _purchaseRepository.ProcessPurchase(purchase, purchaseItems);
+                    System.Diagnostics.Debug.WriteLine($"ProcessPurchase returned: {success}");
+                }
+                catch (Exception processEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProcessPurchase Exception: {processEx.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Stack Trace: {processEx.StackTrace}");
+                    if (processEx.InnerException != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Inner Exception: {processEx.InnerException.Message}");
+                    }
+                    throw; // Re-throw to be caught by outer catch
+                }
                 
                 if (success)
                 {
+                    System.Diagnostics.Debug.WriteLine("Purchase saved successfully!");
+                    
                     // Update product retail prices in database for any changes made
                     UpdateProductRetailPricesFromPurchase();
                     
@@ -4827,19 +5531,26 @@ namespace Vape_Store
                     // Generate thermal invoice with current data (like sales form does)
                     GenerateThermalInvoice(purchase, purchaseItems);
                     
-                    // Success message removed to avoid annoying popups
+                    // Show success message
+                    MessageBox.Show("Purchase saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     
                     // Clear form
                     ClearForm();
                 }
                 else
                 {
-                    ShowError("Failed to process purchase. Please try again.");
+                    ShowError("Failed to process purchase. Please check the error logs and try again.");
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Error saving purchase: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error saving purchase: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
+                ShowError($"Error saving purchase: {ex.Message}\n\nPlease check the Debug Output window for more details.");
             }
             finally
             {
@@ -4849,10 +5560,35 @@ namespace Vape_Store
 
         private bool ValidatePurchase()
         {
-            // Validate vendor selection
-            if (cmbVendorName.SelectedItem == null)
+            // Validate vendor selection - check both SelectedItem and Text for SearchableComboBoxHelper
+            bool hasValidVendor = false;
+            Supplier selectedSupplier = null;
+            
+            // Check if SelectedItem is valid
+            if (cmbVendorName.SelectedItem is Supplier supplier)
             {
-                // Validation removed to avoid annoying popups
+                selectedSupplier = supplier;
+                hasValidVendor = true;
+            }
+            else if (cmbVendorName.SelectedItem != null)
+            {
+                string selectedVendorName = cmbVendorName.SelectedItem.ToString();
+                selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                    s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
+                hasValidVendor = selectedSupplier != null && selectedSupplier.SupplierID > 0;
+            }
+            
+            // If not found by SelectedItem, try to match by text
+            if (!hasValidVendor && !string.IsNullOrWhiteSpace(cmbVendorName.Text))
+            {
+                selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                    s.SupplierName.Equals(cmbVendorName.Text, StringComparison.OrdinalIgnoreCase));
+                hasValidVendor = selectedSupplier != null && selectedSupplier.SupplierID > 0;
+            }
+            
+            if (!hasValidVendor)
+            {
+                ShowError("Please select a valid vendor from the list.");
                 cmbVendorName.Focus();
                 return false;
             }
@@ -4898,18 +5634,48 @@ namespace Vape_Store
 
         private Purchase CreatePurchaseObject()
         {
-            // Get selected supplier
+            // Get selected supplier - handle multiple scenarios for SearchableComboBoxHelper
             Supplier selectedSupplier = null;
-            if (cmbVendorName.SelectedItem != null)
+            
+            // First try: SelectedItem is a Supplier object (from SearchableComboBoxHelper)
+            if (cmbVendorName.SelectedItem is Supplier supplier)
+            {
+                selectedSupplier = supplier;
+            }
+            // Second try: SelectedItem is a string (vendor name)
+            else if (cmbVendorName.SelectedItem != null)
             {
                 string selectedVendorName = cmbVendorName.SelectedItem.ToString();
-                selectedSupplier = _suppliers.FirstOrDefault(s => s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
+                selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                    s.SupplierName.Equals(selectedVendorName, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            // Third try: Match by combo box text (fallback for SearchableComboBoxHelper)
+            if (selectedSupplier == null && !string.IsNullOrWhiteSpace(cmbVendorName.Text))
+            {
+                selectedSupplier = _suppliers?.FirstOrDefault(s => 
+                    s.SupplierName.Equals(cmbVendorName.Text, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            // Validate that we have a valid supplier
+            if (selectedSupplier == null || selectedSupplier.SupplierID <= 0)
+            {
+                throw new InvalidOperationException("Please select a valid vendor. The selected vendor could not be found in the database.");
+            }
+
+            // Get user name for invoice display
+            string userName = string.Empty;
+            if (UserSession.CurrentUser != null)
+            {
+                userName = UserSession.CurrentUser.FullName ?? UserSession.CurrentUser.Username ?? string.Empty;
             }
 
             return new Purchase
             {
                 InvoiceNumber = _invoiceNumber,
-                SupplierID = selectedSupplier?.SupplierID ?? 0,
+                SupplierID = selectedSupplier.SupplierID, // Now guaranteed to be valid
+                SupplierName = selectedSupplier.SupplierName ?? string.Empty, // Set supplier name for invoice display
+                UserName = userName, // Set user name for invoice display
                 PurchaseDate = dtpInvoiceDate.Value,
                 SubTotal = _subtotal,
                 TaxAmount = ParseDecimal(txtTaxPercent.Text) > 0 ? (_subtotal * ParseDecimal(txtTaxPercent.Text) / 100) : 0,
@@ -4946,16 +5712,11 @@ namespace Vape_Store
                     continue;
                 }
                 
-                // Validate quantity and price are greater than 0
+                // Get quantity and price - use defaults if missing
                 decimal quantity = ParseDecimal(row.Cells["colQty"].Value);
                 decimal purchasePrice = ParseDecimal(row.Cells["colPurchasePrice"].Value);
                 
-                if (quantity <= 0 || purchasePrice <= 0)
-                {
-                    // Skip rows with invalid quantities or prices
-                    continue;
-                }
-                
+                // Find product first to get default values
                 Product product = null;
                 if (rawProductVal is int idVal)
                 {
@@ -4975,33 +5736,10 @@ namespace Vape_Store
                         (!string.IsNullOrEmpty(productCode) && p.ProductCode.Equals(productCode, StringComparison.OrdinalIgnoreCase)));
                 }
                 
-                if (product != null && product.ProductID > 0)
+                // If product not found in local list, try database lookup
+                if (product == null)
                 {
-                    var purchaseItem = new PurchaseItem
-                    {
-                        ProductID = product.ProductID,
-                        Quantity = Convert.ToInt32(quantity),
-                        Unit = "pcs", // Default unit
-                        UnitPrice = purchasePrice,
-                        SellingPrice = ParseDecimal(row.Cells["colSalePrice"].Value),
-                        SubTotal = ParseDecimal(row.Cells["colTotal"].Value),
-                        Bonus = 0,
-                        BatchNumber = "",
-                        ExpiryDate = DateTime.Now.AddYears(1),
-                        DiscountAmount = 0,
-                        TaxPercent = 0,
-                        Remarks = "",
-                        ProductName = product.ProductName,
-                        ProductCode = product.ProductCode
-                    };
-                    purchaseItems.Add(purchaseItem);
-                }
-                else
-                {
-                    // Product not found in local list - try database lookup as last resort
-                    Product dbProduct = null;
                     var allProducts = _productRepository.GetAllProducts();
-                    
                     string productName = rawProductVal.ToString();
                     if (productName.Contains(" | "))
                     {
@@ -5010,38 +5748,91 @@ namespace Vape_Store
                     
                     if (!string.IsNullOrEmpty(productName))
                     {
-                        dbProduct = allProducts.FirstOrDefault(p => 
+                        product = allProducts.FirstOrDefault(p => 
                             p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase));
                     }
                     
-                    if (dbProduct == null && !string.IsNullOrEmpty(productCode))
+                    if (product == null && !string.IsNullOrEmpty(productCode))
                     {
-                        dbProduct = allProducts.FirstOrDefault(p => 
+                        product = allProducts.FirstOrDefault(p => 
                             p.ProductCode.Equals(productCode, StringComparison.OrdinalIgnoreCase));
                     }
+                }
+                
+                // If product still not found, skip this row
+                if (product == null || product.ProductID <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Product not found for row: {rawProductVal} / {productCode}");
+                    continue;
+                }
+                
+                // Use defaults if quantity or price is missing/zero
+                if (quantity <= 0)
+                {
+                    quantity = 1; // Default to 1 if not specified
+                }
+                
+                if (purchasePrice <= 0)
+                {
+                    // Use product's purchase price or cost price as default
+                    purchasePrice = product.PurchasePrice > 0 ? product.PurchasePrice : 
+                                   (product.CostPrice > 0 ? product.CostPrice : 0);
                     
-                    if (dbProduct != null && dbProduct.ProductID > 0)
+                    // If still 0, skip this row (product has no valid price)
+                    if (purchasePrice <= 0)
                     {
-                        var purchaseItem = new PurchaseItem
-                        {
-                            ProductID = dbProduct.ProductID,
-                            Quantity = Convert.ToInt32(quantity),
-                            Unit = "pcs",
-                            UnitPrice = purchasePrice,
-                            SellingPrice = ParseDecimal(row.Cells["colSalePrice"].Value),
-                            SubTotal = ParseDecimal(row.Cells["colTotal"].Value),
-                            Bonus = 0,
-                            BatchNumber = "",
-                            ExpiryDate = DateTime.Now.AddYears(1),
-                            DiscountAmount = 0,
-                            TaxPercent = 0,
-                            Remarks = "",
-                            ProductName = dbProduct.ProductName,
-                            ProductCode = dbProduct.ProductCode
-                        };
-                        purchaseItems.Add(purchaseItem);
+                        System.Diagnostics.Debug.WriteLine($"Product {product.ProductName} has no valid price, skipping");
+                        continue;
                     }
                 }
+                
+                // Calculate subtotal if not already set
+                decimal subtotal = ParseDecimal(row.Cells["colTotal"].Value);
+                if (subtotal <= 0)
+                {
+                    subtotal = quantity * purchasePrice;
+                }
+                
+                // Get selling price or use product's retail price
+                decimal sellingPrice = ParseDecimal(row.Cells["colSalePrice"].Value);
+                if (sellingPrice <= 0 && product != null)
+                {
+                    sellingPrice = product.RetailPrice > 0 ? product.RetailPrice : purchasePrice;
+                }
+                
+                var purchaseItem = new PurchaseItem
+                {
+                    ProductID = product.ProductID,
+                    Quantity = (int)Math.Round(quantity, 0), // Convert decimal to int properly
+                    Unit = "pcs", // Default unit
+                    UnitPrice = purchasePrice,
+                    SellingPrice = sellingPrice,
+                    SubTotal = subtotal,
+                    Bonus = 0,
+                    BatchNumber = "",
+                    ExpiryDate = DateTime.Now.AddYears(1),
+                    DiscountAmount = 0,
+                    TaxPercent = 0,
+                    Remarks = "",
+                    ProductName = product.ProductName ?? "Unknown Product",
+                    ProductCode = product.ProductCode ?? ""
+                };
+                
+                // Validate purchase item before adding
+                if (purchaseItem.Quantity <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Skipping item with invalid quantity: {purchaseItem.ProductName}, Qty: {purchaseItem.Quantity}");
+                    continue;
+                }
+                
+                if (purchaseItem.UnitPrice <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Skipping item with invalid price: {purchaseItem.ProductName}, Price: {purchaseItem.UnitPrice}");
+                    continue;
+                }
+                
+                purchaseItems.Add(purchaseItem);
+                System.Diagnostics.Debug.WriteLine($"Added purchase item: {purchaseItem.ProductName} (ID: {purchaseItem.ProductID}), Qty: {purchaseItem.Quantity}, Price: {purchaseItem.UnitPrice}, SubTotal: {purchaseItem.SubTotal}");
             }
             
             return purchaseItems;
@@ -5361,9 +6152,12 @@ namespace Vape_Store
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"ValidateBusinessRules - TotalAmount: {purchase.TotalAmount}, PaidAmount: {purchase.PaidAmount}, Items: {purchaseItems.Count}");
+                
                 // Validate minimum purchase amount
                 if (purchase.TotalAmount < 1)
                 {
+                    System.Diagnostics.Debug.WriteLine($"Validation FAILED: TotalAmount {purchase.TotalAmount} is less than 1");
                     ShowWarning("Purchase amount must be at least 1.00");
                     return false;
                 }
@@ -5371,6 +6165,7 @@ namespace Vape_Store
                 // Validate payment amount
                 if (purchase.PaidAmount < 0)
                 {
+                    System.Diagnostics.Debug.WriteLine($"Validation FAILED: PaidAmount {purchase.PaidAmount} is negative");
                     ShowWarning("Paid amount cannot be negative");
                     return false;
                 }
@@ -5378,15 +6173,19 @@ namespace Vape_Store
                 // Validate each item
                 foreach (var item in purchaseItems)
                 {
+                    System.Diagnostics.Debug.WriteLine($"Validating item: ProductID={item.ProductID}, Quantity={item.Quantity}, UnitPrice={item.UnitPrice}");
+                    
                     if (item.Quantity <= 0)
                     {
-                        ShowWarning($"Quantity must be greater than 0 for product ID {item.ProductID}");
+                        System.Diagnostics.Debug.WriteLine($"Validation FAILED: Quantity {item.Quantity} is invalid for ProductID {item.ProductID}");
+                        ShowWarning($"Quantity must be greater than 0 for product {item.ProductName ?? "ID " + item.ProductID}");
                         return false;
                     }
                     
                     if (item.UnitPrice <= 0)
                     {
-                        ShowWarning($"Unit price must be greater than 0 for product ID {item.ProductID}");
+                        System.Diagnostics.Debug.WriteLine($"Validation FAILED: UnitPrice {item.UnitPrice} is invalid for ProductID {item.ProductID}");
+                        ShowWarning($"Unit price must be greater than 0 for product {item.ProductName ?? "ID " + item.ProductID}");
                         return false;
                     }
                 }
@@ -5398,14 +6197,18 @@ namespace Vape_Store
                 
                 if (duplicateProducts.Any())
                 {
+                    System.Diagnostics.Debug.WriteLine($"Validation FAILED: Duplicate products found: {string.Join(", ", duplicateProducts)}");
                     ShowWarning("Duplicate products found. Please remove duplicates.");
                     return false;
                 }
                 
+                System.Diagnostics.Debug.WriteLine("ValidateBusinessRules: All validations PASSED");
                 return true;
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"ValidateBusinessRules Exception: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
                 ShowError($"Error validating business rules: {ex.Message}");
                 return false;
             }

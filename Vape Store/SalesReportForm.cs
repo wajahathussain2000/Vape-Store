@@ -459,7 +459,7 @@ namespace Vape_Store
                 }
                 else
                 {
-                    dgvSalesReport.DataSource = _salesReportItems;
+                dgvSalesReport.DataSource = _salesReportItems;
                 }
                 
                 // Format decimal columns
@@ -526,20 +526,20 @@ namespace Vape_Store
                     lblUniqueCustomers.Text = "Unique Customers: 0";
                 }
                 else
-                {
-                    var totalSales = _salesReportItems.Sum(item => item.TotalAmount);
-                    var totalQuantity = _salesReportItems.Sum(item => item.Quantity);
-                    var totalTax = _salesReportItems.Sum(item => item.TaxAmount);
-                    var totalPaid = _salesReportItems.Sum(item => item.PaidAmount);
-                    var totalBalance = _salesReportItems.Sum(item => item.BalanceAmount);
-                    var uniqueCustomers = _salesReportItems.Select(item => item.CustomerName).Distinct().Count();
-                    
-                    lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
-                    lblTotalQuantity.Text = $"Total Quantity: {totalQuantity}";
-                    lblTotalTax.Text = $"Total Tax: {totalTax:F2}";
-                    lblTotalPaid.Text = $"Total Paid: {totalPaid:F2}";
-                    lblTotalBalance.Text = $"Total Balance: {totalBalance:F2}";
-                    lblUniqueCustomers.Text = $"Unique Customers: {uniqueCustomers}";
+            {
+                var totalSales = _salesReportItems.Sum(item => item.TotalAmount);
+                var totalQuantity = _salesReportItems.Sum(item => item.Quantity);
+                var totalTax = _salesReportItems.Sum(item => item.TaxAmount);
+                var totalPaid = _salesReportItems.Sum(item => item.PaidAmount);
+                var totalBalance = _salesReportItems.Sum(item => item.BalanceAmount);
+                var uniqueCustomers = _salesReportItems.Select(item => item.CustomerName).Distinct().Count();
+                
+                lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
+                lblTotalQuantity.Text = $"Total Quantity: {totalQuantity}";
+                lblTotalTax.Text = $"Total Tax: {totalTax:F2}";
+                lblTotalPaid.Text = $"Total Paid: {totalPaid:F2}";
+                lblTotalBalance.Text = $"Total Balance: {totalBalance:F2}";
+                lblUniqueCustomers.Text = $"Unique Customers: {uniqueCustomers}";
                 }
             }
             catch (Exception ex)

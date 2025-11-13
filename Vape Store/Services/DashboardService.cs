@@ -8,20 +8,54 @@ namespace Vape_Store.Services
 {
     public class DashboardService
     {
+        private BusinessDateService _businessDateService;
+        
+        public DashboardService()
+        {
+            _businessDateService = new BusinessDateService();
+        }
         public DashboardStats GetDashboardStats()
+        {
+            return GetDashboardStatsByDateRange(null, null);
+        }
+        
+        public DashboardStats GetDashboardStatsByDateRange(DateTime? fromDate, DateTime? toDate)
         {
             var stats = new DashboardStats();
             
             try
             {
-                // Get today's sales
-                stats.TodaySales = GetTodaySales();
+                DateTime businessDate = _businessDateService.GetCurrentBusinessDate();
+                
+                // If viewing current day and it's closed, return 0 for all today's stats
+                bool isCurrentDayClosed = false;
+                if (fromDate == null && toDate == null)
+                {
+                    isCurrentDayClosed = _businessDateService.IsDateClosed(businessDate);
+                }
+                
+                // Get today's sales (or date range sales)
+                if (fromDate.HasValue && toDate.HasValue)
+                {
+                    stats.TodaySales = GetSalesByDateRange(fromDate.Value, toDate.Value);
+                }
+                else
+                {
+                    stats.TodaySales = isCurrentDayClosed ? 0 : GetTodaySales();
+                }
                 
                 // Get monthly sales
                 stats.MonthlySales = GetMonthlySales();
                 
-                // Get monthly purchases
-                stats.MonthlyPurchases = GetMonthlyPurchases();
+                // Get monthly purchases (or date range purchases)
+                if (fromDate.HasValue && toDate.HasValue)
+                {
+                    stats.MonthlyPurchases = GetPurchasesByDateRange(fromDate.Value, toDate.Value);
+                }
+                else
+                {
+                    stats.MonthlyPurchases = isCurrentDayClosed ? 0 : GetMonthlyPurchases();
+                }
                 
                 // Get total products
                 stats.TotalProducts = GetTotalProducts();
@@ -41,14 +75,35 @@ namespace Vape_Store.Services
                 // Get pending orders (purchases not fully paid)
                 stats.PendingOrders = GetPendingOrders();
                 
-                // Get sales returns
-                stats.SalesReturns = GetSalesReturns();
+                // Get sales returns (for date range if specified)
+                if (fromDate.HasValue && toDate.HasValue)
+                {
+                    stats.SalesReturns = GetSalesReturnsByDateRange(fromDate.Value, toDate.Value);
+                }
+                else
+                {
+                    stats.SalesReturns = isCurrentDayClosed ? 0 : GetSalesReturns();
+                }
                 
-                // Get purchase returns
-                stats.PurchaseReturns = GetPurchaseReturns();
+                // Get purchase returns (for date range if specified)
+                if (fromDate.HasValue && toDate.HasValue)
+                {
+                    stats.PurchaseReturns = GetPurchaseReturnsByDateRange(fromDate.Value, toDate.Value);
+                }
+                else
+                {
+                    stats.PurchaseReturns = isCurrentDayClosed ? 0 : GetPurchaseReturns();
+                }
                 
-                // Get expenses
-                stats.Expenses = GetExpenses();
+                // Get expenses (for date range if specified)
+                if (fromDate.HasValue && toDate.HasValue)
+                {
+                    stats.Expenses = GetExpensesByDateRange(fromDate.Value, toDate.Value);
+                }
+                else
+                {
+                    stats.Expenses = isCurrentDayClosed ? 0 : GetExpenses();
+                }
                 
                 // Get suppliers
                 stats.TotalSuppliers = GetTotalSuppliers();
@@ -268,12 +323,15 @@ namespace Vape_Store.Services
         
         private decimal GetTodaySales()
         {
-            string query = "SELECT ISNULL(SUM(TotalAmount), 0) FROM Sales WHERE CAST(SaleDate AS DATE) = CAST(GETDATE() AS DATE)";
+            // Use business date instead of calendar date so dashboard resets to 0 after day end
+            DateTime businessDate = _businessDateService.GetCurrentBusinessDate();
+            string query = "SELECT ISNULL(SUM(TotalAmount), 0) FROM Sales WHERE CAST(SaleDate AS DATE) = @BusinessDate";
             
             using (var connection = DatabaseConnection.GetConnection())
             {
                 using (var command = new SqlCommand(query, connection))
                 {
+                    command.Parameters.AddWithValue("@BusinessDate", businessDate.Date);
                     connection.Open();
                     var result = command.ExecuteScalar();
                     return ParseDecimal(result);
@@ -565,6 +623,91 @@ namespace Vape_Store.Services
             }
             
             return activities;
+        }
+        
+        private decimal GetSalesByDateRange(DateTime fromDate, DateTime toDate)
+        {
+            string query = "SELECT ISNULL(SUM(TotalAmount), 0) FROM Sales WHERE CAST(SaleDate AS DATE) >= @FromDate AND CAST(SaleDate AS DATE) <= @ToDate";
+            
+            using (var connection = DatabaseConnection.GetConnection())
+            {
+                using (var command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FromDate", fromDate.Date);
+                    command.Parameters.AddWithValue("@ToDate", toDate.Date);
+                    connection.Open();
+                    var result = command.ExecuteScalar();
+                    return ParseDecimal(result);
+                }
+            }
+        }
+        
+        private decimal GetSalesReturnsByDateRange(DateTime fromDate, DateTime toDate)
+        {
+            string query = "SELECT ISNULL(SUM(TotalAmount), 0) FROM SalesReturns WHERE CAST(ReturnDate AS DATE) >= @FromDate AND CAST(ReturnDate AS DATE) <= @ToDate";
+            
+            using (var connection = DatabaseConnection.GetConnection())
+            {
+                using (var command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FromDate", fromDate.Date);
+                    command.Parameters.AddWithValue("@ToDate", toDate.Date);
+                    connection.Open();
+                    var result = command.ExecuteScalar();
+                    return ParseDecimal(result);
+                }
+            }
+        }
+        
+        private decimal GetPurchaseReturnsByDateRange(DateTime fromDate, DateTime toDate)
+        {
+            string query = "SELECT ISNULL(SUM(TotalAmount), 0) FROM PurchaseReturns WHERE CAST(ReturnDate AS DATE) >= @FromDate AND CAST(ReturnDate AS DATE) <= @ToDate";
+            
+            using (var connection = DatabaseConnection.GetConnection())
+            {
+                using (var command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FromDate", fromDate.Date);
+                    command.Parameters.AddWithValue("@ToDate", toDate.Date);
+                    connection.Open();
+                    var result = command.ExecuteScalar();
+                    return ParseDecimal(result);
+                }
+            }
+        }
+        
+        private decimal GetExpensesByDateRange(DateTime fromDate, DateTime toDate)
+        {
+            string query = "SELECT ISNULL(SUM(Amount), 0) FROM ExpenseEntries WHERE CAST(ExpenseDate AS DATE) >= @FromDate AND CAST(ExpenseDate AS DATE) <= @ToDate";
+            
+            using (var connection = DatabaseConnection.GetConnection())
+            {
+                using (var command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FromDate", fromDate.Date);
+                    command.Parameters.AddWithValue("@ToDate", toDate.Date);
+                    connection.Open();
+                    var result = command.ExecuteScalar();
+                    return ParseDecimal(result);
+                }
+            }
+        }
+        
+        private decimal GetPurchasesByDateRange(DateTime fromDate, DateTime toDate)
+        {
+            string query = "SELECT ISNULL(SUM(TotalAmount), 0) FROM Purchases WHERE CAST(PurchaseDate AS DATE) >= @FromDate AND CAST(PurchaseDate AS DATE) <= @ToDate";
+            
+            using (var connection = DatabaseConnection.GetConnection())
+            {
+                using (var command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@FromDate", fromDate.Date);
+                    command.Parameters.AddWithValue("@ToDate", toDate.Date);
+                    connection.Open();
+                    var result = command.ExecuteScalar();
+                    return ParseDecimal(result);
+                }
+            }
         }
         
         private decimal ParseDecimal(object value)

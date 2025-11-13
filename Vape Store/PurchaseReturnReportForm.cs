@@ -190,6 +190,15 @@ namespace Vape_Store
                     Width = 200,
                     MinimumWidth = 150
                 });
+                
+                dgvPurchaseReturnReport.Columns.Add(new DataGridViewTextBoxColumn
+                {
+                    Name = "UserName",
+                    HeaderText = "Returned By",
+                    DataPropertyName = "UserName",
+                    Width = 150,
+                    MinimumWidth = 120
+                });
             }
             catch (Exception ex)
             {
@@ -303,7 +312,8 @@ namespace Vape_Store
                                 UnitPrice = returnItem.UnitPrice,
                                 SubTotal = returnItem.SubTotal,
                                 TotalAmount = purchaseReturn.TotalAmount,
-                                ReturnReason = purchaseReturn.ReturnReason
+                                ReturnReason = purchaseReturn.ReturnReason,
+                                UserName = purchaseReturn.UserName ?? "Unknown"
                             };
                             
                             _purchaseReturnReportItems.Add(reportItem);
@@ -324,7 +334,8 @@ namespace Vape_Store
                             UnitPrice = 0,
                             SubTotal = 0,
                             TotalAmount = 0, // Set to 0 instead of the return total
-                            ReturnReason = purchaseReturn.ReturnReason
+                            ReturnReason = purchaseReturn.ReturnReason,
+                            UserName = purchaseReturn.UserName ?? "Unknown"
                         };
                         
                         _purchaseReturnReportItems.Add(reportItem);
@@ -768,5 +779,6 @@ namespace Vape_Store
         public decimal SubTotal { get; set; }
         public decimal TotalAmount { get; set; }
         public string ReturnReason { get; set; }
+        public string UserName { get; set; }
     }
 }
