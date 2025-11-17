@@ -12,10 +12,12 @@ namespace Vape_Store.Repositories
     public class PurchaseRepository
     {
         private BusinessDateService _businessDateService;
+        private SupplierLedgerRepository _supplierLedgerRepository;
 
         public PurchaseRepository()
         {
             _businessDateService = new BusinessDateService();
+            _supplierLedgerRepository = new SupplierLedgerRepository();
         }
 
         public List<Purchase> GetAllPurchases()
@@ -355,6 +357,11 @@ namespace Vape_Store.Repositories
                                 }
                             }
 
+                            if (purchase.SupplierID > 0)
+                            {
+                                InsertSupplierLedgerEntries(purchase, purchase.PurchaseID, connection, transaction);
+                            }
+
                             transaction.Commit();
                             return true;
                         }
@@ -369,6 +376,42 @@ namespace Vape_Store.Repositories
             catch (Exception ex)
             {
                 throw new Exception($"Error updating purchase: {ex.Message}", ex);
+            }
+        }
+
+        private void InsertSupplierLedgerEntries(Purchase purchase, int purchaseId, SqlConnection connection, SqlTransaction transaction)
+        {
+            var purchaseEntry = new SupplierLedgerEntry
+            {
+                SupplierID = purchase.SupplierID,
+                EntryDate = purchase.PurchaseDate,
+                ReferenceType = "Purchase",
+                ReferenceID = purchaseId,
+                InvoiceNumber = purchase.InvoiceNumber,
+                Description = $"Purchase Invoice {purchase.InvoiceNumber}",
+                Debit = 0,
+                Credit = purchase.TotalAmount,
+                CreatedDate = DateTime.Now
+            };
+
+            _supplierLedgerRepository.InsertEntry(connection, transaction, purchaseEntry);
+
+            if (purchase.PaidAmount > 0)
+            {
+                var paymentEntry = new SupplierLedgerEntry
+                {
+                    SupplierID = purchase.SupplierID,
+                    EntryDate = purchase.PurchaseDate,
+                    ReferenceType = "PurchasePayment",
+                    ReferenceID = purchaseId,
+                    InvoiceNumber = purchase.InvoiceNumber,
+                    Description = $"Payment ({purchase.PaymentMethod})",
+                    Debit = purchase.PaidAmount,
+                    Credit = 0,
+                    CreatedDate = DateTime.Now
+                };
+
+                _supplierLedgerRepository.InsertEntry(connection, transaction, paymentEntry);
             }
         }
 
@@ -625,119 +668,119 @@ namespace Vape_Store.Repositories
 
                                 System.Diagnostics.Debug.WriteLine($"Executing INSERT for Purchase - Invoice: {purchase.InvoiceNumber}, Date: {purchase.PurchaseDate:yyyy-MM-dd HH:mm:ss}, UserID: {purchase.UserID}");
                                 
-                                object result = command.ExecuteScalar();
-                                if (result == null || result == DBNull.Value)
-                                {
-                                    throw new Exception("Failed to insert purchase - no PurchaseID returned from database");
-                                }
-                                
-                                purchaseId = Convert.ToInt32(result);
-                                System.Diagnostics.Debug.WriteLine($"Purchase inserted successfully! PurchaseID: {purchaseId}");
-                            }
-
-                            // Insert purchase items
-                            System.Diagnostics.Debug.WriteLine($"Inserting {purchaseItems.Count} purchase items...");
-                            int itemIndex = 0;
-                            foreach (var item in purchaseItems)
-                            {
-                                itemIndex++;
-                                System.Diagnostics.Debug.WriteLine($"Inserting item {itemIndex}/{purchaseItems.Count}: ProductID={item.ProductID}, ProductName={item.ProductName}, Quantity={item.Quantity}");
-                                
-                                // AUTO-CREATE PRODUCT IF IT DOESN'T EXIST
-                                // This is the key fix: When purchasing a new product, automatically add it to Products table
-                                if (item.ProductID == 0 || !ProductExists(item.ProductID, connection, transaction))
-                                {
-                                    // Create new product in Products table
-                                    string createProductQuery = @"
-                                        INSERT INTO Products (ProductCode, ProductName, PurchasePrice, CostPrice, RetailPrice, 
-                                                              StockQuantity, ReorderLevel, IsActive, IsAvailableForSale, LastPurchaseDate)
-                                        VALUES (@ProductCode, @ProductName, @PurchasePrice, @CostPrice, @RetailPrice, 
-                                                0, 10, 1, 1, @PurchaseDate);
-                                        SELECT SCOPE_IDENTITY();";
-                                    
-                                    using (var createProductCmd = new SqlCommand(createProductQuery, connection, transaction))
+                                    object result = command.ExecuteScalar();
+                                    if (result == null || result == DBNull.Value)
                                     {
-                                        createProductCmd.Parameters.AddWithValue("@ProductCode", item.ProductCode ?? "AUTO-" + Guid.NewGuid().ToString().Substring(0, 8));
-                                        createProductCmd.Parameters.AddWithValue("@ProductName", item.ProductName ?? "Unknown Product");
-                                        createProductCmd.Parameters.AddWithValue("@PurchasePrice", item.UnitPrice);
-                                        createProductCmd.Parameters.AddWithValue("@CostPrice", item.UnitPrice);
-                                        createProductCmd.Parameters.AddWithValue("@RetailPrice", item.SellingPrice > 0 ? item.SellingPrice : item.UnitPrice * 1.3m);
-                                        createProductCmd.Parameters.AddWithValue("@PurchaseDate", purchase.PurchaseDate);
-                                        
-                                        int newProductId = Convert.ToInt32(createProductCmd.ExecuteScalar());
-                                        item.ProductID = newProductId; // Update the item with the new ProductID
+                                        throw new Exception("Failed to insert purchase - no PurchaseID returned from database");
                                     }
-                                }
-                                
-                                string itemQuery = @"
-                                    INSERT INTO PurchaseItems (PurchaseID, ProductID, ProductName, ProductCode, Quantity, Unit, 
-                                                               UnitPrice, SellingPrice, SubTotal, Bonus, BatchNumber, ExpiryDate, 
-                                                               DiscountAmount, TaxPercent, Remarks)
-                                    VALUES (@PurchaseID, @ProductID, @ProductName, @ProductCode, @Quantity, @Unit, 
-                                            @UnitPrice, @SellingPrice, @SubTotal, @Bonus, @BatchNumber, @ExpiryDate, 
-                                            @DiscountAmount, @TaxPercent, @Remarks)";
-
-                                using (var itemCommand = new SqlCommand(itemQuery, connection, transaction))
-                                {
-                                    itemCommand.Parameters.AddWithValue("@PurchaseID", purchaseId);
-                                    itemCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
-                                    itemCommand.Parameters.AddWithValue("@ProductName", item.ProductName ?? (object)DBNull.Value);
-                                    itemCommand.Parameters.AddWithValue("@ProductCode", item.ProductCode ?? (object)DBNull.Value);
-                                    itemCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
-                                    itemCommand.Parameters.AddWithValue("@Unit", item.Unit ?? (object)DBNull.Value);
-                                    itemCommand.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
-                                    itemCommand.Parameters.AddWithValue("@SellingPrice", item.SellingPrice);
-                                    itemCommand.Parameters.AddWithValue("@SubTotal", item.SubTotal);
-                                    itemCommand.Parameters.AddWithValue("@Bonus", item.Bonus);
-                                    itemCommand.Parameters.AddWithValue("@BatchNumber", item.BatchNumber ?? (object)DBNull.Value);
-                                    itemCommand.Parameters.AddWithValue("@ExpiryDate", item.ExpiryDate);
-                                    itemCommand.Parameters.AddWithValue("@DiscountAmount", item.DiscountAmount);
-                                    itemCommand.Parameters.AddWithValue("@TaxPercent", item.TaxPercent);
-                                    itemCommand.Parameters.AddWithValue("@Remarks", item.Remarks ?? (object)DBNull.Value);
-                                    itemCommand.ExecuteNonQuery();
-                                }
-
-                                // Update stock with improved error handling and logging
-                                // Check if optional columns exist before updating
-                                string enhancedStockQuery = @"
-                                    IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'LastPurchaseDate')
-                                    BEGIN
-                                        UPDATE Products 
-                                        SET StockQuantity = StockQuantity + @Quantity + @Bonus,
-                                            LastPurchaseDate = @PurchaseDate,
-                                            IsAvailableForSale = 1
-                                        WHERE ProductID = @ProductID
-                                    END
-                                    ELSE
-                                    BEGIN
-                                        UPDATE Products 
-                                        SET StockQuantity = StockQuantity + @Quantity + @Bonus
-                                        WHERE ProductID = @ProductID
-                                    END";
-
-                                using (var stockCommand = new SqlCommand(enhancedStockQuery, connection, transaction))
-                                {
-                                    stockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
-                                    stockCommand.Parameters.AddWithValue("@Bonus", item.Bonus);
-                                    stockCommand.Parameters.AddWithValue("@PurchaseDate", purchase.PurchaseDate);
-                                    stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
-                                    stockCommand.ExecuteNonQuery();
-                                }
-                                
-                                System.Diagnostics.Debug.WriteLine($"Item {itemIndex} inserted successfully");
+                                    
+                                purchaseId = Convert.ToInt32(result);
+                                    System.Diagnostics.Debug.WriteLine($"Purchase inserted successfully! PurchaseID: {purchaseId}");
                             }
-                            
-                            System.Diagnostics.Debug.WriteLine($"All {purchaseItems.Count} purchase items inserted successfully");
+
+                                    // Insert purchase items
+                                    System.Diagnostics.Debug.WriteLine($"Inserting {purchaseItems.Count} purchase items...");
+                                    int itemIndex = 0;
+                                    foreach (var item in purchaseItems)
+                                    {
+                                        itemIndex++;
+                                        System.Diagnostics.Debug.WriteLine($"Inserting item {itemIndex}/{purchaseItems.Count}: ProductID={item.ProductID}, ProductName={item.ProductName}, Quantity={item.Quantity}");
+                                
+                                    // AUTO-CREATE PRODUCT IF IT DOESN'T EXIST
+                                    // This is the key fix: When purchasing a new product, automatically add it to Products table
+                                    if (item.ProductID == 0 || !ProductExists(item.ProductID, connection, transaction))
+                                    {
+                                        // Create new product in Products table
+                                        string createProductQuery = @"
+                                            INSERT INTO Products (ProductCode, ProductName, PurchasePrice, CostPrice, RetailPrice, 
+                                                                  StockQuantity, ReorderLevel, IsActive, IsAvailableForSale, LastPurchaseDate)
+                                            VALUES (@ProductCode, @ProductName, @PurchasePrice, @CostPrice, @RetailPrice, 
+                                                    0, 10, 1, 1, @PurchaseDate);
+                                            SELECT SCOPE_IDENTITY();";
+                                        
+                                        using (var createProductCmd = new SqlCommand(createProductQuery, connection, transaction))
+                                        {
+                                            createProductCmd.Parameters.AddWithValue("@ProductCode", item.ProductCode ?? "AUTO-" + Guid.NewGuid().ToString().Substring(0, 8));
+                                            createProductCmd.Parameters.AddWithValue("@ProductName", item.ProductName ?? "Unknown Product");
+                                            createProductCmd.Parameters.AddWithValue("@PurchasePrice", item.UnitPrice);
+                                            createProductCmd.Parameters.AddWithValue("@CostPrice", item.UnitPrice);
+                                            createProductCmd.Parameters.AddWithValue("@RetailPrice", item.SellingPrice > 0 ? item.SellingPrice : item.UnitPrice * 1.3m);
+                                            createProductCmd.Parameters.AddWithValue("@PurchaseDate", purchase.PurchaseDate);
+                                            
+                                            int newProductId = Convert.ToInt32(createProductCmd.ExecuteScalar());
+                                            item.ProductID = newProductId; // Update the item with the new ProductID
+                                        }
+                                    }
+                                    
+                                    string itemQuery = @"
+                                        INSERT INTO PurchaseItems (PurchaseID, ProductID, ProductName, ProductCode, Quantity, Unit, 
+                                                                   UnitPrice, SellingPrice, SubTotal, Bonus, BatchNumber, ExpiryDate, 
+                                                                   DiscountAmount, TaxPercent, Remarks)
+                                        VALUES (@PurchaseID, @ProductID, @ProductName, @ProductCode, @Quantity, @Unit, 
+                                                @UnitPrice, @SellingPrice, @SubTotal, @Bonus, @BatchNumber, @ExpiryDate, 
+                                                @DiscountAmount, @TaxPercent, @Remarks)";
+
+                                    using (var itemCommand = new SqlCommand(itemQuery, connection, transaction))
+                                    {
+                                        itemCommand.Parameters.AddWithValue("@PurchaseID", purchaseId);
+                                        itemCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                        itemCommand.Parameters.AddWithValue("@ProductName", item.ProductName ?? (object)DBNull.Value);
+                                        itemCommand.Parameters.AddWithValue("@ProductCode", item.ProductCode ?? (object)DBNull.Value);
+                                        itemCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
+                                        itemCommand.Parameters.AddWithValue("@Unit", item.Unit ?? (object)DBNull.Value);
+                                        itemCommand.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
+                                        itemCommand.Parameters.AddWithValue("@SellingPrice", item.SellingPrice);
+                                        itemCommand.Parameters.AddWithValue("@SubTotal", item.SubTotal);
+                                        itemCommand.Parameters.AddWithValue("@Bonus", item.Bonus);
+                                        itemCommand.Parameters.AddWithValue("@BatchNumber", item.BatchNumber ?? (object)DBNull.Value);
+                                        itemCommand.Parameters.AddWithValue("@ExpiryDate", item.ExpiryDate);
+                                        itemCommand.Parameters.AddWithValue("@DiscountAmount", item.DiscountAmount);
+                                        itemCommand.Parameters.AddWithValue("@TaxPercent", item.TaxPercent);
+                                        itemCommand.Parameters.AddWithValue("@Remarks", item.Remarks ?? (object)DBNull.Value);
+                                        itemCommand.ExecuteNonQuery();
+                                    }
+
+                                    // Update stock with improved error handling and logging
+                                    // Check if optional columns exist before updating
+                                    string enhancedStockQuery = @"
+                                        IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'LastPurchaseDate')
+                                        BEGIN
+                                            UPDATE Products 
+                                            SET StockQuantity = StockQuantity + @Quantity + @Bonus,
+                                                LastPurchaseDate = @PurchaseDate,
+                                                IsAvailableForSale = 1
+                                            WHERE ProductID = @ProductID
+                                        END
+                                        ELSE
+                                        BEGIN
+                                            UPDATE Products 
+                                            SET StockQuantity = StockQuantity + @Quantity + @Bonus
+                                            WHERE ProductID = @ProductID
+                                        END";
+
+                                    using (var stockCommand = new SqlCommand(enhancedStockQuery, connection, transaction))
+                                    {
+                                            stockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
+                                            stockCommand.Parameters.AddWithValue("@Bonus", item.Bonus);
+                                            stockCommand.Parameters.AddWithValue("@PurchaseDate", purchase.PurchaseDate);
+                                            stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                            stockCommand.ExecuteNonQuery();
+                                    }
+                                    
+                                    System.Diagnostics.Debug.WriteLine($"Item {itemIndex} inserted successfully");
+                                }
+                                
+                                System.Diagnostics.Debug.WriteLine($"All {purchaseItems.Count} purchase items inserted successfully");
 
                             // Commit transaction after all operations succeed
-                            transaction.Commit();
-                            
-                            System.Diagnostics.Debug.WriteLine($"Purchase saved successfully! PurchaseID: {purchaseId}, Invoice: {purchase.InvoiceNumber}");
-                            
-                            // Trigger product update event to refresh sales form
-                            ProductRepository.OnProductsUpdated();
-                            
-                            return true;
+                                    transaction.Commit();
+                                    
+                                    System.Diagnostics.Debug.WriteLine($"Purchase saved successfully! PurchaseID: {purchaseId}, Invoice: {purchase.InvoiceNumber}");
+                                    
+                                    // Trigger product update event to refresh sales form
+                                    ProductRepository.OnProductsUpdated();
+                                    
+                                    return true;
                         }
                         catch (Exception innerEx)
                         {

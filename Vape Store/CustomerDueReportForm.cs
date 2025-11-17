@@ -22,6 +22,7 @@ namespace Vape_Store
         private CustomerRepository _customerRepository;
         private SaleRepository _saleRepository;
         private CustomerPaymentRepository _customerPaymentRepository;
+        private CustomerLedgerRepository _customerLedgerRepository;
         private ReportingService _reportingService;
         
         private List<CustomerDueReportItem> _customerDueItems;
@@ -33,6 +34,7 @@ namespace Vape_Store
             _customerRepository = new CustomerRepository();
             _saleRepository = new SaleRepository();
             _customerPaymentRepository = new CustomerPaymentRepository();
+            _customerLedgerRepository = new CustomerLedgerRepository();
             _reportingService = new ReportingService();
             
             _customerDueItems = new List<CustomerDueReportItem>();
@@ -185,36 +187,34 @@ namespace Vape_Store
                 var fromDate = dtpFromDate.Value.Date;
                 var toDate = dtpToDate.Value.Date.AddDays(1).AddSeconds(-1); // End of day
                 
-                _customerDueItems.Clear();
-                
-                foreach (var customer in _customers)
+                int? selectedCustomerId = null;
+                if (cmbCustomer.SelectedItem is Customer selectedCustomer && selectedCustomer.CustomerID != 0)
                 {
-                    // Get sales for this customer
-                    var sales = _saleRepository.GetSalesByCustomerAndDateRange(customer.CustomerID, fromDate, toDate);
-                    var totalSales = sales.Sum(s => s.TotalAmount);
-                    
-                    // Get payments for this customer
-                    var payments = _customerPaymentRepository.GetPaymentsByCustomerAndDateRange(customer.CustomerID, fromDate, toDate);
-                    var totalPaid = payments.Sum(p => p.PaidAmount);
-                    
-                    var totalDue = totalSales - totalPaid;
-                    var lastSaleDate = sales.Any() ? sales.Max(s => s.SaleDate) : (DateTime?)null;
-                    var lastPaymentDate = payments.Any() ? payments.Max(p => p.PaymentDate) : (DateTime?)null;
-                    
-                    var reportItem = new CustomerDueReportItem
+                    selectedCustomerId = selectedCustomer.CustomerID;
+                }
+
+                var summaries = _customerLedgerRepository.GetCustomerSummaries(fromDate, toDate, selectedCustomerId);
+                _customerDueItems = new List<CustomerDueReportItem>();
+
+                foreach (var summary in summaries)
+                {
+                    _customerDueItems.Add(new CustomerDueReportItem
                     {
-                        CustomerID = customer.CustomerID,
-                        CustomerCode = customer.CustomerCode,
-                        CustomerName = customer.CustomerName,
-                        Phone = customer.Phone,
-                        TotalSales = totalSales,
-                        TotalPaid = totalPaid,
-                        TotalDue = totalDue,
-                        LastSaleDate = lastSaleDate,
-                        LastPaymentDate = lastPaymentDate
-                    };
-                    
-                    _customerDueItems.Add(reportItem);
+                        CustomerID = summary.CustomerID,
+                        CustomerCode = summary.CustomerCode,
+                        CustomerName = summary.CustomerName,
+                        Phone = summary.Phone,
+                        TotalSales = summary.TotalDebit,
+                        TotalPaid = summary.TotalCredit,
+                        TotalDue = summary.ClosingBalance,
+                        LastSaleDate = summary.LastSaleDate,
+                        LastPaymentDate = summary.LastPaymentDate
+                    });
+                }
+
+                if (_customerDueItems.Count == 0)
+                {
+                    ShowMessage($"No customer ledger activity found for the date range {fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd}.", "No Data Found", MessageBoxIcon.Information);
                 }
                 
                 ApplyFilters();
@@ -234,9 +234,8 @@ namespace Vape_Store
                 var filteredItems = _customerDueItems.AsEnumerable();
                 
                 // Customer filter
-                if (cmbCustomer.SelectedItem != null)
+                if (cmbCustomer.SelectedItem is Customer selectedCustomer && selectedCustomer.CustomerID != 0)
                 {
-                    var selectedCustomer = (Customer)cmbCustomer.SelectedItem;
                     filteredItems = filteredItems.Where(item => item.CustomerID == selectedCustomer.CustomerID);
                 }
                 

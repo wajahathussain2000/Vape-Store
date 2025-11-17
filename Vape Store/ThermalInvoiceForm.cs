@@ -272,7 +272,7 @@ namespace Vape_Store
             int paperWidth = _thermalReceiptPanel.Width - 20;
             int currentY = 10;
             int lineHeight = 18;
-            int leftMargin = 10;
+            int leftMargin = 20;
             int rightMargin = paperWidth - 10;
 
             // Use monospace font for thermal receipt look

@@ -10,8 +10,11 @@ namespace Vape_Store.Repositories
 {
     public class CustomerPaymentRepository
     {
+        private readonly CustomerLedgerRepository _customerLedgerRepository;
+
         public CustomerPaymentRepository()
         {
+            _customerLedgerRepository = new CustomerLedgerRepository();
         }
 
         public List<CustomerPayment> GetAllCustomerPayments()
@@ -152,6 +155,26 @@ namespace Vape_Store.Repositories
                                 payment.PaymentID = Convert.ToInt32(command.ExecuteScalar());
                             }
 
+                            if (payment.CustomerID > 0 && payment.PaidAmount != 0)
+                            {
+                                var ledgerEntry = new CustomerLedgerEntry
+                                {
+                                    CustomerID = payment.CustomerID,
+                                    EntryDate = payment.PaymentDate,
+                                    ReferenceType = "CustomerPayment",
+                                    ReferenceID = payment.PaymentID,
+                                    InvoiceNumber = payment.VoucherNumber,
+                                    Description = string.IsNullOrWhiteSpace(payment.Description)
+                                        ? $"Customer Payment {payment.VoucherNumber}"
+                                        : payment.Description,
+                                    Debit = 0,
+                                    Credit = payment.PaidAmount,
+                                    CreatedDate = DateTime.Now
+                                };
+
+                                _customerLedgerRepository.InsertEntry(connection, transaction, ledgerEntry);
+                            }
+
                             transaction.Commit();
                             return true;
                         }
@@ -208,6 +231,28 @@ namespace Vape_Store.Repositories
                                 }
                             }
 
+                            _customerLedgerRepository.DeleteEntriesByReference("CustomerPayment", payment.PaymentID, connection, transaction);
+
+                            if (payment.CustomerID > 0 && payment.PaidAmount != 0)
+                            {
+                                var ledgerEntry = new CustomerLedgerEntry
+                                {
+                                    CustomerID = payment.CustomerID,
+                                    EntryDate = payment.PaymentDate,
+                                    ReferenceType = "CustomerPayment",
+                                    ReferenceID = payment.PaymentID,
+                                    InvoiceNumber = payment.VoucherNumber,
+                                    Description = string.IsNullOrWhiteSpace(payment.Description)
+                                        ? $"Customer Payment {payment.VoucherNumber}"
+                                        : payment.Description,
+                                    Debit = 0,
+                                    Credit = payment.PaidAmount,
+                                    CreatedDate = DateTime.Now
+                                };
+
+                                _customerLedgerRepository.InsertEntry(connection, transaction, ledgerEntry);
+                            }
+
                             transaction.Commit();
                             return true;
                         }
@@ -248,6 +293,8 @@ namespace Vape_Store.Repositories
                                     return false;
                                 }
                             }
+
+                            _customerLedgerRepository.DeleteEntriesByReference("CustomerPayment", paymentId, connection, transaction);
 
                             transaction.Commit();
                             return true;
@@ -340,83 +387,14 @@ namespace Vape_Store.Repositories
             }
         }
 
-        /// <summary>
-        /// Gets the total outstanding amount owed by customer
-        /// Formula: Total Sales - Total Payments Made
-        /// </summary>
         public decimal GetCustomerTotalDue(int customerId)
         {
-            try
-            {
-                using (var connection = DatabaseConnection.GetConnection())
-                {
-                    // Calculate total sales amount for customer
-                    var salesQuery = @"
-                        SELECT ISNULL(SUM(TotalAmount), 0) 
-                        FROM Sales 
-                        WHERE CustomerID = @CustomerID";
-
-                    decimal totalSales = 0;
-                    using (var salesCommand = new SqlCommand(salesQuery, connection))
-                    {
-                        salesCommand.Parameters.AddWithValue("@CustomerID", customerId);
-                        connection.Open();
-                        totalSales = Convert.ToDecimal(salesCommand.ExecuteScalar());
-                    }
-
-                    // Calculate total payments made by customer
-                    var paymentsQuery = @"
-                        SELECT ISNULL(SUM(PaidAmount), 0) 
-                        FROM CustomerPayments 
-                        WHERE CustomerID = @CustomerID";
-
-                    decimal totalPayments = 0;
-                    using (var paymentsCommand = new SqlCommand(paymentsQuery, connection))
-                    {
-                        paymentsCommand.Parameters.AddWithValue("@CustomerID", customerId);
-                        totalPayments = Convert.ToDecimal(paymentsCommand.ExecuteScalar());
-                    }
-
-                    // Total Outstanding = Total Sales - Total Payments
-                    return totalSales - totalPayments;
-                }
+            return _customerLedgerRepository.GetCustomerBalance(customerId);
             }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error calculating customer total due: {ex.Message}", ex);
-            }
-        }
 
-        /// <summary>
-        /// Gets the remaining balance from the most recent payment transaction
-        /// This represents the balance carried forward from the last payment
-        /// </summary>
         public decimal GetCustomerPreviousBalance(int customerId)
         {
-            try
-            {
-                using (var connection = DatabaseConnection.GetConnection())
-                {
-                    // Get the most recent payment's remaining balance
-                    var query = @"
-                        SELECT TOP 1 ISNULL(RemainingBalance, 0) 
-                        FROM CustomerPayments 
-                        WHERE CustomerID = @CustomerID
-                        ORDER BY PaymentDate DESC, PaymentID DESC";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@CustomerID", customerId);
-                        connection.Open();
-                        var result = command.ExecuteScalar();
-                        return result != null && result != DBNull.Value ? Convert.ToDecimal(result) : 0;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error calculating customer previous balance: {ex.Message}", ex);
-            }
+            return _customerLedgerRepository.GetCustomerBalance(customerId);
         }
 
         public List<CustomerPayment> GetPaymentsByCustomerAndDateRange(int customerId, DateTime fromDate, DateTime toDate)

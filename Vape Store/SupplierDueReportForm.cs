@@ -20,8 +20,7 @@ namespace Vape_Store
     public partial class SupplierDueReportForm : Form
     {
         private SupplierRepository _supplierRepository;
-        private PurchaseRepository _purchaseRepository;
-        private SupplierPaymentRepository _supplierPaymentRepository;
+        private SupplierLedgerRepository _supplierLedgerRepository;
         private ReportingService _reportingService;
         
         private List<SupplierDueReportItem> _supplierDueItems;
@@ -31,8 +30,7 @@ namespace Vape_Store
         {
             InitializeComponent();
             _supplierRepository = new SupplierRepository();
-            _purchaseRepository = new PurchaseRepository();
-            _supplierPaymentRepository = new SupplierPaymentRepository();
+            _supplierLedgerRepository = new SupplierLedgerRepository();
             _reportingService = new ReportingService();
             
             _supplierDueItems = new List<SupplierDueReportItem>();
@@ -185,36 +183,34 @@ namespace Vape_Store
                 var fromDate = dtpFromDate.Value.Date;
                 var toDate = dtpToDate.Value.Date.AddDays(1).AddSeconds(-1); // End of day
                 
-                _supplierDueItems.Clear();
-                
-                foreach (var supplier in _suppliers)
+                int? selectedSupplierId = null;
+                if (cmbSupplier.SelectedItem is Supplier selectedSupplier && selectedSupplier.SupplierID != 0)
                 {
-                    // Get purchases for this supplier
-                    var purchases = _purchaseRepository.GetPurchasesBySupplierAndDateRange(supplier.SupplierID, fromDate, toDate);
-                    var totalPurchases = purchases.Sum(p => p.TotalAmount);
-                    
-                    // Get payments for this supplier
-                    var payments = _supplierPaymentRepository.GetPaymentsBySupplierAndDateRange(supplier.SupplierID, fromDate, toDate);
-                    var totalPaid = payments.Sum(p => p.PaidAmount);
-                    
-                    var totalDue = totalPurchases - totalPaid;
-                    var lastPurchaseDate = purchases.Any() ? purchases.Max(p => p.PurchaseDate) : (DateTime?)null;
-                    var lastPaymentDate = payments.Any() ? payments.Max(p => p.PaymentDate) : (DateTime?)null;
-                    
-                    var reportItem = new SupplierDueReportItem
+                    selectedSupplierId = selectedSupplier.SupplierID;
+                }
+
+                var summaries = _supplierLedgerRepository.GetSupplierSummaries(fromDate, toDate, selectedSupplierId);
+                _supplierDueItems = new List<SupplierDueReportItem>();
+
+                foreach (var summary in summaries)
+                {
+                    _supplierDueItems.Add(new SupplierDueReportItem
                     {
-                        SupplierID = supplier.SupplierID,
-                        SupplierCode = supplier.SupplierCode,
-                        SupplierName = supplier.SupplierName,
-                        Phone = supplier.Phone,
-                        TotalPurchases = totalPurchases,
-                        TotalPaid = totalPaid,
-                        TotalDue = totalDue,
-                        LastPurchaseDate = lastPurchaseDate,
-                        LastPaymentDate = lastPaymentDate
-                    };
-                    
-                    _supplierDueItems.Add(reportItem);
+                        SupplierID = summary.SupplierID,
+                        SupplierCode = summary.SupplierCode,
+                        SupplierName = summary.SupplierName,
+                        Phone = summary.Phone,
+                        TotalPurchases = summary.TotalCredit,
+                        TotalPaid = summary.TotalDebit,
+                        TotalDue = summary.ClosingBalance,
+                        LastPurchaseDate = summary.LastPurchaseDate,
+                        LastPaymentDate = summary.LastPaymentDate
+                    });
+                }
+
+                if (_supplierDueItems.Count == 0)
+                {
+                    ShowMessage($"No supplier ledger activity found for the date range {fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd}.", "No Data Found", MessageBoxIcon.Information);
                 }
                 
                 ApplyFilters();
@@ -234,9 +230,8 @@ namespace Vape_Store
                 var filteredItems = _supplierDueItems.AsEnumerable();
                 
                 // Supplier filter
-                if (cmbSupplier.SelectedItem != null)
+                if (cmbSupplier.SelectedItem is Supplier selectedSupplier && selectedSupplier.SupplierID != 0)
                 {
-                    var selectedSupplier = (Supplier)cmbSupplier.SelectedItem;
                     filteredItems = filteredItems.Where(item => item.SupplierID == selectedSupplier.SupplierID);
                 }
                 

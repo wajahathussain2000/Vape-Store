@@ -10,8 +10,11 @@ namespace Vape_Store.Repositories
 {
     public class SupplierPaymentRepository
     {
+        private readonly SupplierLedgerRepository _supplierLedgerRepository;
+
         public SupplierPaymentRepository()
         {
+            _supplierLedgerRepository = new SupplierLedgerRepository();
         }
 
         public List<SupplierPayment> GetAllSupplierPayments()
@@ -152,6 +155,26 @@ namespace Vape_Store.Repositories
                                 payment.PaymentID = Convert.ToInt32(command.ExecuteScalar());
                             }
 
+                            if (payment.SupplierID > 0 && payment.PaidAmount != 0)
+                            {
+                                var ledgerEntry = new SupplierLedgerEntry
+                                {
+                                    SupplierID = payment.SupplierID,
+                                    EntryDate = payment.PaymentDate,
+                                    ReferenceType = "SupplierPayment",
+                                    ReferenceID = payment.PaymentID,
+                                    InvoiceNumber = payment.VoucherNumber,
+                                    Description = string.IsNullOrWhiteSpace(payment.Description)
+                                        ? $"Supplier Payment {payment.VoucherNumber}"
+                                        : payment.Description,
+                                    Debit = payment.PaidAmount,
+                                    Credit = 0,
+                                    CreatedDate = DateTime.Now
+                                };
+
+                                _supplierLedgerRepository.InsertEntry(connection, transaction, ledgerEntry);
+                            }
+
                             transaction.Commit();
                             return true;
                         }
@@ -208,6 +231,28 @@ namespace Vape_Store.Repositories
                                 }
                             }
 
+                            _supplierLedgerRepository.DeleteEntriesByReference("SupplierPayment", payment.PaymentID, connection, transaction);
+
+                            if (payment.SupplierID > 0 && payment.PaidAmount != 0)
+                            {
+                                var ledgerEntry = new SupplierLedgerEntry
+                                {
+                                    SupplierID = payment.SupplierID,
+                                    EntryDate = payment.PaymentDate,
+                                    ReferenceType = "SupplierPayment",
+                                    ReferenceID = payment.PaymentID,
+                                    InvoiceNumber = payment.VoucherNumber,
+                                    Description = string.IsNullOrWhiteSpace(payment.Description)
+                                        ? $"Supplier Payment {payment.VoucherNumber}"
+                                        : payment.Description,
+                                    Debit = payment.PaidAmount,
+                                    Credit = 0,
+                                    CreatedDate = DateTime.Now
+                                };
+
+                                _supplierLedgerRepository.InsertEntry(connection, transaction, ledgerEntry);
+                            }
+
                             transaction.Commit();
                             return true;
                         }
@@ -248,6 +293,8 @@ namespace Vape_Store.Repositories
                                     return false;
                                 }
                             }
+
+                            _supplierLedgerRepository.DeleteEntriesByReference("SupplierPayment", paymentId, connection, transaction);
 
                             transaction.Commit();
                             return true;
@@ -340,83 +387,14 @@ namespace Vape_Store.Repositories
             }
         }
 
-        /// <summary>
-        /// Gets the total outstanding amount owed to supplier
-        /// Formula: Total Purchases - Total Payments Made
-        /// </summary>
         public decimal GetSupplierTotalPayable(int supplierId)
         {
-            try
-            {
-                using (var connection = DatabaseConnection.GetConnection())
-                {
-                    // Calculate total purchase amount for supplier
-                    var purchasesQuery = @"
-                        SELECT ISNULL(SUM(TotalAmount), 0) 
-                        FROM Purchases 
-                        WHERE SupplierID = @SupplierID";
-
-                    decimal totalPurchases = 0;
-                    using (var purchasesCommand = new SqlCommand(purchasesQuery, connection))
-                    {
-                        purchasesCommand.Parameters.AddWithValue("@SupplierID", supplierId);
-                        connection.Open();
-                        totalPurchases = Convert.ToDecimal(purchasesCommand.ExecuteScalar());
-                    }
-
-                    // Calculate total payments made to supplier
-                    var paymentsQuery = @"
-                        SELECT ISNULL(SUM(PaidAmount), 0) 
-                        FROM SupplierPayments 
-                        WHERE SupplierID = @SupplierID";
-
-                    decimal totalPayments = 0;
-                    using (var paymentsCommand = new SqlCommand(paymentsQuery, connection))
-                    {
-                        paymentsCommand.Parameters.AddWithValue("@SupplierID", supplierId);
-                        totalPayments = Convert.ToDecimal(paymentsCommand.ExecuteScalar());
-                    }
-
-                    // Total Outstanding = Total Purchases - Total Payments
-                    return totalPurchases - totalPayments;
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error calculating supplier total payable: {ex.Message}", ex);
-            }
+            return _supplierLedgerRepository.GetSupplierBalance(supplierId);
         }
 
-        /// <summary>
-        /// Gets the remaining balance from the most recent payment transaction
-        /// This represents the balance carried forward from the last payment
-        /// </summary>
         public decimal GetSupplierPreviousBalance(int supplierId)
         {
-            try
-            {
-                using (var connection = DatabaseConnection.GetConnection())
-                {
-                    // Get the most recent payment's remaining amount
-                    var query = @"
-                        SELECT TOP 1 ISNULL(RemainingAmount, 0) 
-                        FROM SupplierPayments 
-                        WHERE SupplierID = @SupplierID
-                        ORDER BY PaymentDate DESC, PaymentID DESC";
-
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@SupplierID", supplierId);
-                        connection.Open();
-                        var result = command.ExecuteScalar();
-                        return result != null && result != DBNull.Value ? Convert.ToDecimal(result) : 0;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error calculating supplier previous balance: {ex.Message}", ex);
-            }
+            return _supplierLedgerRepository.GetSupplierBalance(supplierId);
         }
 
         public List<SupplierPayment> GetPaymentsBySupplierAndDateRange(int supplierId, DateTime fromDate, DateTime toDate)

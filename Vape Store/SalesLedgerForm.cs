@@ -24,6 +24,7 @@ namespace Vape_Store
         private SaleRepository _saleRepository;
         private CustomerRepository _customerRepository;
         private ProductRepository _productRepository;
+        private CustomerLedgerRepository _customerLedgerRepository;
         private ReportingService _reportingService;
         
         private List<SalesLedgerItem> _salesLedgerItems;
@@ -36,6 +37,7 @@ namespace Vape_Store
             _saleRepository = new SaleRepository();
             _customerRepository = new CustomerRepository();
             _productRepository = new ProductRepository();
+            _customerLedgerRepository = new CustomerLedgerRepository();
             _reportingService = new ReportingService();
             
             _salesLedgerItems = new List<SalesLedgerItem>();
@@ -257,71 +259,36 @@ namespace Vape_Store
             {
                 var fromDate = dtpFromDate.Value.Date;
                 var toDate = dtpToDate.Value.Date.AddDays(1).AddSeconds(-1); // End of day
-                
-                var sales = _saleRepository.GetSalesByDateRange(fromDate, toDate);
-                _salesLedgerItems.Clear();
-                
-                if (sales.Count == 0)
+
+                int? selectedCustomerId = null;
+                if (cmbCustomer.SelectedItem is Customer selectedCustomer && selectedCustomer.CustomerID != 0)
                 {
-                    ShowMessage($"No sales found for the date range {fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd}. Please check your date range or ensure there is data in the database.", "No Data Found", MessageBoxIcon.Information);
-                    return;
+                    selectedCustomerId = selectedCustomer.CustomerID;
                 }
-                
-                decimal runningBalance = 0;
-                
-                foreach (var sale in sales.OrderBy(s => s.SaleDate))
+
+                var ledgerEntries = _customerLedgerRepository.GetEntries(fromDate, toDate, selectedCustomerId);
+                _salesLedgerItems = new List<SalesLedgerItem>();
+
+                foreach (var entry in ledgerEntries)
                 {
-                    // Add sales entry (Debit - Money coming in)
-                    var salesEntry = new SalesLedgerItem
+                    _salesLedgerItems.Add(new SalesLedgerItem
                     {
-                        Date = sale.SaleDate,
-                        InvoiceNumber = sale.InvoiceNumber,
-                        CustomerName = sale.CustomerName ?? "Walk-in Customer",
-                        Description = $"Sales - {sale.InvoiceNumber}",
-                        Debit = sale.TotalAmount,
-                        Credit = 0,
-                        Balance = runningBalance + sale.TotalAmount
-                    };
-                    
-                    runningBalance += sale.TotalAmount;
-                    _salesLedgerItems.Add(salesEntry);
-                    
-                    // Add payment entry (Credit - Money received)
-                    if (sale.PaidAmount > 0)
-                    {
-                        var paymentEntry = new SalesLedgerItem
-                        {
-                            Date = sale.SaleDate,
-                            InvoiceNumber = sale.InvoiceNumber,
-                            CustomerName = sale.CustomerName ?? "Walk-in Customer",
-                            Description = $"Payment Received - {sale.PaymentMethod}",
-                            Debit = 0,
-                            Credit = sale.PaidAmount,
-                            Balance = runningBalance - sale.PaidAmount
-                        };
-                        
-                        runningBalance -= sale.PaidAmount;
-                        _salesLedgerItems.Add(paymentEntry);
-                    }
-                    
-                    // Add outstanding balance entry if there's a balance
-                    if (sale.TotalAmount > sale.PaidAmount)
-                    {
-                        var outstandingEntry = new SalesLedgerItem
-                        {
-                            Date = sale.SaleDate,
-                            InvoiceNumber = sale.InvoiceNumber,
-                            CustomerName = sale.CustomerName ?? "Walk-in Customer",
-                            Description = $"Outstanding Balance - {sale.InvoiceNumber}",
-                            Debit = 0,
-                            Credit = 0,
-                            Balance = runningBalance
-                        };
-                        
-                        _salesLedgerItems.Add(outstandingEntry);
-                    }
+                        CustomerID = entry.CustomerID,
+                        Date = entry.EntryDate,
+                        InvoiceNumber = entry.InvoiceNumber,
+                        CustomerName = entry.CustomerName ?? "Walk-in Customer",
+                        Description = entry.Description,
+                        Debit = entry.Debit,
+                        Credit = entry.Credit,
+                        Balance = entry.Balance
+                    });
                 }
-                
+
+                if (_salesLedgerItems.Count == 0)
+                {
+                    ShowMessage($"No ledger entries found for the date range {fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd}.", "No Data Found", MessageBoxIcon.Information);
+                }
+
                 ApplyFilters();
                 RefreshDataGridView();
                 UpdateSummaryLabels();
@@ -339,13 +306,9 @@ namespace Vape_Store
                 var filteredItems = _salesLedgerItems.AsEnumerable();
                 
                 // Customer filter
-                if (cmbCustomer.SelectedItem != null)
+                if (cmbCustomer.SelectedItem is Customer selectedCustomer && selectedCustomer.CustomerID != 0)
                 {
-                    var selectedCustomer = (Customer)cmbCustomer.SelectedItem;
-                    if (selectedCustomer != null && selectedCustomer.CustomerName != "All Customers")
-                    {
-                        filteredItems = filteredItems.Where(item => item.CustomerName == selectedCustomer.CustomerName);
-                    }
+                    filteredItems = filteredItems.Where(item => item.CustomerID == selectedCustomer.CustomerID);
                 }
                 
                 // Search filter
@@ -726,6 +689,7 @@ namespace Vape_Store
     // Data class for sales ledger items
     public class SalesLedgerItem
     {
+        public int CustomerID { get; set; }
         public DateTime Date { get; set; }
         public string InvoiceNumber { get; set; }
         public string CustomerName { get; set; }

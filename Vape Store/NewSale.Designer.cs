@@ -63,8 +63,11 @@
             this.label2 = new System.Windows.Forms.Label();
             this.txtsubTotal = new System.Windows.Forms.TextBox();
             this.txtTaxPercent = new System.Windows.Forms.TextBox();
+            this.txtDiscountAmount = new System.Windows.Forms.TextBox();
             this.label10 = new System.Windows.Forms.Label();
             this.cmbTax = new System.Windows.Forms.ComboBox();
+            this.txtTaxPercentInput = new System.Windows.Forms.TextBox();
+            this.txtTaxAmountInput = new System.Windows.Forms.TextBox();
             this.label13 = new System.Windows.Forms.Label();
             this.txtTotal = new System.Windows.Forms.TextBox();
             this.label14 = new System.Windows.Forms.Label();
@@ -107,7 +110,7 @@
             this.guna2DateTimePicker1.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.guna2DateTimePicker1.Format = System.Windows.Forms.DateTimePickerFormat.Long;
             this.guna2DateTimePicker1.Location = new System.Drawing.Point(32, 36);
-            this.guna2DateTimePicker1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.guna2DateTimePicker1.Margin = new System.Windows.Forms.Padding(2);
             this.guna2DateTimePicker1.MaxDate = new System.DateTime(9998, 12, 31, 0, 0, 0, 0);
             this.guna2DateTimePicker1.MinDate = new System.DateTime(1753, 1, 1, 0, 0, 0, 0);
             this.guna2DateTimePicker1.Name = "guna2DateTimePicker1";
@@ -139,7 +142,7 @@
             this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.panel1.ForeColor = System.Drawing.SystemColors.ControlText;
             this.panel1.Location = new System.Drawing.Point(0, 0);
-            this.panel1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.panel1.Margin = new System.Windows.Forms.Padding(2);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(1084, 145);
             this.panel1.TabIndex = 6;
@@ -216,7 +219,7 @@
             this.btnAddItem.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnAddItem.ForeColor = System.Drawing.Color.White;
             this.btnAddItem.Location = new System.Drawing.Point(671, 101);
-            this.btnAddItem.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.btnAddItem.Margin = new System.Windows.Forms.Padding(2);
             this.btnAddItem.Name = "btnAddItem";
             this.btnAddItem.Size = new System.Drawing.Size(89, 27);
             this.btnAddItem.TabIndex = 19;
@@ -304,7 +307,7 @@
             this.Price,
             this.SubTotal});
             this.dataGridView1.Location = new System.Drawing.Point(0, 149);
-            this.dataGridView1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.dataGridView1.Margin = new System.Windows.Forms.Padding(2);
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.RowHeadersWidth = 62;
             this.dataGridView1.RowTemplate.Height = 28;
@@ -457,15 +460,23 @@
             this.txtTaxPercent.Size = new System.Drawing.Size(66, 25);
             this.txtTaxPercent.TabIndex = 27;
             // 
+            // txtDiscountAmount
+            // 
+            this.txtDiscountAmount.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtDiscountAmount.Location = new System.Drawing.Point(232, 50);
+            this.txtDiscountAmount.Name = "txtDiscountAmount";
+            this.txtDiscountAmount.Size = new System.Drawing.Size(66, 25);
+            this.txtDiscountAmount.TabIndex = 28;
+            // 
             // label10
             // 
             this.label10.AutoSize = true;
             this.label10.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label10.Location = new System.Drawing.Point(43, 51);
             this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(70, 19);
+            this.label10.Size = new System.Drawing.Size(86, 19);
             this.label10.TabIndex = 28;
-            this.label10.Text = "Discount:";
+            this.label10.Text = "Discount %:";
             // 
             // cmbTax
             // 
@@ -476,6 +487,23 @@
             this.cmbTax.Name = "cmbTax";
             this.cmbTax.Size = new System.Drawing.Size(66, 25);
             this.cmbTax.TabIndex = 31;
+            this.cmbTax.Visible = false;
+            // 
+            // txtTaxPercentInput
+            // 
+            this.txtTaxPercentInput.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtTaxPercentInput.Location = new System.Drawing.Point(160, 87);
+            this.txtTaxPercentInput.Name = "txtTaxPercentInput";
+            this.txtTaxPercentInput.Size = new System.Drawing.Size(66, 25);
+            this.txtTaxPercentInput.TabIndex = 32;
+            // 
+            // txtTaxAmountInput
+            // 
+            this.txtTaxAmountInput.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtTaxAmountInput.Location = new System.Drawing.Point(232, 87);
+            this.txtTaxAmountInput.Name = "txtTaxAmountInput";
+            this.txtTaxAmountInput.Size = new System.Drawing.Size(66, 25);
+            this.txtTaxAmountInput.TabIndex = 33;
             // 
             // label13
             // 
@@ -483,9 +511,9 @@
             this.label13.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label13.Location = new System.Drawing.Point(43, 87);
             this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(36, 19);
+            this.label13.Size = new System.Drawing.Size(52, 19);
             this.label13.TabIndex = 30;
-            this.label13.Text = "Tax:";
+            this.label13.Text = "Tax %:";
             // 
             // txtTotal
             // 
@@ -518,12 +546,15 @@
             this.panel2.Controls.Add(this.label10);
             this.panel2.Controls.Add(this.label15);
             this.panel2.Controls.Add(this.txtTaxPercent);
+            this.panel2.Controls.Add(this.txtDiscountAmount);
             this.panel2.Controls.Add(this.txtTotal);
             this.panel2.Controls.Add(this.label13);
             this.panel2.Controls.Add(this.label14);
             this.panel2.Controls.Add(this.cmbTax);
+            this.panel2.Controls.Add(this.txtTaxPercentInput);
+            this.panel2.Controls.Add(this.txtTaxAmountInput);
             this.panel2.Location = new System.Drawing.Point(748, 409);
-            this.panel2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.panel2.Margin = new System.Windows.Forms.Padding(2);
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(328, 224);
             this.panel2.TabIndex = 34;
@@ -592,7 +623,7 @@
             this.Controls.Add(this.saveBtn);
             this.Controls.Add(this.dataGridView1);
             this.Controls.Add(this.panel1);
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "NewSale";
             this.Text = "Vape Store - New Sale";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
@@ -642,8 +673,11 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TextBox txtsubTotal;
         private System.Windows.Forms.TextBox txtTaxPercent;
+        private System.Windows.Forms.TextBox txtDiscountAmount;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.ComboBox cmbTax;
+        private System.Windows.Forms.TextBox txtTaxPercentInput;
+        private System.Windows.Forms.TextBox txtTaxAmountInput;
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.TextBox txtTotal;
         private System.Windows.Forms.Label label14;

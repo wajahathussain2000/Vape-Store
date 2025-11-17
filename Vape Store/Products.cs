@@ -64,6 +64,13 @@ namespace Vape_Store
                 pnlBarcode.Visible = true;
                 pnlBarcode.Enabled = true;
             }
+            
+            // Ensure barcode textbox is editable
+            if (txtBarcode != null)
+            {
+                txtBarcode.ReadOnly = false;
+                txtBarcode.Enabled = true;
+            }
         }
 
         private void InitializeDataGridView()
@@ -129,6 +136,18 @@ namespace Vape_Store
             
             // Search event handler
             txtSearch.TextChanged += TxtSearch_TextChanged;
+            
+            // Barcode textbox event handler
+            if (txtBarcode != null)
+            {
+                txtBarcode.TextChanged += TxtBarcode_TextChanged;
+            }
+            
+            // Generate barcode button event handler
+            if (generateBtn != null)
+            {
+                generateBtn.Click += GenerateBarcode_Click;
+            }
             
             // Form closing handler to ensure cleanup
             this.FormClosing += Products_FormClosing;
@@ -544,12 +563,43 @@ namespace Vape_Store
                     return;
                 }
 
-                // Keep existing barcode when updating (UI section removed)
+                // Get existing product
                 var existing = _products.FirstOrDefault(p => p.ProductID == selectedProductId);
                 if (existing == null)
                 {
                     ShowMessage("Product not found.", "Error", MessageBoxIcon.Error);
                     return;
+                }
+
+                // Determine barcode value: use txtBarcode if not empty, otherwise keep existing or generate new
+                string barcodeValue;
+                if (!string.IsNullOrWhiteSpace(txtBarcode.Text))
+                {
+                    // User has entered/edited barcode - use it
+                    barcodeValue = txtBarcode.Text.Trim();
+                    
+                    // Validate the barcode
+                    if (!_barcodeService.ValidateBarcode(barcodeValue))
+                    {
+                        ShowMessage("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.", "Validation Error", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        return;
+                    }
+                    
+                    // Check for duplicates (excluding current product)
+                    bool isDuplicate = _productRepository.IsBarcodeExists(barcodeValue, selectedProductId);
+                    if (isDuplicate)
+                    {
+                        ShowMessage($"Barcode '{barcodeValue}' already exists! Please use a different barcode.", "Duplicate Barcode", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        txtBarcode.SelectAll();
+                        return;
+                    }
+                }
+                else
+                {
+                    // No barcode entered - keep existing or generate new if none exists
+                    barcodeValue = existing.Barcode ?? GenerateUniqueBarcode();
                 }
 
                 var productToUpdate = new Product
@@ -564,7 +614,7 @@ namespace Vape_Store
                     RetailPrice = retailPrice,
                     StockQuantity = existing.StockQuantity,
                     ReorderLevel = reorderLevel,
-                    Barcode = existing.Barcode ?? GenerateUniqueBarcode(), // Keep existing barcode
+                    Barcode = barcodeValue, // Use the determined barcode value
                     IsActive = checkBox1.Checked,
                     CreatedDate = existing.CreatedDate
                 };
@@ -662,7 +712,12 @@ namespace Vape_Store
             txtPrice.Clear();
             txtretailprice.Clear();
             txtReorderLevel.Clear();
-            // Barcode UI removed - auto-generated on save
+            txtBarcode.Clear();
+            // Clear barcode display panel
+            if (pnlBarcode != null)
+            {
+                pnlBarcode.Controls.Clear();
+            }
             checkBox1.Checked = true;
             selectedProductId = -1;
             SetEditMode(false);
@@ -750,9 +805,16 @@ namespace Vape_Store
                 else
                 {
                     // Generate automatic barcode
+                    // If product code is empty, generate it first
                     if (string.IsNullOrWhiteSpace(txtProductCode.Text))
                     {
-                        ShowMessage("Please generate a product code first.", "Validation Error", MessageBoxIcon.Warning);
+                        GenerateProductCode();
+                    }
+
+                    // Ensure we have a product code now
+                    if (string.IsNullOrWhiteSpace(txtProductCode.Text))
+                    {
+                        ShowMessage("Unable to generate product code. Please enter a product code manually.", "Validation Error", MessageBoxIcon.Warning);
                         return;
                     }
 
@@ -1238,6 +1300,13 @@ namespace Vape_Store
             // Enable only the relevant action
             ADD_button.Enabled = !editMode;   // Save enabled only in add mode
             Save_button.Enabled = editMode;   // Update enabled only in edit mode
+            
+            // Ensure barcode textbox is always editable
+            if (txtBarcode != null)
+            {
+                txtBarcode.ReadOnly = false;
+                txtBarcode.Enabled = true;
+            }
         }
 
         private void ShowMessage(string message, string title, MessageBoxIcon icon)

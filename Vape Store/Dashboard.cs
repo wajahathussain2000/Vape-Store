@@ -33,7 +33,7 @@ namespace Vape_Store
         private List<RecentActivity> recentActivities;
         private DashboardStats currentStats;
         private DashboardService _dashboardService;
-        
+
         // Date range controls (declared in Designer)
         private bool isDateRangeActive = false;
 
@@ -81,6 +81,8 @@ namespace Vape_Store
 
             ReportsDropdown.Items.Add("Purchase Report", null, (s, e) => OpenPurchaseReportForm());
             ReportsDropdown.Items.Add("Purchase Return Report", null, (s, e) => OpenPurchaseReturnReportForm());
+            ReportsDropdown.Items.Add("Customer Outstanding Report", null, (s, e) => OpenCustomerDueReportForm());
+            ReportsDropdown.Items.Add("Supplier Outstanding Report", null, (s, e) => OpenSupplierDueReportForm());
 
             ReportsDropdown.Items.Add("-"); // Separator
             ReportsDropdown.Items.Add("Expense Report", null, (s, e) => OpenExpenseReportForm());
@@ -661,16 +663,16 @@ namespace Vape_Store
                     LoadDashboardDataWithDateRange(dtpFromDate.Value.Date, dtpToDate.Value.Date);
                 }
                 else
-                {
-                    // Load all dashboard data using the service
-                    currentStats = _dashboardService.GetDashboardStats();
-                    recentActivities = _dashboardService.GetRecentActivities(10);
-                    
-                    // Update UI with real data
-                    UpdateKPIDisplay();
-                    UpdateRecentActivityDisplay();
-                    LoadSalesData();
-                    LoadInventoryData();
+            {
+                // Load all dashboard data using the service
+                currentStats = _dashboardService.GetDashboardStats();
+                recentActivities = _dashboardService.GetRecentActivities(10);
+                
+                // Update UI with real data
+                UpdateKPIDisplay();
+                UpdateRecentActivityDisplay();
+                LoadSalesData();
+                LoadInventoryData();
                 }
             }
             catch (Exception ex)

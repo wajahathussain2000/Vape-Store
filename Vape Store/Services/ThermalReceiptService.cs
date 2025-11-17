@@ -45,7 +45,7 @@ namespace Vape_Store.Services
                 // Set paper size for thermal receipt (typically 80mm width)
                 var paperSize = new PaperSize("Thermal Receipt", 315, 0); // 80mm = 315 hundredths of an inch
                 _printDocument.DefaultPageSettings.PaperSize = paperSize;
-                _printDocument.DefaultPageSettings.Margins = new Margins(10, 10, 10, 10);
+                _printDocument.DefaultPageSettings.Margins = new Margins(20, 10, 10, 10);
                 
                 // Show print dialog
                 if (printDialog.ShowDialog() == DialogResult.OK)
@@ -80,7 +80,7 @@ namespace Vape_Store.Services
             {
                 Graphics g = e.Graphics;
                 float yPosition = 10;
-                float leftMargin = 10;
+                float leftMargin = 20;
                 float rightMargin = e.PageBounds.Width - 10;
                 float centerX = e.PageBounds.Width / 2;
 

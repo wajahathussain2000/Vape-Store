@@ -45,6 +45,8 @@ namespace Vape_Store
         private decimal changeAmount = 0;
         private string invoiceNumber = "";
         private int currentUserID = 1; // Default user ID, should be from UserSession
+        private bool _isUpdatingDiscount = false; // Flag to prevent recursive updates
+        private bool _isUpdatingTax = false; // Flag to prevent recursive tax updates
 
         public NewSale()
         {
@@ -143,7 +145,21 @@ namespace Vape_Store
             
             // Payment calculation event handlers
             txtPaid.TextChanged += TxtPaid_TextChanged;
-            txtTaxPercent.TextChanged += TxtTaxPercent_TextChanged; // now used for tax percent
+            txtTaxPercent.TextChanged += TxtTaxPercent_TextChanged; // Discount percentage
+            if (txtDiscountAmount != null)
+            {
+                txtDiscountAmount.TextChanged += TxtDiscountAmount_TextChanged; // Discount amount
+            }
+            
+            // Tax calculation event handlers
+            if (txtTaxPercentInput != null)
+            {
+                txtTaxPercentInput.TextChanged += TxtTaxPercentInput_TextChanged; // Tax percentage
+            }
+            if (txtTaxAmountInput != null)
+            {
+                txtTaxAmountInput.TextChanged += TxtTaxAmountInput_TextChanged; // Tax amount
+            }
             
             // DataGridView event handlers
             dataGridView1.CellDoubleClick += DataGridView1_CellDoubleClick;
@@ -160,42 +176,23 @@ namespace Vape_Store
             // Form events
             this.Activated += NewSale_Activated;
 
-            // Build tax percent and amount controls at runtime, replacing dropdown
-            try
-            {
+            // Tax controls are now in Designer - no need to create at runtime
+            // Hide the old dropdown if it exists
                 if (cmbTax != null)
                 {
-                    // Create percent input textbox where the dropdown was
-                    taxPercentTextBox = new TextBox();
-                    taxPercentTextBox.Name = "txtTaxPercentInput";
-                    taxPercentTextBox.Text = "0";
-                    taxPercentTextBox.Width = cmbTax.Width;
-                    taxPercentTextBox.Height = cmbTax.Height;
-                    taxPercentTextBox.Location = cmbTax.Location;
-                    taxPercentTextBox.Anchor = cmbTax.Anchor;
-                    taxPercentTextBox.TextChanged += (sender, args) => { CalculateTotals(); };
-
-                    // Create amount textbox to the right of percent control
-                    taxAmountTextBox = new TextBox();
-                    taxAmountTextBox.Name = "txtTaxAmount";
-                    taxAmountTextBox.ReadOnly = true;
-                    taxAmountTextBox.Width = cmbTax.Width;
-                    taxAmountTextBox.Height = cmbTax.Height;
-                    taxAmountTextBox.Location = new Point(cmbTax.Right + 10, cmbTax.Top);
-                    taxAmountTextBox.Anchor = cmbTax.Anchor;
-                    taxAmountTextBox.Text = "0.00";
-
-                    // Add to same parent container as cmbTax
-                    var parent = cmbTax.Parent ?? this;
-                    parent.Controls.Add(taxPercentTextBox);
-                    parent.Controls.Add(taxAmountTextBox);
-
-                    // Hide original dropdown
                     cmbTax.Visible = false;
                     cmbTax.Enabled = false;
                 }
+            
+            // Initialize tax textboxes
+            if (txtTaxPercentInput != null)
+            {
+                txtTaxPercentInput.Text = "0";
             }
-            catch { }
+            if (txtTaxAmountInput != null)
+            {
+                txtTaxAmountInput.Text = "0.00";
+            }
         }
 
         private void LoadCustomers()
@@ -631,7 +628,15 @@ namespace Vape_Store
 
         private void InitializePaymentMethods()
         {
-            var paymentMethods = new List<string> { "Cash", "Card", "Bank Transfer", "Check", "Digital Wallet" };
+            var paymentMethods = new List<string>
+            {
+                "Cash",
+                "Card",
+                "Credit",
+                "Bank Transfer",
+                "Check",
+                "Digital Wallet"
+            };
             SearchableComboBoxHelper.MakeSearchable(cmbPaymentMethod, paymentMethods);
             cmbPaymentMethod.SelectedIndex = 0; // Default to Cash
         }
@@ -771,11 +776,60 @@ namespace Vape_Store
             try
             {
                 // Calculate subtotal
-                subtotal = saleItems.Sum(item => item.SubTotal);
+                decimal newSubtotal = saleItems.Sum(item => item.SubTotal);
+                
+                // If subtotal changed and user had entered a percentage, update the amount
+                if (newSubtotal != subtotal && subtotal > 0 && !_isUpdatingDiscount)
+                {
+                    if (!string.IsNullOrWhiteSpace(txtTaxPercent.Text) && 
+                        decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent))
+                    {
+                        // Recalculate discount amount based on new subtotal
+                        decimal newDiscountAmount = newSubtotal * (discountPercent / 100);
+                        if (txtDiscountAmount != null)
+                        {
+                            _isUpdatingDiscount = true;
+                            txtDiscountAmount.TextChanged -= TxtDiscountAmount_TextChanged;
+                            txtDiscountAmount.Text = newDiscountAmount.ToString("F2");
+                            txtDiscountAmount.TextChanged += TxtDiscountAmount_TextChanged;
+                            _isUpdatingDiscount = false;
+                        }
+                    }
+                }
+                
+                // If subtotal/discount changed and user had entered a tax percentage, update the tax amount
+                decimal newTaxableAmount = newSubtotal - discount;
+                decimal oldTaxableAmount = subtotal - discount;
+                if ((newSubtotal != subtotal || discount != 0) && oldTaxableAmount > 0 && !_isUpdatingTax)
+                {
+                    if (txtTaxPercentInput != null && !string.IsNullOrWhiteSpace(txtTaxPercentInput.Text) && 
+                        decimal.TryParse(txtTaxPercentInput.Text, out decimal taxPercent))
+                    {
+                        // Recalculate tax amount based on new taxable amount
+                        decimal newTaxAmount = newTaxableAmount * (taxPercent / 100);
+                        if (txtTaxAmountInput != null)
+                        {
+                            _isUpdatingTax = true;
+                            txtTaxAmountInput.TextChanged -= TxtTaxAmountInput_TextChanged;
+                            txtTaxAmountInput.Text = newTaxAmount.ToString("F2");
+                            txtTaxAmountInput.TextChanged += TxtTaxAmountInput_TextChanged;
+                            _isUpdatingTax = false;
+                        }
+                    }
+                }
+                
+                subtotal = newSubtotal;
                 txtsubTotal.Text = subtotal.ToString("F2");
 
-            // Discount percent (UI textbox named txtTaxPercent is used for discount in this form)
-            if (decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent))
+            // Calculate discount - prioritize amount over percentage if both are entered
+            // If discount amount is entered, use it directly
+            if (txtDiscountAmount != null && !string.IsNullOrWhiteSpace(txtDiscountAmount.Text) && 
+                decimal.TryParse(txtDiscountAmount.Text, out decimal discountAmount))
+            {
+                discount = discountAmount;
+            }
+            // Otherwise, calculate from percentage
+            else if (decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent))
             {
                 discount = subtotal * (discountPercent / 100);
             }
@@ -784,22 +838,23 @@ namespace Vape_Store
                 discount = 0;
             }
 
-            // Tax percent from textbox; compute tax amount and display to a readonly label
-            string taxPercentText = taxPercentTextBox != null ? taxPercentTextBox.Text : txtTaxPercent.Text;
-            if (decimal.TryParse(taxPercentText, out decimal taxPercent))
+            // Calculate tax - prioritize amount over percentage if both are entered
+            decimal taxableAmount = subtotal - discount;
+            
+            // If tax amount is entered, use it directly
+            if (txtTaxAmountInput != null && !string.IsNullOrWhiteSpace(txtTaxAmountInput.Text) && 
+                decimal.TryParse(txtTaxAmountInput.Text, out decimal taxAmount))
             {
-                tax = (subtotal - discount) * (taxPercent / 100);
+                tax = taxAmount;
+            }
+            // Otherwise, calculate from percentage
+            else if (txtTaxPercentInput != null && decimal.TryParse(txtTaxPercentInput.Text, out decimal taxPercent))
+            {
+                tax = taxableAmount * (taxPercent / 100);
             }
             else
             {
                 tax = 0;
-            }
-            // Update readonly tax amount textbox if present
-            try { if (taxAmountTextBox != null) taxAmountTextBox.Text = tax.ToString("F2"); } catch { }
-                string tp2 = taxPercentTextBox != null ? taxPercentText : txtTaxPercent.Text;
-                if (decimal.TryParse(tp2, out decimal taxPercent2))
-                {
-                    tax = (subtotal - discount) * (taxPercent2 / 100);
                 }
 
                 // Calculate total
@@ -861,15 +916,33 @@ namespace Vape_Store
 
                 // Handle payment amount based on payment method
                 decimal currentPaidAmount;
-                if (cmbPaymentMethod.Text.Equals("Card", StringComparison.OrdinalIgnoreCase))
+                bool isCardPayment = cmbPaymentMethod.Text.Equals("Card", StringComparison.OrdinalIgnoreCase);
+                bool isCreditSale = cmbPaymentMethod.Text.Equals("Credit", StringComparison.OrdinalIgnoreCase);
+
+                if (isCardPayment)
                 {
                     // For card payments, paid amount equals total amount
                     currentPaidAmount = total;
                     txtPaid.Text = currentPaidAmount.ToString("F2");
                 }
+                else if (isCreditSale)
+                {
+                    // For credit sales, allow partial or zero payment
+                    if (!decimal.TryParse(txtPaid.Text, out currentPaidAmount))
+                    {
+                        currentPaidAmount = 0;
+                        txtPaid.Text = "0.00";
+                    }
+
+                    if (currentPaidAmount > total)
+                    {
+                        ShowMessage("Paid amount cannot exceed total amount for credit sales.", "Validation Error", MessageBoxIcon.Warning);
+                        return;
+                    }
+                }
                 else
                 {
-                    // For cash and other payment methods, validate paid amount input
+                    // For cash and other payment methods, validate paid amount input (must cover total)
                     if (!decimal.TryParse(txtPaid.Text, out currentPaidAmount))
                     {
                         ShowMessage("Please enter a valid paid amount.", "Validation Error", MessageBoxIcon.Warning);
@@ -878,7 +951,7 @@ namespace Vape_Store
 
                     if (currentPaidAmount < total)
                     {
-                        ShowMessage($"Paid amount (${currentPaidAmount:F2}) is less than total amount (${total:F2}).", "Payment Error", MessageBoxIcon.Warning);
+                        ShowMessage($"Paid amount ({currentPaidAmount:F2}) is less than total amount ({total:F2}).", "Payment Error", MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -900,6 +973,7 @@ namespace Vape_Store
                 }
 
                 // Create sale object with current calculated values
+                decimal saleTaxableAmount = subtotal - discount;
                 var sale = new Sale
                 {
                     InvoiceNumber = invoiceNumber,
@@ -907,14 +981,14 @@ namespace Vape_Store
                     SaleDate = saleDate,
                     SubTotal = subtotal,
                 TaxAmount = tax,
-                    TaxPercent = decimal.TryParse(taxPercentTextBox != null ? taxPercentTextBox.Text : txtTaxPercent.Text, out decimal tp) ? tp : 0,
+                    TaxPercent = saleTaxableAmount > 0 ? (tax / saleTaxableAmount) * 100 : 0,
                     TotalAmount = total,
                     PaymentMethod = cmbPaymentMethod.Text,
                     PaidAmount = currentPaidAmount,
                     ChangeAmount = currentPaidAmount - total,
                     UserID = currentUserID,
                     DiscountAmount = discount,
-                    DiscountPercent = decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent) ? discountPercent : 0,
+                    DiscountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0,
                     BarcodeImage = barcodeImageBytes,
                     BarcodeData = invoiceNumber,
                     SaleItems = saleItems
@@ -929,7 +1003,15 @@ namespace Vape_Store
                 
                 if (success)
                 {
+                    var outstandingAmount = total - currentPaidAmount;
+                    if (isCreditSale && outstandingAmount > 0)
+                    {
+                        ShowMessage($"Sale recorded successfully on credit.\nOutstanding balance for customer: {outstandingAmount:F2}", "Credit Sale", MessageBoxIcon.Information);
+                    }
+                    else
+                {
                     ShowMessage("Sale completed successfully!", "Success", MessageBoxIcon.Information);
+                    }
                     
                     // Print receipt
                     PrintReceipt();
@@ -980,6 +1062,9 @@ namespace Vape_Store
                 txtStockQuantity.Clear();
                 txtReorderLevel.Clear();
 
+                // Immediately prepare next invoice/barcode so the UI updates even if later steps fail
+                GenerateInvoiceNumber();
+
                 // Reload lookups and set sensible defaults so dropdowns aren't blank
                 LoadCustomers();
                 LoadCategories();
@@ -992,12 +1077,8 @@ namespace Vape_Store
                 {
                     cmbTax.SelectedIndex = 2;
                 }
-                if (taxPercentTextBox != null) taxPercentTextBox.Text = "0";
-                if (taxAmountTextBox != null) taxAmountTextBox.Text = "0.00";
-                
-                // Generate new invoice number and refresh barcode image
-                GenerateInvoiceNumber();
-                try { GenerateAndDisplayBarcode(); } catch { }
+                if (txtTaxPercentInput != null) txtTaxPercentInput.Text = "0";
+                if (txtTaxAmountInput != null) txtTaxAmountInput.Text = "0.00";
                 
                 // Set current business date (not calendar date)
                 guna2DateTimePicker1.Value = _businessDateService.GetCurrentBusinessDate();
@@ -1037,6 +1118,7 @@ namespace Vape_Store
                 }
 
                 // Create sale object for receipt with current calculated values
+                decimal receiptTaxableAmount = subtotal - discount;
                 var sale = new Sale
                 {
                     InvoiceNumber = invoiceNumber,
@@ -1044,14 +1126,14 @@ namespace Vape_Store
                     SaleDate = guna2DateTimePicker1.Value,
                     SubTotal = subtotal,
                     TaxAmount = tax,
-                    TaxPercent = decimal.TryParse(taxPercentTextBox != null ? taxPercentTextBox.Text : txtTaxPercent.Text, out decimal tpp) ? tpp : 0,
+                    TaxPercent = receiptTaxableAmount > 0 ? (tax / receiptTaxableAmount) * 100 : 0,
                     TotalAmount = total,
                     PaymentMethod = cmbPaymentMethod.Text,
                     PaidAmount = decimal.TryParse(txtPaid.Text, out decimal paid) ? paid : 0,
                     ChangeAmount = (decimal.TryParse(txtPaid.Text, out decimal paidAmount) ? paidAmount : 0) - total,
                     UserID = currentUserID,
                     DiscountAmount = discount,
-                    DiscountPercent = decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent) ? discountPercent : 0,
+                    DiscountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0,
                     BarcodeImage = barcodeImageBytes,
                     BarcodeData = invoiceNumber,
                     SaleItems = saleItems
@@ -1548,7 +1630,164 @@ namespace Vape_Store
 
         private void TxtTaxPercent_TextChanged(object sender, EventArgs e)
         {
+            if (_isUpdatingDiscount) return;
+            
+            try
+            {
+                _isUpdatingDiscount = true;
+                
+                // Calculate discount amount from percentage
+                if (decimal.TryParse(txtTaxPercent.Text, out decimal discountPercent) && subtotal > 0)
+                {
+                    decimal calculatedAmount = subtotal * (discountPercent / 100);
+                    
+                    // Update discount amount textbox without triggering its event
+                    if (txtDiscountAmount != null)
+                    {
+                        txtDiscountAmount.TextChanged -= TxtDiscountAmount_TextChanged;
+                        txtDiscountAmount.Text = calculatedAmount.ToString("F2");
+                        txtDiscountAmount.TextChanged += TxtDiscountAmount_TextChanged;
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(txtTaxPercent.Text))
+                {
+                    // Clear discount amount if percentage is cleared
+                    if (txtDiscountAmount != null)
+                    {
+                        txtDiscountAmount.TextChanged -= TxtDiscountAmount_TextChanged;
+                        txtDiscountAmount.Text = "";
+                        txtDiscountAmount.TextChanged += TxtDiscountAmount_TextChanged;
+                    }
+                }
+                
             CalculateTotals();
+            }
+            finally
+            {
+                _isUpdatingDiscount = false;
+            }
+        }
+        
+        private void TxtDiscountAmount_TextChanged(object sender, EventArgs e)
+        {
+            if (_isUpdatingDiscount) return;
+            
+            try
+            {
+                _isUpdatingDiscount = true;
+                
+                // Calculate discount percentage from amount
+                if (decimal.TryParse(txtDiscountAmount.Text, out decimal discountAmount) && subtotal > 0)
+                {
+                    decimal calculatedPercent = (discountAmount / subtotal) * 100;
+                    
+                    // Update discount percentage textbox without triggering its event
+                    if (txtTaxPercent != null)
+                    {
+                        txtTaxPercent.TextChanged -= TxtTaxPercent_TextChanged;
+                        txtTaxPercent.Text = calculatedPercent.ToString("F2");
+                        txtTaxPercent.TextChanged += TxtTaxPercent_TextChanged;
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(txtDiscountAmount.Text))
+                {
+                    // Clear discount percentage if amount is cleared
+                    if (txtTaxPercent != null)
+                    {
+                        txtTaxPercent.TextChanged -= TxtTaxPercent_TextChanged;
+                        txtTaxPercent.Text = "";
+                        txtTaxPercent.TextChanged += TxtTaxPercent_TextChanged;
+                    }
+                }
+                
+                CalculateTotals();
+            }
+            finally
+            {
+                _isUpdatingDiscount = false;
+            }
+        }
+
+        private void TxtTaxPercentInput_TextChanged(object sender, EventArgs e)
+        {
+            if (_isUpdatingTax) return;
+            
+            try
+            {
+                _isUpdatingTax = true;
+                
+                // Calculate tax amount from percentage
+                decimal taxableAmount = subtotal - discount;
+                if (decimal.TryParse(txtTaxPercentInput.Text, out decimal taxPercent) && taxableAmount > 0)
+                {
+                    decimal calculatedAmount = taxableAmount * (taxPercent / 100);
+                    
+                    // Update tax amount textbox without triggering its event
+                    if (txtTaxAmountInput != null)
+                    {
+                        txtTaxAmountInput.TextChanged -= TxtTaxAmountInput_TextChanged;
+                        txtTaxAmountInput.Text = calculatedAmount.ToString("F2");
+                        txtTaxAmountInput.TextChanged += TxtTaxAmountInput_TextChanged;
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(txtTaxPercentInput.Text))
+                {
+                    // Clear tax amount if percentage is cleared
+                    if (txtTaxAmountInput != null)
+                    {
+                        txtTaxAmountInput.TextChanged -= TxtTaxAmountInput_TextChanged;
+                        txtTaxAmountInput.Text = "";
+                        txtTaxAmountInput.TextChanged += TxtTaxAmountInput_TextChanged;
+                    }
+                }
+                
+                CalculateTotals();
+            }
+            finally
+            {
+                _isUpdatingTax = false;
+            }
+        }
+        
+        private void TxtTaxAmountInput_TextChanged(object sender, EventArgs e)
+        {
+            if (_isUpdatingTax) return;
+            
+            try
+            {
+                _isUpdatingTax = true;
+                
+                // Calculate tax percentage from amount
+                decimal taxableAmount = subtotal - discount;
+                if (decimal.TryParse(txtTaxAmountInput.Text, out decimal taxAmount) && taxableAmount > 0)
+                {
+                    decimal calculatedPercent = (taxAmount / taxableAmount) * 100;
+                    
+                    // Update tax percentage textbox without triggering its event
+                    if (txtTaxPercentInput != null)
+                    {
+                        txtTaxPercentInput.TextChanged -= TxtTaxPercentInput_TextChanged;
+                        txtTaxPercentInput.Text = calculatedPercent.ToString("F2");
+                        txtTaxPercentInput.TextChanged += TxtTaxPercentInput_TextChanged;
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(txtTaxAmountInput.Text))
+                {
+                    // Clear tax percentage if amount is cleared
+                    if (txtTaxPercentInput != null)
+                    {
+                        txtTaxPercentInput.TextChanged -= TxtTaxPercentInput_TextChanged;
+                        txtTaxPercentInput.Text = "";
+                        txtTaxPercentInput.TextChanged += TxtTaxPercentInput_TextChanged;
+                    }
+                }
+                
+                CalculateTotals();
+            }
+            finally
+            {
+                _isUpdatingTax = false;
+            }
         }
 
         private void TxtPaid_TextChanged(object sender, EventArgs e)
@@ -1639,6 +1878,15 @@ namespace Vape_Store
                             txtPaid.Text = totalAmount.ToString("F2");
                             CalculateChange(); // Update change calculation
                         }
+                    }
+                    else if (selectedPaymentMethod.Equals("Credit", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // For credit sales, default paid amount to 0 (user can enter partial payments)
+                        if (string.IsNullOrWhiteSpace(txtPaid.Text))
+                        {
+                            txtPaid.Text = "0.00";
+                        }
+                        CalculateChange();
                     }
                     else
                     {

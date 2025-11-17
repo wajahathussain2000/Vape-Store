@@ -261,6 +261,8 @@
     <Compile Include="Models\Expense.cs" />
     <Compile Include="Models\ExpenseCategory.cs" />
     <Compile Include="Models\CustomerPayment.cs" />
+    <Compile Include="Models\CustomerLedgerEntry.cs" />
+    <Compile Include="Models\SupplierLedgerEntry.cs" />
     <Compile Include="Models\SupplierPayment.cs" />
     <Compile Include="Repositories\UserRepository.cs" />
     <Compile Include="Repositories\ProductRepository.cs" />
@@ -277,6 +279,8 @@
     <Compile Include="Repositories\DayClosingRepository.cs" />
     <Compile Include="Repositories\ExpenseCategoryRepository.cs" />
     <Compile Include="Repositories\CustomerPaymentRepository.cs" />
+    <Compile Include="Repositories\CustomerLedgerRepository.cs" />
+    <Compile Include="Repositories\SupplierLedgerRepository.cs" />
     <Compile Include="Repositories\SupplierPaymentRepository.cs" />
     <Compile Include="Repositories\RoleRepository.cs" />
     <Compile Include="Services\SalesService.cs" />

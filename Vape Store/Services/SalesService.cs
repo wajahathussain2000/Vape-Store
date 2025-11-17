@@ -12,12 +12,14 @@ namespace Vape_Store.Services
         private readonly ProductRepository _productRepository;
         private readonly CustomerRepository _customerRepository;
         private readonly BusinessDateService _businessDateService;
+        private readonly CustomerLedgerRepository _customerLedgerRepository;
         
         public SalesService()
         {
             _productRepository = new ProductRepository();
             _customerRepository = new CustomerRepository();
             _businessDateService = new BusinessDateService();
+            _customerLedgerRepository = new CustomerLedgerRepository();
         }
         
         public bool ProcessSale(Sale sale)
@@ -62,6 +64,11 @@ namespace Vape_Store.Services
                             _productRepository.UpdateStock(item.ProductID, -item.Quantity);
                         }
                         
+                        if (sale.CustomerID > 0)
+                        {
+                            InsertCustomerLedgerEntries(sale, saleID, connection, transaction);
+                        }
+                        
                         transaction.Commit();
                         return true;
                     }
@@ -71,6 +78,45 @@ namespace Vape_Store.Services
                         throw new Exception($"Sale processing failed: {ex.Message}");
                     }
                 }
+            }
+        }
+
+        private void InsertCustomerLedgerEntries(Sale sale, int saleId, SqlConnection connection, SqlTransaction transaction)
+        {
+            if (sale.CustomerID <= 0)
+                return;
+
+            var saleEntry = new CustomerLedgerEntry
+            {
+                CustomerID = sale.CustomerID,
+                EntryDate = sale.SaleDate,
+                ReferenceType = "Sale",
+                ReferenceID = saleId,
+                InvoiceNumber = sale.InvoiceNumber,
+                Description = $"Sale Invoice {sale.InvoiceNumber}",
+                Debit = sale.TotalAmount,
+                Credit = 0,
+                CreatedDate = DateTime.Now
+            };
+
+            _customerLedgerRepository.InsertEntry(connection, transaction, saleEntry);
+
+            if (sale.PaidAmount > 0)
+            {
+                var paymentEntry = new CustomerLedgerEntry
+                {
+                    CustomerID = sale.CustomerID,
+                    EntryDate = sale.SaleDate,
+                    ReferenceType = "SalePayment",
+                    ReferenceID = saleId,
+                    InvoiceNumber = sale.InvoiceNumber,
+                    Description = $"Payment Received ({sale.PaymentMethod})",
+                    Debit = 0,
+                    Credit = sale.PaidAmount,
+                    CreatedDate = DateTime.Now
+                };
+
+                _customerLedgerRepository.InsertEntry(connection, transaction, paymentEntry);
             }
         }
         
