@@ -641,7 +641,7 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("VAPE STORE - STOCK REPORT", titleFont);
+                Paragraph title = new Paragraph("MADNI MOBILE & PHOTOSTATE - STOCK REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);

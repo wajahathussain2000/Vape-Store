@@ -403,7 +403,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "CustomerPayment";
-            this.Text = "Vape Store - Customer Payment";
+            this.Text = "MADNI MOBILE & PHOTOSTATE - Customer Payment";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.actionsGroup.ResumeLayout(false);
             this.contentPanel.ResumeLayout(false);

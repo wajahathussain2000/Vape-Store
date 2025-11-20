@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36518.9 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vape Store", "Vape Store\Vape Store.csproj", "{36AA4F5A-5E42-43B5-8A6C-30CE9BB09605}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MADNI MOBILE and PHOTOSTATE", "Vape Store\Vape Store.csproj", "{36AA4F5A-5E42-43B5-8A6C-30CE9BB09605}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

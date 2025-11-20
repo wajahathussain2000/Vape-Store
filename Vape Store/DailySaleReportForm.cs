@@ -109,32 +109,62 @@ namespace Vape_Store
                 dgvDailySaleReport.Columns.Add(new DataGridViewTextBoxColumn
                 {
                     Name = "ProductName",
-                    HeaderText = "Product Name",
+                    HeaderText = "Products",
                     DataPropertyName = "ProductName",
-                    Width = 250,
-                    MinimumWidth = 200
+                    Width = 320,
+                    MinimumWidth = 220
                 });
                 
                 dgvDailySaleReport.Columns.Add(new DataGridViewTextBoxColumn
                 {
                     Name = "PurchasePrice",
-                    HeaderText = "Purchase Price",
+                    HeaderText = "Purchase Total",
                     DataPropertyName = "PurchasePrice",
                     Width = 120,
                     MinimumWidth = 100,
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
+                });
+
+                dgvDailySaleReport.Columns.Add(new DataGridViewTextBoxColumn
+                {
+                    Name = "SubTotal",
+                    HeaderText = "Sub Total",
+                    DataPropertyName = "SubTotal",
+                    Width = 120,
+                    MinimumWidth = 100,
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
+                });
+                
+                dgvDailySaleReport.Columns.Add(new DataGridViewTextBoxColumn
+                {
+                    Name = "DiscountAmount",
+                    HeaderText = "Discount",
+                    DataPropertyName = "DiscountAmount",
+                    Width = 110,
+                    MinimumWidth = 90,
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
+                });
+
+                dgvDailySaleReport.Columns.Add(new DataGridViewTextBoxColumn
+                {
+                    Name = "TaxAmount",
+                    HeaderText = "Tax",
+                    DataPropertyName = "TaxAmount",
+                    Width = 100,
+                    MinimumWidth = 80,
                     DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
                 dgvDailySaleReport.Columns.Add(new DataGridViewTextBoxColumn
                 {
                     Name = "SalePrice",
-                    HeaderText = "Sale Price",
+                    HeaderText = "Grand Total",
                     DataPropertyName = "SalePrice",
                     Width = 120,
                     MinimumWidth = 100,
                     DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
-                
+
                 dgvDailySaleReport.Columns.Add(new DataGridViewTextBoxColumn
                 {
                     Name = "Quantity",
@@ -210,6 +240,7 @@ namespace Vape_Store
                 {
                     var query = @"
                         SELECT 
+                            s.SaleID,
                             s.InvoiceNumber,
                             p.ProductName,
                             ISNULL(
@@ -222,6 +253,7 @@ namespace Vape_Store
                                 ISNULL(p.PurchasePrice, ISNULL(p.CostPrice, 0))
                             ) as PurchasePrice,
                             si.UnitPrice as SalePrice,
+                            si.SubTotal as ItemSubTotal,
                             si.Quantity,
                             (si.UnitPrice - ISNULL(
                                 (SELECT TOP 1 pi.UnitPrice 
@@ -232,6 +264,11 @@ namespace Vape_Store
                                  ORDER BY pur.PurchaseDate DESC, pur.PurchaseID DESC),
                                 ISNULL(p.PurchasePrice, ISNULL(p.CostPrice, 0))
                             )) * si.Quantity as Profit,
+                            s.DiscountAmount,
+                            s.DiscountPercent,
+                            s.TaxAmount as SaleTaxAmount,
+                            s.SubTotal as SaleSubTotal,
+                            s.TotalAmount as SaleTotalAmount,
                             s.SaleDate
                         FROM Sales s
                         INNER JOIN SaleItems si ON s.SaleID = si.SaleID
@@ -245,37 +282,125 @@ namespace Vape_Store
                         command.Parameters.AddWithValue("@ToDate", toDate);
                         connection.Open();
                         
+                        // First pass: Collect all items per sale to get accurate sale totals
+                        var saleItems = new Dictionary<string, List<SaleItemData>>();
+                        var saleInfo = new Dictionary<string, SaleInfo>();
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
+                                var invoiceNumber = reader["InvoiceNumber"].ToString();
+                                var productName = reader["ProductName"].ToString();
+                                var saleDate = Convert.ToDateTime(reader["SaleDate"]);
+
                                 var purchasePrice = Convert.ToDecimal(reader["PurchasePrice"]);
                                 var salePrice = Convert.ToDecimal(reader["SalePrice"]);
                                 var quantity = Convert.ToInt32(reader["Quantity"]);
-                                
-                                // Calculate profit: (SalePrice - PurchasePrice) × Quantity
-                                var profit = (salePrice - purchasePrice) * quantity;
-                                
-                                // Calculate profit percentage: ((SalePrice - PurchasePrice) / PurchasePrice) × 100
-                                // Handle division by zero: if PurchasePrice is 0, profit % is 0
-                                decimal profitPercentage = 0;
-                                if (purchasePrice > 0)
+                                var itemSubTotal = reader["ItemSubTotal"] != DBNull.Value
+                                    ? Convert.ToDecimal(reader["ItemSubTotal"])
+                                    : salePrice * quantity;
+                                var saleDiscount = reader["DiscountAmount"] != DBNull.Value
+                                    ? Convert.ToDecimal(reader["DiscountAmount"])
+                                    : 0;
+                                var saleSubTotal = reader["SaleSubTotal"] != DBNull.Value
+                                    ? Convert.ToDecimal(reader["SaleSubTotal"])
+                                    : salePrice * quantity;
+                                var saleTaxAmount = reader["SaleTaxAmount"] != DBNull.Value
+                                    ? Convert.ToDecimal(reader["SaleTaxAmount"])
+                                    : 0;
+                                var saleTotalAmount = reader["SaleTotalAmount"] != DBNull.Value
+                                    ? Convert.ToDecimal(reader["SaleTotalAmount"])
+                                    : saleSubTotal - saleDiscount + saleTaxAmount;
+
+                                // Store sale-level info (same for all items in the sale)
+                                if (!saleInfo.ContainsKey(invoiceNumber))
                                 {
-                                    profitPercentage = ((salePrice - purchasePrice) / purchasePrice) * 100;
+                                    saleInfo[invoiceNumber] = new SaleInfo
+                                    {
+                                        SaleSubTotal = saleSubTotal,
+                                        DiscountAmount = saleDiscount,
+                                        TaxAmount = saleTaxAmount,
+                                        TotalAmount = saleTotalAmount,
+                                        SaleDate = saleDate
+                                    };
                                 }
-                                
-                                _dailySaleReportItems.Add(new DailySaleReportItem
+
+                                // Collect item data
+                                if (!saleItems.ContainsKey(invoiceNumber))
                                 {
-                                    InvoiceNumber = reader["InvoiceNumber"].ToString(),
-                                    ProductName = reader["ProductName"].ToString(),
+                                    saleItems[invoiceNumber] = new List<SaleItemData>();
+                                }
+
+                                saleItems[invoiceNumber].Add(new SaleItemData
+                                {
+                                    ProductName = productName,
                                     PurchasePrice = purchasePrice,
                                     SalePrice = salePrice,
                                     Quantity = quantity,
-                                    Profit = profit,
-                                    ProfitPercentage = profitPercentage,
-                                    SaleDate = Convert.ToDateTime(reader["SaleDate"])
+                                    ItemSubTotal = itemSubTotal
                                 });
                             }
+                        }
+
+                        // Second pass: Calculate profit with correct discount distribution
+                        var invoiceAggregates = new Dictionary<string, DailySaleReportItem>();
+                        var invoiceOrder = new List<string>();
+
+                        foreach (var kvp in saleItems)
+                        {
+                            var invoiceNumber = kvp.Key;
+                            var items = kvp.Value;
+                            var sale = saleInfo[invoiceNumber];
+
+                            decimal totalPurchasePrice = 0;
+                            decimal totalProfit = 0;
+                            int totalQuantity = 0;
+                            var productNames = new List<string>();
+
+                            foreach (var item in items)
+                            {
+                                // Calculate profit: Actual Revenue After Discount and Tax - Cost
+                                // Distribute discount and tax proportionally to each item based on its share of subtotal
+                                var itemDiscountShare = sale.SaleSubTotal > 0 
+                                    ? (item.ItemSubTotal / sale.SaleSubTotal) * sale.DiscountAmount 
+                                    : 0;
+                                var itemTaxShare = sale.SaleSubTotal > 0 
+                                    ? (item.ItemSubTotal / sale.SaleSubTotal) * sale.TaxAmount 
+                                    : 0;
+                                var actualRevenue = item.ItemSubTotal - itemDiscountShare - itemTaxShare;
+                                var itemCost = item.PurchasePrice * item.Quantity;
+                                var itemProfit = actualRevenue - itemCost;
+
+                                totalPurchasePrice += itemCost;
+                                totalProfit += itemProfit;
+                                totalQuantity += item.Quantity;
+                                productNames.Add($"{item.ProductName} (x{item.Quantity})");
+                            }
+
+                            invoiceAggregates[invoiceNumber] = new DailySaleReportItem
+                            {
+                                InvoiceNumber = invoiceNumber,
+                                ProductName = string.Join(", ", productNames),
+                                PurchasePrice = totalPurchasePrice,
+                                Quantity = totalQuantity,
+                                Profit = totalProfit,
+                                DiscountAmount = sale.DiscountAmount,
+                                SubTotal = sale.SaleSubTotal,
+                                TaxAmount = sale.TaxAmount,
+                                SalePrice = sale.TotalAmount,
+                                SaleDate = sale.SaleDate
+                            };
+                            invoiceOrder.Add(invoiceNumber);
+                        }
+                        _dailySaleReportItems = new List<DailySaleReportItem>();
+                        foreach (var invoiceNumber in invoiceOrder)
+                        {
+                            var invoiceItem = invoiceAggregates[invoiceNumber];
+                            invoiceItem.ProfitPercentage = invoiceItem.PurchasePrice > 0
+                                ? (invoiceItem.Profit / invoiceItem.PurchasePrice) * 100
+                                : 0;
+                            _dailySaleReportItems.Add(invoiceItem);
                         }
                     }
                 }
@@ -316,8 +441,11 @@ namespace Vape_Store
                         (item.SaleDate.ToString("yyyy-MM-dd").Contains(searchTerm)) ||
                         (item.SaleDate.ToString("MM/dd/yyyy").Contains(searchTerm)) ||
                         (item.PurchasePrice.ToString("F2").Contains(searchTerm)) ||
+                        (item.SubTotal.ToString("F2").Contains(searchTerm)) ||
                         (item.SalePrice.ToString("F2").Contains(searchTerm)) ||
+                        (item.TaxAmount.ToString("F2").Contains(searchTerm)) ||
                         (item.Profit.ToString("F2").Contains(searchTerm)) ||
+                        (item.DiscountAmount.ToString("F2").Contains(searchTerm)) ||
                         (item.ProfitPercentage.ToString("F2").Contains(searchTerm)) ||
                         (item.Quantity.ToString().Contains(searchTerm)));
                 }
@@ -355,8 +483,14 @@ namespace Vape_Store
                 // Format decimal columns
                 if (dgvDailySaleReport.Columns["PurchasePrice"] != null)
                     dgvDailySaleReport.Columns["PurchasePrice"].DefaultCellStyle.Format = "F2";
+                if (dgvDailySaleReport.Columns["SubTotal"] != null)
+                    dgvDailySaleReport.Columns["SubTotal"].DefaultCellStyle.Format = "F2";
                 if (dgvDailySaleReport.Columns["SalePrice"] != null)
                     dgvDailySaleReport.Columns["SalePrice"].DefaultCellStyle.Format = "F2";
+                if (dgvDailySaleReport.Columns["DiscountAmount"] != null)
+                    dgvDailySaleReport.Columns["DiscountAmount"].DefaultCellStyle.Format = "F2";
+                if (dgvDailySaleReport.Columns["TaxAmount"] != null)
+                    dgvDailySaleReport.Columns["TaxAmount"].DefaultCellStyle.Format = "F2";
                 if (dgvDailySaleReport.Columns["Profit"] != null)
                 {
                     dgvDailySaleReport.Columns["Profit"].DefaultCellStyle.Format = "F2";
@@ -414,14 +548,17 @@ namespace Vape_Store
                 {
                     var totalProfit = _dailySaleReportItems.Sum(item => item.Profit);
                     var totalQuantity = _dailySaleReportItems.Sum(item => item.Quantity);
-                    var totalSales = _dailySaleReportItems.Sum(item => item.SalePrice * item.Quantity);
-                    var totalCost = _dailySaleReportItems.Sum(item => item.PurchasePrice * item.Quantity);
-                    var uniqueProducts = _dailySaleReportItems.Select(item => item.ProductName).Distinct().Count();
+                    var totalSubTotal = _dailySaleReportItems.Sum(item => item.SubTotal);
+                    var totalDiscount = _dailySaleReportItems.Sum(item => item.DiscountAmount);
+                    var totalTax = _dailySaleReportItems.Sum(item => item.TaxAmount);
+                    var totalSales = _dailySaleReportItems.Sum(item => item.SalePrice);
+                    var totalCost = _dailySaleReportItems.Sum(item => item.PurchasePrice);
+                    var uniqueProducts = CalculateUniqueProducts(_dailySaleReportItems);
                     var uniqueInvoices = _dailySaleReportItems.Select(item => item.InvoiceNumber).Distinct().Count();
                     
                     lblTotalProfit.Text = $"Total Profit: {totalProfit:F2}";
                     lblTotalQuantity.Text = $"Total Quantity: {totalQuantity}";
-                    lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
+                    lblTotalSales.Text = $"Subtotal: {totalSubTotal:F2} | Discount: {totalDiscount:F2} | Tax: {totalTax:F2} | Total: {totalSales:F2}";
                     lblTotalCost.Text = $"Total Cost: {totalCost:F2}";
                     lblUniqueProducts.Text = $"Unique Products: {uniqueProducts}";
                     lblUniqueInvoices.Text = $"Unique Invoices: {uniqueInvoices}";
@@ -568,8 +705,11 @@ namespace Vape_Store
                 // Summary
                 var totalProfit = _dailySaleReportItems.Sum(item => item.Profit);
                 var totalQuantity = _dailySaleReportItems.Sum(item => item.Quantity);
-                var totalSales = _dailySaleReportItems.Sum(item => item.SalePrice * item.Quantity);
-                var totalCost = _dailySaleReportItems.Sum(item => item.PurchasePrice * item.Quantity);
+                var totalSubTotal = _dailySaleReportItems.Sum(item => item.SubTotal);
+                var totalDiscount = _dailySaleReportItems.Sum(item => item.DiscountAmount);
+                var totalTax = _dailySaleReportItems.Sum(item => item.TaxAmount);
+                var totalSales = _dailySaleReportItems.Sum(item => item.SalePrice);
+                var totalCost = _dailySaleReportItems.Sum(item => item.PurchasePrice);
 
                 Paragraph summaryTitle = new Paragraph("SUMMARY", headerFont);
                 summaryTitle.SpacingAfter = 10f;
@@ -579,34 +719,55 @@ namespace Vape_Store
                 summaryTable.WidthPercentage = 50;
                 summaryTable.SetWidths(new float[] { 1, 1 });
 
-                PdfPCell cell1 = new PdfPCell(new Phrase("Total Sales:", normalFont));
+                PdfPCell cell1 = new PdfPCell(new Phrase("Subtotal:", normalFont));
                 cell1.Border = 0;
                 summaryTable.AddCell(cell1);
-                PdfPCell cell2 = new PdfPCell(new Phrase($"{totalSales:F2}", normalFont));
+                PdfPCell cell2 = new PdfPCell(new Phrase($"{totalSubTotal:F2}", normalFont));
                 cell2.Border = 0;
                 cell2.HorizontalAlignment = Element.ALIGN_RIGHT;
                 summaryTable.AddCell(cell2);
-                PdfPCell cell3 = new PdfPCell(new Phrase("Total Cost:", normalFont));
+                PdfPCell cell3 = new PdfPCell(new Phrase("Discount:", normalFont));
                 cell3.Border = 0;
                 summaryTable.AddCell(cell3);
-                PdfPCell cell4 = new PdfPCell(new Phrase($"{totalCost:F2}", normalFont));
+                PdfPCell cell4 = new PdfPCell(new Phrase($"{totalDiscount:F2}", normalFont));
                 cell4.Border = 0;
                 cell4.HorizontalAlignment = Element.ALIGN_RIGHT;
                 summaryTable.AddCell(cell4);
-                PdfPCell cell5 = new PdfPCell(new Phrase("Total Profit:", normalFont));
+                PdfPCell cell5 = new PdfPCell(new Phrase("Tax:", normalFont));
                 cell5.Border = 0;
                 summaryTable.AddCell(cell5);
-                PdfPCell cell6 = new PdfPCell(new Phrase($"{totalProfit:F2}", normalFont));
+                PdfPCell cell6 = new PdfPCell(new Phrase($"{totalTax:F2}", normalFont));
                 cell6.Border = 0;
                 cell6.HorizontalAlignment = Element.ALIGN_RIGHT;
                 summaryTable.AddCell(cell6);
-                PdfPCell cell7 = new PdfPCell(new Phrase("Total Quantity:", normalFont));
+                PdfPCell cell7 = new PdfPCell(new Phrase("Grand Total:", normalFont));
                 cell7.Border = 0;
                 summaryTable.AddCell(cell7);
-                PdfPCell cell8 = new PdfPCell(new Phrase(totalQuantity.ToString(), normalFont));
+                PdfPCell cell8 = new PdfPCell(new Phrase($"{totalSales:F2}", normalFont));
                 cell8.Border = 0;
                 cell8.HorizontalAlignment = Element.ALIGN_RIGHT;
                 summaryTable.AddCell(cell8);
+                PdfPCell cell9 = new PdfPCell(new Phrase("Total Cost:", normalFont));
+                cell9.Border = 0;
+                summaryTable.AddCell(cell9);
+                PdfPCell cell10 = new PdfPCell(new Phrase($"{totalCost:F2}", normalFont));
+                cell10.Border = 0;
+                cell10.HorizontalAlignment = Element.ALIGN_RIGHT;
+                summaryTable.AddCell(cell10);
+                PdfPCell cell11 = new PdfPCell(new Phrase("Total Profit:", normalFont));
+                cell11.Border = 0;
+                summaryTable.AddCell(cell11);
+                PdfPCell cell12 = new PdfPCell(new Phrase($"{totalProfit:F2}", normalFont));
+                cell12.Border = 0;
+                cell12.HorizontalAlignment = Element.ALIGN_RIGHT;
+                summaryTable.AddCell(cell12);
+                PdfPCell cell13 = new PdfPCell(new Phrase("Total Quantity:", normalFont));
+                cell13.Border = 0;
+                summaryTable.AddCell(cell13);
+                PdfPCell cell14 = new PdfPCell(new Phrase(totalQuantity.ToString(), normalFont));
+                cell14.Border = 0;
+                cell14.HorizontalAlignment = Element.ALIGN_RIGHT;
+                summaryTable.AddCell(cell14);
 
                 summaryTable.SpacingAfter = 20f;
                 document.Add(summaryTable);
@@ -617,12 +778,12 @@ namespace Vape_Store
                 document.Add(detailsTitle);
 
                 // Create sales table
-                PdfPTable salesTable = new PdfPTable(7);
+                PdfPTable salesTable = new PdfPTable(10);
                 salesTable.WidthPercentage = 100;
-                salesTable.SetWidths(new float[] { 1.5f, 2.5f, 1.2f, 1.2f, 0.8f, 1.2f, 1.0f });
+                salesTable.SetWidths(new float[] { 1.2f, 2.6f, 1.0f, 1.0f, 0.9f, 0.9f, 1.0f, 0.7f, 1.0f, 0.9f });
 
                 // Add headers
-                string[] headers = { "Invoice", "Product Name", "Purchase Price", "Sale Price", "Qty", "Profit", "Profit %" };
+                string[] headers = { "Invoice", "Product Name", "Purchase Total", "Sub Total", "Discount", "Tax", "Grand Total", "Qty", "Profit", "Profit %" };
                 foreach (string header in headers)
                 {
                     PdfPCell headerCell = new PdfPCell(new Phrase(header, headerFont));
@@ -648,6 +809,21 @@ namespace Vape_Store
                     cellPurchase.Padding = 3f;
                     cellPurchase.HorizontalAlignment = Element.ALIGN_RIGHT;
                     salesTable.AddCell(cellPurchase);
+                    
+                    PdfPCell cellSubTotal = new PdfPCell(new Phrase($"{item.SubTotal:F2}", smallFont));
+                    cellSubTotal.Padding = 3f;
+                    cellSubTotal.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    salesTable.AddCell(cellSubTotal);
+                    
+                    PdfPCell cellDiscount = new PdfPCell(new Phrase($"{item.DiscountAmount:F2}", smallFont));
+                    cellDiscount.Padding = 3f;
+                    cellDiscount.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    salesTable.AddCell(cellDiscount);
+                    
+                    PdfPCell cellTax = new PdfPCell(new Phrase($"{item.TaxAmount:F2}", smallFont));
+                    cellTax.Padding = 3f;
+                    cellTax.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    salesTable.AddCell(cellTax);
                     
                     PdfPCell cellSale = new PdfPCell(new Phrase($"{item.SalePrice:F2}", smallFont));
                     cellSale.Padding = 3f;
@@ -684,10 +860,25 @@ namespace Vape_Store
                     totalCell2.HorizontalAlignment = Element.ALIGN_RIGHT;
                     salesTable.AddCell(totalCell2);
                     
-                    PdfPCell totalCell3 = new PdfPCell(new Phrase($"{totalSales:F2}", headerFont));
+                    PdfPCell totalCell3 = new PdfPCell(new Phrase($"{totalSubTotal:F2}", headerFont));
                     totalCell3.Padding = 3f;
                     totalCell3.HorizontalAlignment = Element.ALIGN_RIGHT;
                     salesTable.AddCell(totalCell3);
+
+                    PdfPCell totalCellDiscount = new PdfPCell(new Phrase($"{totalDiscount:F2}", headerFont));
+                    totalCellDiscount.Padding = 3f;
+                    totalCellDiscount.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    salesTable.AddCell(totalCellDiscount);
+
+                    PdfPCell totalCellTax = new PdfPCell(new Phrase($"{totalTax:F2}", headerFont));
+                    totalCellTax.Padding = 3f;
+                    totalCellTax.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    salesTable.AddCell(totalCellTax);
+
+                    PdfPCell totalCellTotal = new PdfPCell(new Phrase($"{totalSales:F2}", headerFont));
+                    totalCellTotal.Padding = 3f;
+                    totalCellTotal.HorizontalAlignment = Element.ALIGN_RIGHT;
+                    salesTable.AddCell(totalCellTotal);
                     
                     PdfPCell totalCell4 = new PdfPCell(new Phrase(totalQuantity.ToString(), headerFont));
                     totalCell4.Padding = 3f;
@@ -746,14 +937,20 @@ namespace Vape_Store
                 
                 var totalProfit = _dailySaleReportItems.Sum(item => item.Profit);
                 var totalQuantity = _dailySaleReportItems.Sum(item => item.Quantity);
-                var totalSales = _dailySaleReportItems.Sum(item => item.SalePrice * item.Quantity);
-                var totalCost = _dailySaleReportItems.Sum(item => item.PurchasePrice * item.Quantity);
-                var uniqueProducts = _dailySaleReportItems.Select(item => item.ProductName).Distinct().Count();
+                var totalSubTotal = _dailySaleReportItems.Sum(item => item.SubTotal);
+                var totalDiscount = _dailySaleReportItems.Sum(item => item.DiscountAmount);
+                var totalTax = _dailySaleReportItems.Sum(item => item.TaxAmount);
+                var totalSales = _dailySaleReportItems.Sum(item => item.SalePrice);
+                var totalCost = _dailySaleReportItems.Sum(item => item.PurchasePrice);
+                var uniqueProducts = CalculateUniqueProducts(_dailySaleReportItems);
                 var uniqueInvoices = _dailySaleReportItems.Select(item => item.InvoiceNumber).Distinct().Count();
                 
                 html.AppendLine("<div class='summary'>");
                 html.AppendLine("<h2>Summary</h2>");
-                html.AppendLine($"<div class='summary-item'>Total Sales: {totalSales:F2}</div>");
+                html.AppendLine($"<div class='summary-item'>Subtotal: {totalSubTotal:F2}</div>");
+                html.AppendLine($"<div class='summary-item'>Discount: {totalDiscount:F2}</div>");
+                html.AppendLine($"<div class='summary-item'>Tax: {totalTax:F2}</div>");
+                html.AppendLine($"<div class='summary-item'>Grand Total: {totalSales:F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Cost: {totalCost:F2}</div>");
                 html.AppendLine($"<div class='summary-item {(totalProfit >= 0 ? "profit-positive" : "profit-negative")}'>Total Profit: {totalProfit:F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Quantity: {totalQuantity}</div>");
@@ -767,8 +964,11 @@ namespace Vape_Store
                 html.AppendLine("<tr>");
                 html.AppendLine("<th>Invoice</th>");
                 html.AppendLine("<th>Product Name</th>");
-                html.AppendLine("<th>Purchase Price</th>");
-                html.AppendLine("<th>Sale Price</th>");
+                html.AppendLine("<th>Purchase Total</th>");
+                html.AppendLine("<th>Sub Total</th>");
+                html.AppendLine("<th>Discount</th>");
+                html.AppendLine("<th>Tax</th>");
+                html.AppendLine("<th>Grand Total</th>");
                 html.AppendLine("<th>Qty</th>");
                 html.AppendLine("<th>Profit</th>");
                 html.AppendLine("<th>Profit %</th>");
@@ -780,6 +980,9 @@ namespace Vape_Store
                     html.AppendLine($"<td>{item.InvoiceNumber}</td>");
                     html.AppendLine($"<td>{item.ProductName}</td>");
                     html.AppendLine($"<td>{item.PurchasePrice:F2}</td>");
+                    html.AppendLine($"<td>{item.SubTotal:F2}</td>");
+                    html.AppendLine($"<td>{item.DiscountAmount:F2}</td>");
+                    html.AppendLine($"<td>{item.TaxAmount:F2}</td>");
                     html.AppendLine($"<td>{item.SalePrice:F2}</td>");
                     html.AppendLine($"<td>{item.Quantity}</td>");
                     html.AppendLine($"<td class='{(item.Profit >= 0 ? "profit-positive" : "profit-negative")}'>{item.Profit:F2}</td>");
@@ -792,6 +995,9 @@ namespace Vape_Store
                 html.AppendLine("<tr style='background-color: #3498db; color: white; font-weight: bold;'>");
                 html.AppendLine("<td colspan='2'>TOTAL</td>");
                 html.AppendLine($"<td>{totalCost:F2}</td>");
+                html.AppendLine($"<td>{totalSubTotal:F2}</td>");
+                html.AppendLine($"<td>{totalDiscount:F2}</td>");
+                html.AppendLine($"<td>{totalTax:F2}</td>");
                 html.AppendLine($"<td>{totalSales:F2}</td>");
                 html.AppendLine($"<td>{totalQuantity}</td>");
                 html.AppendLine($"<td class='{(totalProfit >= 0 ? "profit-positive" : "profit-negative")}'>{totalProfit:F2}</td>");
@@ -810,6 +1016,35 @@ namespace Vape_Store
             }
         }
 
+        private int CalculateUniqueProducts(IEnumerable<DailySaleReportItem> items)
+        {
+            var uniqueProducts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in items ?? Enumerable.Empty<DailySaleReportItem>())
+            {
+                if (string.IsNullOrWhiteSpace(item.ProductName))
+                    continue;
+
+                var parts = item.ProductName.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var cleaned = part.Trim();
+                    var idx = cleaned.LastIndexOf("(x", StringComparison.OrdinalIgnoreCase);
+                    if (idx > 0)
+                    {
+                        cleaned = cleaned.Substring(0, idx).Trim();
+                    }
+
+                    if (!string.IsNullOrEmpty(cleaned))
+                    {
+                        uniqueProducts.Add(cleaned);
+                    }
+                }
+            }
+
+            return uniqueProducts.Count;
+        }
+
         private void ShowMessage(string message, string title, MessageBoxIcon icon)
         {
             MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
@@ -821,10 +1056,32 @@ namespace Vape_Store
         public string InvoiceNumber { get; set; }
         public string ProductName { get; set; }
         public decimal PurchasePrice { get; set; }
+        public decimal SubTotal { get; set; }
         public decimal SalePrice { get; set; }
         public int Quantity { get; set; }
         public decimal Profit { get; set; }
         public decimal ProfitPercentage { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal TaxAmount { get; set; }
+        public DateTime SaleDate { get; set; }
+    }
+
+    // Helper classes for profit calculation
+    internal class SaleItemData
+    {
+        public string ProductName { get; set; }
+        public decimal PurchasePrice { get; set; }
+        public decimal SalePrice { get; set; }
+        public int Quantity { get; set; }
+        public decimal ItemSubTotal { get; set; }
+    }
+
+    internal class SaleInfo
+    {
+        public decimal SaleSubTotal { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal TaxAmount { get; set; }
+        public decimal TotalAmount { get; set; }
         public DateTime SaleDate { get; set; }
     }
 }

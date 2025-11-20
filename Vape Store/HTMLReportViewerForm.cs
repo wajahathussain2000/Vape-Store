@@ -92,7 +92,7 @@ namespace Vape_Store
                 iTextSharp.text.Font normalFont = new iTextSharp.text.Font(baseFont, 10, iTextSharp.text.Font.NORMAL);
 
                 // Extract title from HTML
-                string title = "VAPE STORE - SALES REPORT";
+                string title = "MADNI MOBILE & PHOTOSTATE - SALES REPORT";
                 Paragraph titleParagraph = new Paragraph(title, titleFont);
                 titleParagraph.Alignment = Element.ALIGN_CENTER;
                 titleParagraph.SpacingAfter = 20f;

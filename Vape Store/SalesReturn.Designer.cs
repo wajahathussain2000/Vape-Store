@@ -644,7 +644,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "SalesReturn";
-            this.Text = "Vape Store - Sales Return";
+            this.Text = "MADNI MOBILE & PHOTOSTATE - Sales Return";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();

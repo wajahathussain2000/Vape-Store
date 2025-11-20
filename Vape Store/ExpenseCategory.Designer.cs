@@ -311,7 +311,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "ExpenseCategory";
-            this.Text = "Vape Store - Expense Category";
+            this.Text = "MADNI MOBILE & PHOTOSTATE - Expense Category";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.categoryGroup.ResumeLayout(false);
             this.categoryGroup.PerformLayout();

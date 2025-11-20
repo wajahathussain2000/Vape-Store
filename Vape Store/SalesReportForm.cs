@@ -144,6 +144,16 @@ namespace Vape_Store
                 
                 dgvSalesReport.Columns.Add(new DataGridViewTextBoxColumn
                 {
+                    Name = "ProductName",
+                    HeaderText = "Product",
+                    DataPropertyName = "ProductName",
+                    Width = 250,
+                    MinimumWidth = 200,
+                    Visible = true // Visible by default in normal mode
+                });
+                
+                dgvSalesReport.Columns.Add(new DataGridViewTextBoxColumn
+                {
                     Name = "Quantity",
                     HeaderText = "Qty",
                     DataPropertyName = "Quantity",
@@ -168,6 +178,16 @@ namespace Vape_Store
                     DataPropertyName = "SubTotal",
                     Width = 120,
                     MinimumWidth = 100,
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
+                });
+
+                dgvSalesReport.Columns.Add(new DataGridViewTextBoxColumn
+                {
+                    Name = "DiscountAmount",
+                    HeaderText = "Discount",
+                    DataPropertyName = "DiscountAmount",
+                    Width = 110,
+                    MinimumWidth = 90,
                     DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
                 });
                 
@@ -322,21 +342,68 @@ namespace Vape_Store
         {
             // Group sales by product for item-wise report
             var itemWiseData = new Dictionary<string, SalesReportItem>();
+            // Track customers for each product
+            var productCustomers = new Dictionary<string, HashSet<string>>();
             
             foreach (var sale in sales)
             {
+                // Check if sale has items loaded
+                if (sale.SaleItems == null || sale.SaleItems.Count == 0)
+                {
+                    // Try to load sale items if not loaded
+                    var saleService = new SalesService();
+                    var fullSale = saleService.GetSaleById(sale.SaleID);
+                    if (fullSale != null && fullSale.SaleItems != null && fullSale.SaleItems.Count > 0)
+                    {
+                        sale.SaleItems = fullSale.SaleItems;
+                    }
+                    else
+                    {
+                        // Skip this sale if no items found
+                        continue;
+                    }
+                }
+                
+                var saleDiscount = sale.DiscountAmount;
+                var saleSubTotal = sale.SubTotal;
+                var itemCount = Math.Max(1, sale.SaleItems.Count);
+                var taxSharePerItem = itemCount > 0 ? sale.TaxAmount / itemCount : 0;
+                var customerName = !string.IsNullOrWhiteSpace(sale.CustomerName) ? sale.CustomerName : "Walk-in Customer";
+                
                 foreach (var saleItem in sale.SaleItems)
                 {
-                    var productKey = saleItem.ProductName;
+                    // Use ProductName as key, or ProductCode if ProductName is empty
+                    var productKey = !string.IsNullOrWhiteSpace(saleItem.ProductName) 
+                        ? saleItem.ProductName 
+                        : (!string.IsNullOrWhiteSpace(saleItem.ProductCode) ? saleItem.ProductCode : "Unknown Product");
+                    
+                    var itemSubTotal = saleItem.SubTotal > 0 ? saleItem.SubTotal : saleItem.UnitPrice * saleItem.Quantity;
+                    decimal discountShare = 0;
+                    if (saleDiscount > 0 && saleSubTotal > 0)
+                    {
+                        discountShare = (saleDiscount * itemSubTotal) / saleSubTotal;
+                    }
+                    var netAmount = itemSubTotal - discountShare + taxSharePerItem;
+                    
+                    // Track customers for this product
+                    if (!productCustomers.ContainsKey(productKey))
+                    {
+                        productCustomers[productKey] = new HashSet<string>();
+                    }
+                    productCustomers[productKey].Add(customerName);
                     
                     if (itemWiseData.ContainsKey(productKey))
                     {
                         // Aggregate data for existing product
                         var existingItem = itemWiseData[productKey];
                         existingItem.Quantity += saleItem.Quantity;
-                        existingItem.SubTotal += saleItem.SubTotal;
-                        existingItem.TotalAmount += saleItem.SubTotal;
-                        existingItem.UnitPrice = existingItem.SubTotal / existingItem.Quantity; // Calculate average unit price
+                        existingItem.SubTotal += itemSubTotal;
+                        existingItem.DiscountAmount += discountShare;
+                        existingItem.TaxAmount += taxSharePerItem;
+                        existingItem.TotalAmount += netAmount;
+                        existingItem.UnitPrice = existingItem.Quantity > 0 
+                            ? existingItem.SubTotal / existingItem.Quantity 
+                            : 0; // Calculate average unit price
                     }
                     else
                     {
@@ -346,15 +413,16 @@ namespace Vape_Store
                             SaleID = sale.SaleID,
                             InvoiceNumber = sale.InvoiceNumber,
                             SaleDate = sale.SaleDate,
-                            CustomerName = sale.CustomerName ?? "Walk-in Customer",
-                            ProductName = saleItem.ProductName,
+                            CustomerName = customerName, // Will be updated with all customers later
+                            ProductName = productKey, // Use the product name
                             Quantity = saleItem.Quantity,
                             UnitPrice = saleItem.UnitPrice,
-                            SubTotal = saleItem.SubTotal,
-                            TaxAmount = 0, // Will be calculated separately
-                            TotalAmount = saleItem.SubTotal,
+                            SubTotal = itemSubTotal,
+                            TaxAmount = taxSharePerItem,
+                            DiscountAmount = discountShare,
+                            TotalAmount = netAmount,
                             PaymentMethod = sale.PaymentMethod,
-                            PaidAmount = 0, // Will be calculated separately
+                            PaidAmount = 0, // Not applicable in item-wise aggregated view
                             BalanceAmount = 0
                         };
                         
@@ -363,16 +431,62 @@ namespace Vape_Store
                 }
             }
             
+            // Update customer names with all customers for each product
+            foreach (var kvp in itemWiseData)
+            {
+                var productKey = kvp.Key;
+                var reportItem = kvp.Value;
+                
+                if (productCustomers.ContainsKey(productKey))
+                {
+                    var customers = productCustomers[productKey].ToList();
+                    if (customers.Count == 1)
+                    {
+                        reportItem.CustomerName = customers[0];
+                    }
+                    else if (customers.Count <= 3)
+                    {
+                        // Show all customers if 3 or fewer
+                        reportItem.CustomerName = string.Join(", ", customers);
+                    }
+                    else
+                    {
+                        // Show first 3 customers and count
+                        var firstThree = customers.Take(3);
+                        reportItem.CustomerName = string.Join(", ", firstThree) + $" (+{customers.Count - 3} more)";
+                    }
+                }
+            }
+            
             // Add aggregated items to report
             _salesReportItems.AddRange(itemWiseData.Values);
+            
+            // Sort by product name
+            _salesReportItems = _salesReportItems.OrderBy(x => x.ProductName).ToList();
         }
 
         private void LoadDetailedSalesData(List<Sale> sales)
         {
             foreach (var sale in sales)
             {
+                var itemCount = Math.Max(1, sale.SaleItems.Count);
+                var taxSharePerItem = itemCount > 0 ? sale.TaxAmount / itemCount : 0;
+                var paidShare = itemCount > 0 ? sale.PaidAmount / itemCount : 0;
+                var balanceShare = itemCount > 0 ? (sale.TotalAmount - sale.PaidAmount) / itemCount : 0;
+                var saleDiscount = sale.DiscountAmount;
+                var saleSubTotal = sale.SubTotal;
+                
                 foreach (var saleItem in sale.SaleItems)
                 {
+                    var itemSubTotal = saleItem.SubTotal > 0 ? saleItem.SubTotal : saleItem.UnitPrice * saleItem.Quantity;
+                    decimal discountShare = 0;
+                    if (saleDiscount > 0 && saleSubTotal > 0)
+                    {
+                        discountShare = (saleDiscount * itemSubTotal) / saleSubTotal;
+                    }
+                    var netSubTotal = itemSubTotal - discountShare;
+                    var lineTotal = netSubTotal + taxSharePerItem;
+                    
                     var reportItem = new SalesReportItem
                     {
                         SaleID = sale.SaleID,
@@ -382,12 +496,13 @@ namespace Vape_Store
                         ProductName = saleItem.ProductName,
                         Quantity = saleItem.Quantity,
                         UnitPrice = saleItem.UnitPrice,
-                        SubTotal = saleItem.SubTotal,
-                        TaxAmount = sale.TaxAmount / sale.SaleItems.Count, // Distribute tax across items
-                        TotalAmount = saleItem.SubTotal + (sale.TaxAmount / sale.SaleItems.Count),
+                        SubTotal = itemSubTotal,
+                        DiscountAmount = discountShare,
+                        TaxAmount = taxSharePerItem,
+                        TotalAmount = lineTotal,
                         PaymentMethod = sale.PaymentMethod,
-                        PaidAmount = sale.PaidAmount / sale.SaleItems.Count, // Distribute paid amount across items
-                        BalanceAmount = (sale.TotalAmount - sale.PaidAmount) / sale.SaleItems.Count
+                        PaidAmount = paidShare,
+                        BalanceAmount = balanceShare
                     };
                     
                     _salesReportItems.Add(reportItem);
@@ -430,6 +545,7 @@ namespace Vape_Store
                         (item.SaleDate.ToString("yyyy-MM-dd").Contains(searchTerm)) ||
                         (item.SaleDate.ToString("MM/dd/yyyy").Contains(searchTerm)) ||
                         (item.TotalAmount.ToString("F2").Contains(searchTerm)) ||
+                        (item.DiscountAmount.ToString("F2").Contains(searchTerm)) ||
                         (item.Quantity.ToString().Contains(searchTerm)));
                 }
                 
@@ -467,6 +583,8 @@ namespace Vape_Store
                     dgvSalesReport.Columns["UnitPrice"].DefaultCellStyle.Format = "F2";
                 if (dgvSalesReport.Columns["SubTotal"] != null)
                     dgvSalesReport.Columns["SubTotal"].DefaultCellStyle.Format = "F2";
+                if (dgvSalesReport.Columns["DiscountAmount"] != null)
+                    dgvSalesReport.Columns["DiscountAmount"].DefaultCellStyle.Format = "F2";
                 if (dgvSalesReport.Columns["TaxAmount"] != null)
                     dgvSalesReport.Columns["TaxAmount"].DefaultCellStyle.Format = "F2";
                 if (dgvSalesReport.Columns["TotalAmount"] != null)
@@ -479,7 +597,7 @@ namespace Vape_Store
                     dgvSalesReport.Columns["SaleDate"].DefaultCellStyle.Format = "yyyy-MM-dd";
                 
                 // Add total row styling if there are items
-                if (dgvSalesReport.Rows.Count > 0)
+                if (dgvSalesReport.Rows.Count > 0 && _salesReportItems.Count > 0)
                 {
                     // Add a total row at the end
                     var totalRow = dgvSalesReport.Rows[dgvSalesReport.Rows.Count - 1];
@@ -487,18 +605,28 @@ namespace Vape_Store
                     totalRow.DefaultCellStyle.Font = new System.Drawing.Font(dgvSalesReport.DefaultCellStyle.Font, FontStyle.Bold);
                     
                     // Set total values in the last row
-                    if (_salesReportItems.Count > 0)
-                    {
+                    if (dgvSalesReport.Columns["InvoiceNumber"] != null && dgvSalesReport.Columns["InvoiceNumber"].Visible)
                         totalRow.Cells["InvoiceNumber"].Value = "TOTAL";
+                    if (dgvSalesReport.Columns["CustomerName"] != null && dgvSalesReport.Columns["CustomerName"].Visible)
                         totalRow.Cells["CustomerName"].Value = "";
+                    if (dgvSalesReport.Columns["ProductName"] != null && dgvSalesReport.Columns["ProductName"].Visible)
+                        totalRow.Cells["ProductName"].Value = "";
+                    if (dgvSalesReport.Columns["Quantity"] != null)
                         totalRow.Cells["Quantity"].Value = _salesReportItems.Sum(x => x.Quantity);
+                    if (dgvSalesReport.Columns["UnitPrice"] != null)
                         totalRow.Cells["UnitPrice"].Value = "";
+                    if (dgvSalesReport.Columns["SubTotal"] != null)
                         totalRow.Cells["SubTotal"].Value = _salesReportItems.Sum(x => x.SubTotal);
+                    if (dgvSalesReport.Columns["DiscountAmount"] != null)
+                        totalRow.Cells["DiscountAmount"].Value = _salesReportItems.Sum(x => x.DiscountAmount);
+                    if (dgvSalesReport.Columns["TaxAmount"] != null)
                         totalRow.Cells["TaxAmount"].Value = _salesReportItems.Sum(x => x.TaxAmount);
+                    if (dgvSalesReport.Columns["TotalAmount"] != null)
                         totalRow.Cells["TotalAmount"].Value = _salesReportItems.Sum(x => x.TotalAmount);
+                    if (dgvSalesReport.Columns["PaymentMethod"] != null && dgvSalesReport.Columns["PaymentMethod"].Visible)
                         totalRow.Cells["PaymentMethod"].Value = "";
+                    if (dgvSalesReport.Columns["PaidAmount"] != null && dgvSalesReport.Columns["PaidAmount"].Visible)
                         totalRow.Cells["PaidAmount"].Value = _salesReportItems.Sum(x => x.PaidAmount);
-                    }
                 }
             }
             catch (Exception ex)
@@ -528,13 +656,14 @@ namespace Vape_Store
                 else
             {
                 var totalSales = _salesReportItems.Sum(item => item.TotalAmount);
+                var totalDiscount = _salesReportItems.Sum(item => item.DiscountAmount);
                 var totalQuantity = _salesReportItems.Sum(item => item.Quantity);
                 var totalTax = _salesReportItems.Sum(item => item.TaxAmount);
                 var totalPaid = _salesReportItems.Sum(item => item.PaidAmount);
                 var totalBalance = _salesReportItems.Sum(item => item.BalanceAmount);
                 var uniqueCustomers = _salesReportItems.Select(item => item.CustomerName).Distinct().Count();
                 
-                lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
+                lblTotalSales.Text = $"Total Sales: {totalSales:F2} | Discount: {totalDiscount:F2}";
                 lblTotalQuantity.Text = $"Total Quantity: {totalQuantity}";
                 lblTotalTax.Text = $"Total Tax: {totalTax:F2}";
                 lblTotalPaid.Text = $"Total Paid: {totalPaid:F2}";
@@ -736,6 +865,16 @@ namespace Vape_Store
             _isItemWiseMode = true;
 
             // Update column headers/visibility for item-wise view
+            if (dgvSalesReport.Columns["ProductName"] != null)
+            {
+                dgvSalesReport.Columns["ProductName"].Visible = true;
+                dgvSalesReport.Columns["ProductName"].HeaderText = "Product Name";
+            }
+            if (dgvSalesReport.Columns["CustomerName"] != null)
+            {
+                dgvSalesReport.Columns["CustomerName"].Visible = true; // Show customer in item-wise mode
+                dgvSalesReport.Columns["CustomerName"].HeaderText = "Customers";
+            }
             if (dgvSalesReport.Columns["Quantity"] != null)
                 dgvSalesReport.Columns["Quantity"].HeaderText = "Total Quantity Sold";
             if (dgvSalesReport.Columns["UnitPrice"] != null)
@@ -849,6 +988,7 @@ namespace Vape_Store
                 html.AppendLine("<div class='summary'>");
                 html.AppendLine($"<div class='summary-item'>Total Sales: {_salesReportItems.Sum(x => x.TotalAmount):F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Quantity: {_salesReportItems.Sum(x => x.Quantity)}</div>");
+                html.AppendLine($"<div class='summary-item'>Total Discount: {_salesReportItems.Sum(x => x.DiscountAmount):F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Tax: {_salesReportItems.Sum(x => x.TaxAmount):F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Paid: {_salesReportItems.Sum(x => x.PaidAmount):F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Balance: {_salesReportItems.Sum(x => x.BalanceAmount):F2}</div>");
@@ -865,6 +1005,7 @@ namespace Vape_Store
                 html.AppendLine("<th>Qty</th>");
                 html.AppendLine("<th>Unit Price</th>");
                 html.AppendLine("<th>Sub Total</th>");
+                html.AppendLine("<th>Discount</th>");
                 html.AppendLine("<th>Tax</th>");
                 html.AppendLine("<th>Total</th>");
                 html.AppendLine("<th>Payment</th>");
@@ -880,6 +1021,7 @@ namespace Vape_Store
                     html.AppendLine($"<td>{item.Quantity}</td>");
                     html.AppendLine($"<td>{item.UnitPrice:F2}</td>");
                     html.AppendLine($"<td>{item.SubTotal:F2}</td>");
+                    html.AppendLine($"<td>{item.DiscountAmount:F2}</td>");
                     html.AppendLine($"<td>{item.TaxAmount:F2}</td>");
                     html.AppendLine($"<td>{item.TotalAmount:F2}</td>");
                     html.AppendLine($"<td>{item.PaymentMethod}</td>");
@@ -894,6 +1036,7 @@ namespace Vape_Store
                     var totalQuantity = _salesReportItems.Sum(x => x.Quantity);
                     var totalSubTotal = _salesReportItems.Sum(x => x.SubTotal);
                     var totalTax = _salesReportItems.Sum(x => x.TaxAmount);
+                    var totalDiscount = _salesReportItems.Sum(x => x.DiscountAmount);
                     var totalPaid = _salesReportItems.Sum(x => x.PaidAmount);
                     
                     html.AppendLine("<tr class='total-row'>");
@@ -904,6 +1047,7 @@ namespace Vape_Store
                     html.AppendLine($"<td><strong>{totalQuantity}</strong></td>");
                     html.AppendLine("<td></td>");
                     html.AppendLine($"<td><strong>{totalSubTotal:F2}</strong></td>");
+                    html.AppendLine($"<td><strong>{totalDiscount:F2}</strong></td>");
                     html.AppendLine($"<td><strong>{totalTax:F2}</strong></td>");
                     html.AppendLine($"<td><strong>{totalSales:F2}</strong></td>");
                     html.AppendLine("<td></td>");
@@ -940,12 +1084,12 @@ namespace Vape_Store
             using (var writer = new System.IO.StreamWriter(filePath))
             {
                 // Write header
-                writer.WriteLine("Invoice Number,Sale Date,Customer Name,Quantity,Unit Price,Sub Total,Tax Amount,Total Amount,Payment Method,Paid Amount");
+                writer.WriteLine("Invoice Number,Sale Date,Customer Name,Quantity,Unit Price,Sub Total,Discount Amount,Tax Amount,Total Amount,Payment Method,Paid Amount");
                 
                 // Write data
                 foreach (var item in _salesReportItems)
                 {
-                    writer.WriteLine($"{item.InvoiceNumber},{item.SaleDate:yyyy-MM-dd},{item.CustomerName},{item.Quantity},{item.UnitPrice:F2},{item.SubTotal:F2},{item.TaxAmount:F2},{item.TotalAmount:F2},{item.PaymentMethod},{item.PaidAmount:F2}");
+                    writer.WriteLine($"{item.InvoiceNumber},{item.SaleDate:yyyy-MM-dd},{item.CustomerName},{item.Quantity},{item.UnitPrice:F2},{item.SubTotal:F2},{item.DiscountAmount:F2},{item.TaxAmount:F2},{item.TotalAmount:F2},{item.PaymentMethod},{item.PaidAmount:F2}");
                 }
                 
                 // Add total row if there are items
@@ -953,11 +1097,12 @@ namespace Vape_Store
                 {
                     var totalQuantity = _salesReportItems.Sum(x => x.Quantity);
                     var totalSubTotal = _salesReportItems.Sum(x => x.SubTotal);
+                    var totalDiscount = _salesReportItems.Sum(x => x.DiscountAmount);
                     var totalTax = _salesReportItems.Sum(x => x.TaxAmount);
                     var totalAmount = _salesReportItems.Sum(x => x.TotalAmount);
                     var totalPaid = _salesReportItems.Sum(x => x.PaidAmount);
                     
-                    writer.WriteLine($"TOTAL,,,{totalQuantity},,{totalSubTotal:F2},{totalTax:F2},{totalAmount:F2},,{totalPaid:F2}");
+                    writer.WriteLine($"TOTAL,,,{totalQuantity},,{totalSubTotal:F2},{totalDiscount:F2},{totalTax:F2},{totalAmount:F2},,{totalPaid:F2}");
                 }
             }
         }
@@ -979,7 +1124,7 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("VAPE STORE - SALES REPORT", titleFont);
+                Paragraph title = new Paragraph("MADNI MOBILE & PHOTOSTATE - SALES REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);
@@ -992,6 +1137,7 @@ namespace Vape_Store
                 // Summary section
                 var totalSales = _salesReportItems.Sum(item => item.TotalAmount);
                 var totalQuantity = _salesReportItems.Sum(item => item.Quantity);
+                var totalDiscount = _salesReportItems.Sum(item => item.DiscountAmount);
                 var totalTax = _salesReportItems.Sum(item => item.TaxAmount);
                 var totalPaid = _salesReportItems.Sum(item => item.PaidAmount);
                 var totalBalance = _salesReportItems.Sum(item => item.BalanceAmount);
@@ -1010,6 +1156,8 @@ namespace Vape_Store
                 summaryTable.AddCell(new PdfPCell(new Phrase($"{totalSales:F2}", normalFont)) { Border = 0, HorizontalAlignment = Element.ALIGN_RIGHT });
                 summaryTable.AddCell(new PdfPCell(new Phrase("Total Quantity:", normalFont)) { Border = 0 });
                 summaryTable.AddCell(new PdfPCell(new Phrase(totalQuantity.ToString(), normalFont)) { Border = 0, HorizontalAlignment = Element.ALIGN_RIGHT });
+                summaryTable.AddCell(new PdfPCell(new Phrase("Total Discount:", normalFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase($"{totalDiscount:F2}", normalFont)) { Border = 0, HorizontalAlignment = Element.ALIGN_RIGHT });
                 summaryTable.AddCell(new PdfPCell(new Phrase("Total Tax:", normalFont)) { Border = 0 });
                 summaryTable.AddCell(new PdfPCell(new Phrase($"{totalTax:F2}", normalFont)) { Border = 0, HorizontalAlignment = Element.ALIGN_RIGHT });
                 summaryTable.AddCell(new PdfPCell(new Phrase("Total Paid:", normalFont)) { Border = 0 });
@@ -1028,12 +1176,12 @@ namespace Vape_Store
                 document.Add(detailsTitle);
 
                 // Create sales table
-                PdfPTable salesTable = new PdfPTable(7);
+                PdfPTable salesTable = new PdfPTable(8);
                 salesTable.WidthPercentage = 100;
-                salesTable.SetWidths(new float[] { 1.5f, 1.2f, 2f, 0.8f, 1f, 1f, 1f });
+                salesTable.SetWidths(new float[] { 1.4f, 1.1f, 1.8f, 0.8f, 0.9f, 1f, 0.9f, 1f });
 
                 // Add headers
-                string[] headers = { "Invoice #", "Date", "Customer", "Qty", "Unit Price", "Sub Total", "Total" };
+                string[] headers = { "Invoice #", "Date", "Customer", "Qty", "Unit Price", "Sub Total", "Discount", "Total" };
                 foreach (string header in headers)
                 {
                     PdfPCell headerCell = new PdfPCell(new Phrase(header, headerFont));
@@ -1052,6 +1200,7 @@ namespace Vape_Store
                     salesTable.AddCell(new PdfPCell(new Phrase(item.Quantity.ToString(), smallFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_CENTER });
                     salesTable.AddCell(new PdfPCell(new Phrase($"{item.UnitPrice:F2}", smallFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
                     salesTable.AddCell(new PdfPCell(new Phrase($"{item.SubTotal:F2}", smallFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
+                    salesTable.AddCell(new PdfPCell(new Phrase($"{item.DiscountAmount:F2}", smallFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
                     salesTable.AddCell(new PdfPCell(new Phrase($"{item.TotalAmount:F2}", smallFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
                 }
 
@@ -1062,6 +1211,7 @@ namespace Vape_Store
                     salesTable.AddCell(new PdfPCell(new Phrase(totalQuantity.ToString(), headerFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_CENTER });
                     salesTable.AddCell(new PdfPCell(new Phrase("", headerFont)) { Padding = 3f });
                     salesTable.AddCell(new PdfPCell(new Phrase($"{_salesReportItems.Sum(x => x.SubTotal):F2}", headerFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
+                    salesTable.AddCell(new PdfPCell(new Phrase($"{totalDiscount:F2}", headerFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
                     salesTable.AddCell(new PdfPCell(new Phrase($"{totalSales:F2}", headerFont)) { Padding = 3f, HorizontalAlignment = Element.ALIGN_RIGHT });
                 }
 
@@ -1093,6 +1243,7 @@ namespace Vape_Store
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal SubTotal { get; set; }
+        public decimal DiscountAmount { get; set; }
         public decimal TaxAmount { get; set; }
         public decimal TotalAmount { get; set; }
         public string PaymentMethod { get; set; }

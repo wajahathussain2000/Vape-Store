@@ -16,6 +16,8 @@ using Vape_Store.Models;
 using Vape_Store.Helpers;
 using ZXing;
 using ZXing.Common;
+using System.Runtime.ExceptionServices;
+using System.Security;
 
 namespace Vape_Store
 {
@@ -31,6 +33,7 @@ namespace Vape_Store
         private List<Brand> _brands;
         private bool isEditMode = false;
         private int selectedProductId = -1;
+        private bool _isFilteringProducts = false;
 
         public Products()
         {
@@ -227,6 +230,8 @@ namespace Vape_Store
             }
         }
 
+        [HandleProcessCorruptedStateExceptions]
+        [SecurityCritical]
         private void RefreshDataGridView()
         {
             try
@@ -1094,24 +1099,58 @@ namespace Vape_Store
 
         private void TxtSearch_TextChanged(object sender, EventArgs e)
         {
-            // Prevent recursive calls and ensure thread safety
             if (this.IsDisposed)
                 return;
                 
-            // Use BeginInvoke to ensure we're on the UI thread
+            void ExecuteFilter()
+            {
+                try
+                {
+                    FilterProducts();
+                }
+                catch (AccessViolationException ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"AccessViolation during product search filter: {ex.Message}");
+                    // Swallow to prevent crash; grid might have been disposed momentarily
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Control disposed while filtering; safe to ignore
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Unexpected error filtering products: {ex.Message}");
+                }
+            }
+
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action(() => FilterProducts()));
-                return;
+                try
+            {
+                    this.BeginInvoke(new Action(ExecuteFilter));
+                }
+                catch
+                {
+                    // Ignore invoke errors if form is closing
+                }
             }
-            
-            FilterProducts();
+            else
+            {
+                ExecuteFilter();
+            }
         }
 
+        [HandleProcessCorruptedStateExceptions]
+        [SecurityCritical]
         private void FilterProducts()
         {
             try
             {
+                if (_isFilteringProducts)
+                    return;
+
+                _isFilteringProducts = true;
+
                 // Check if form and controls are still valid
                 if (this.IsDisposed)
                     return;
@@ -1250,8 +1289,14 @@ namespace Vape_Store
                     }
                 }
             }
+            finally
+            {
+                _isFilteringProducts = false;
+            }
         }
 
+        [HandleProcessCorruptedStateExceptions]
+        [SecurityCritical]
         private void UpdateSearchAutoComplete()
         {
             try

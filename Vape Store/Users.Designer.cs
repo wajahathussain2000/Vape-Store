@@ -409,7 +409,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "Users";
-            this.Text = "Vape Store - Users";
+            this.Text = "MADNI MOBILE & PHOTOSTATE - Users";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             ((System.ComponentModel.ISupportInitialize)(this.dgvUsers)).EndInit();
             this.rightPanel.ResumeLayout(false);

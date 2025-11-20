@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace Vape_Store
 {
     /// <summary>
-    /// Main entry point for the Vape Store POS System
+    /// Main entry point for the MADNI MOBILE & PHOTOSTATE POS System
     /// Handles application startup, global exception handling, and initialization
     /// </summary>
     internal static class Program
@@ -42,9 +42,6 @@ namespace Vape_Store
 
         #region Application Initialization
 
-        /// <summary>
-        /// Sets up global exception handling for the application
-        /// </summary>
         private static void SetupGlobalExceptionHandling()
         {
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -52,9 +49,6 @@ namespace Vape_Store
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         }
 
-        /// <summary>
-        /// Initializes the Windows Forms application with proper settings
-        /// </summary>
         private static void InitializeApplication()
         {
             Application.EnableVisualStyles();

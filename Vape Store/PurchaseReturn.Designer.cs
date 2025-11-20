@@ -643,7 +643,7 @@
             this.Controls.Add(this.pnlInvoiceSelection);
             this.Controls.Add(this.panel1);
             this.Name = "PurchaseReturnForm";
-            this.Text = "Vape Store - Purchase Return";
+            this.Text = "MADNI MOBILE & PHOTOSTATE - Purchase Return";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();

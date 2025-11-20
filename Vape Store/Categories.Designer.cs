@@ -259,7 +259,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "Categories";
-            this.Text = "Vape Store - Categories";
+            this.Text = "MADNI MOBILE & PHOTOSTATE - Categories";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Categories_Load);
             this.categoryInputGroup.ResumeLayout(false);

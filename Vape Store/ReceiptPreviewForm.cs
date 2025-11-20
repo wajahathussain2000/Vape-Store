@@ -25,7 +25,7 @@ namespace Vape_Store
             this.SuspendLayout();
             
             // Form properties
-            this.Text = "Receipt Preview - Vape Store";
+            this.Text = "Receipt Preview - MADNI MOBILE & PHOTOSTATE";
             this.Size = new Size(450, 700);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;

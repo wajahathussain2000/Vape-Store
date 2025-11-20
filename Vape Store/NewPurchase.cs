@@ -5376,7 +5376,7 @@ namespace Vape_Store
         {
             try
             {
-                string title = "Vape Store - Purchase from Vendor";
+                string title = "MADNI MOBILE & PHOTOSTATE - Purchase from Vendor";
                 if (itemCount > 0)
                 {
                     title += $" | Items: {itemCount} | Qty: {totalQuantity} | Total: ${_grandTotal:F2}";
@@ -5394,7 +5394,7 @@ namespace Vape_Store
             try
             {
                 // Update form title with purchase summary
-                string title = "Vape Store - Purchase from Vendor";
+                string title = "MADNI MOBILE & PHOTOSTATE - Purchase from Vendor";
                 if (itemCount > 0)
                 {
                     title += $" | Items: {itemCount} | Qty: {totalQuantity} | Total: ${_grandTotal:F2}";

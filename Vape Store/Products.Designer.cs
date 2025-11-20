@@ -497,7 +497,7 @@
             this.Controls.Add(this.panel1);
             this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.Name = "Products";
-            this.Text = "Vape Store - Products";
+            this.Text = "MADNI MOBILE & PHOTOSTATE - Products";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel1.ResumeLayout(false);
             this.barcodeGroup.ResumeLayout(false);

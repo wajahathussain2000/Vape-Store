@@ -427,6 +427,8 @@ namespace Vape_Store.Repositories
                                     ChangeAmount = Convert.ToDecimal(reader["ChangeAmount"]),
                                     UserID = Convert.ToInt32(reader["UserID"]),
                                     CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
+                                    DiscountAmount = reader["DiscountAmount"] != DBNull.Value ? Convert.ToDecimal(reader["DiscountAmount"]) : 0,
+                                    DiscountPercent = reader["DiscountPercent"] != DBNull.Value ? Convert.ToDecimal(reader["DiscountPercent"]) : 0,
                                     CustomerName = reader["CustomerName"]?.ToString(),
                                     UserName = reader["UserName"]?.ToString()
                                 };

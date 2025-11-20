@@ -26,8 +26,13 @@ namespace Vape_Store
         private Font _bodyFont;
         private Font _footerFont;
         private int _paperWidth = 300; // 3 inch thermal printer width
+        private int _paperHeight = 600;
         private int _currentY = 0;
         private int _lineHeight = 20;
+        private const int _printLeftMargin = 24;
+        private const int _printRightMargin = 26;
+        private const int _printTopMargin = 10;
+        private const int _printBottomMargin = 20;
         private Panel _thermalReceiptPanel;
         private Label _lblEnterInvoice;
 
@@ -38,9 +43,10 @@ namespace Vape_Store
             _saleItems = new List<SaleItem>();
             
             // Set up fonts for thermal printing
-            _headerFont = new Font("Courier New", 12, FontStyle.Bold);
-            _bodyFont = new Font("Courier New", 9, FontStyle.Regular);
-            _footerFont = new Font("Courier New", 10, FontStyle.Bold);
+            _headerFont = new Font("Courier New", 10f, FontStyle.Bold);
+            _bodyFont = new Font("Courier New", 8f, FontStyle.Regular);
+            _footerFont = new Font("Courier New", 8.5f, FontStyle.Bold);
+            _lineHeight = (int)Math.Ceiling(_bodyFont.GetHeight()) + 6;
             
             SetupThermalReceiptPanel();
             SetupEventHandlers();
@@ -164,7 +170,7 @@ namespace Vape_Store
                 UpdateThermalReceipt();
 
                 // Update info label
-                lblSaleInfo.Text = $"Sale Found: {_currentSale.InvoiceNumber} - {_currentSale.SaleDate:MM/dd/yyyy HH:mm} - ${_currentSale.TotalAmount:F2}";
+                lblSaleInfo.Text = $"Sale Found: {_currentSale.InvoiceNumber} - {_currentSale.SaleDate:MM/dd/yyyy HH:mm} - {_currentSale.TotalAmount:F2}";
                 
                 // Enable buttons only if we have valid sale data AND items
                 bool hasValidData = _currentSale != null && _saleItems != null && _saleItems.Count > 0;
@@ -202,7 +208,7 @@ namespace Vape_Store
             lblSupplier.Text = $"Customer: {(_currentSale.CustomerID > 0 ? (_currentSale.CustomerName ?? "N/A") : "Walk-in Customer")}";
             
             // Show total with currency formatting
-            lblTotal.Text = $"Total: ${_currentSale.TotalAmount:F2}";
+            lblTotal.Text = $"Total: {_currentSale.TotalAmount:F2}";
         }
 
         private void ClearSaleDisplay()
@@ -276,21 +282,25 @@ namespace Vape_Store
             int rightMargin = paperWidth - 10;
 
             // Use monospace font for thermal receipt look
-            Font headerFont = new Font("Courier New", 11, FontStyle.Bold);
-            Font bodyFont = new Font("Courier New", 9, FontStyle.Regular);
-            Font footerFont = new Font("Courier New", 10, FontStyle.Bold);
+            Font headerFont = new Font("Courier New", 10f, FontStyle.Bold);
+            Font bodyFont = new Font("Courier New", 8f, FontStyle.Regular);
+            Font footerFont = new Font("Courier New", 8.5f, FontStyle.Bold);
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
 
             // Header - Store Info
-            g.DrawString("MADNI MOBILE & PHOTOSTATE", headerFont, Brushes.Black, 
+            g.DrawString("MADNI MOBILE AND", headerFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP", bodyFont, Brushes.Black, 
+            g.DrawString("PHOTOSTATE", headerFont, Brushes.Black,
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("Ph: 0345-5518744", bodyFont, Brushes.Black, 
+            g.DrawString("Shop #3, opp Save Mart, main Tulsa road", bodyFont, Brushes.Black, 
+                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
+            currentY += lineHeight;
+
+            g.DrawString("lalazar, RWP  |  Ph: 0345-5518744", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight * 2;
 
@@ -350,7 +360,7 @@ namespace Vape_Store
                     currentY += lineHeight;
 
                     // Quantity and price
-                    string itemLine = $"  Qty: {item.Quantity} x ${item.UnitPrice:F2} = ${item.SubTotal:F2}";
+                    string itemLine = $"  Qty: {item.Quantity} x {item.UnitPrice:F2} = {item.SubTotal:F2}";
                     g.DrawString(itemLine, bodyFont, Brushes.Black, leftMargin, currentY);
                     currentY += lineHeight;
                 }
@@ -360,15 +370,15 @@ namespace Vape_Store
             currentY += lineHeight;
 
             // Totals
-            g.DrawString($"Subtotal: ${_currentSale.SubTotal:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
+            g.DrawString($"Subtotal: {_currentSale.SubTotal:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
             currentY += lineHeight;
 
             // Discount
             if (_currentSale.DiscountAmount > 0)
             {
                 string discountText = _currentSale.DiscountPercent > 0 
-                    ? $"Discount ({_currentSale.DiscountPercent:F1}%): ${_currentSale.DiscountAmount:F2}"
-                    : $"Discount: ${_currentSale.DiscountAmount:F2}";
+                    ? $"Discount ({_currentSale.DiscountPercent:F1}%): {_currentSale.DiscountAmount:F2}"
+                    : $"Discount: {_currentSale.DiscountAmount:F2}";
                 g.DrawString(discountText, bodyFont, Brushes.Black, leftMargin, currentY);
                 currentY += lineHeight;
             }
@@ -376,24 +386,24 @@ namespace Vape_Store
             // Tax
             if (_currentSale.TaxAmount > 0)
             {
-                g.DrawString($"Tax ({_currentSale.TaxPercent:F1}%): ${_currentSale.TaxAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
+                g.DrawString($"Tax ({_currentSale.TaxPercent:F1}%): {_currentSale.TaxAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
                 currentY += lineHeight;
             }
 
             // Total
-            g.DrawString($"TOTAL: ${_currentSale.TotalAmount:F2}", footerFont, Brushes.Black, leftMargin, currentY);
+            g.DrawString($"TOTAL: {_currentSale.TotalAmount:F2}", footerFont, Brushes.Black, leftMargin, currentY);
             currentY += lineHeight * 2;
 
             // Payment Info
             g.DrawString($"Payment Method: {_currentSale.PaymentMethod}", bodyFont, Brushes.Black, leftMargin, currentY);
             currentY += lineHeight;
 
-            g.DrawString($"Amount Paid: ${_currentSale.PaidAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
+            g.DrawString($"Amount Paid: {_currentSale.PaidAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
             currentY += lineHeight;
 
             if (_currentSale.ChangeAmount > 0)
             {
-                g.DrawString($"Change: ${_currentSale.ChangeAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
+                g.DrawString($"Change: {_currentSale.ChangeAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
                 currentY += lineHeight;
             }
 
@@ -414,7 +424,11 @@ namespace Vape_Store
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", bodyFont, Brushes.Black, 
+            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible", bodyFont, Brushes.Black, 
+                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
+            currentY += lineHeight;
+
+            g.DrawString("   for any warranty claims", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight * 2;
 
@@ -511,8 +525,13 @@ namespace Vape_Store
             {
                 PrintDocument printDoc = new PrintDocument();
                 printDoc.PrintPage += PrintInvoicePage;
-                printDoc.DefaultPageSettings.PaperSize = new PaperSize("Thermal 3x5", _paperWidth, 600); // 3 inch width, 5 inch height
-                printDoc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
+
+                int dynamicHeight = CalculateReceiptHeight();
+                _paperHeight = Math.Max(dynamicHeight, 600);
+                var paperSize = new PaperSize("ThermalDynamic", _paperWidth, _paperHeight);
+                paperSize.RawKind = (int)PaperKind.Custom;
+                printDoc.DefaultPageSettings.PaperSize = paperSize;
+                printDoc.DefaultPageSettings.Margins = new Margins(_printLeftMargin, _printRightMargin, _printTopMargin, _printBottomMargin);
 
                 PrintDialog printDialog = new PrintDialog();
                 printDialog.Document = printDoc;
@@ -538,7 +557,7 @@ namespace Vape_Store
             try
             {
                 Graphics g = e.Graphics;
-                _currentY = 0;
+                _currentY = _printTopMargin;
 
                 // Print header
                 PrintHeader(g);
@@ -566,29 +585,39 @@ namespace Vape_Store
 
         private void PrintHeader(Graphics g)
         {
-            string header = "MADNI MOBILE & PHOTOSTATE";
-            string address = "Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP";
-            string phone = "Ph: 0345-5518744";
+            int leftMargin = _printLeftMargin;
+            int rightMargin = _paperWidth - _printRightMargin;
+            int printableWidth = rightMargin - leftMargin;
+            string headerLine1 = "MADNI MOBILE AND";
+            string headerLine2 = "PHOTOSTATE";
+            string addressLine1 = "Shop #3, opp Save Mart, main Tulsa road";
+            string addressLine2 = "lalazar, RWP  |  Ph: 0345-5518744";
 
             // Center align header
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
             
-            g.DrawString(header, _headerFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            g.DrawString(headerLine1, _headerFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString(address, _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            g.DrawString(headerLine2, _headerFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString(phone, _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            g.DrawString(addressLine1, _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
+            _currentY += _lineHeight;
+            
+            g.DrawString(addressLine2, _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight * 2;
 
             // Draw line
-            g.DrawLine(Pens.Black, 0, _currentY, _paperWidth, _currentY);
+            g.DrawLine(Pens.Black, leftMargin, _currentY, rightMargin, _currentY);
             _currentY += _lineHeight;
         }
 
         private void PrintBusinessInfo(Graphics g)
         {
+            int leftMargin = _printLeftMargin;
+            int rightMargin = _paperWidth - _printRightMargin;
+            int printableWidth = rightMargin - leftMargin;
             string invoiceNumber, date, cashier;
             
             if (_currentPurchase != null)
@@ -606,27 +635,28 @@ namespace Vape_Store
                 cashier = $"Cashier: {_currentSale.UserName ?? "System"}";
             }
 
-            g.DrawString(invoiceNumber, _bodyFont, Brushes.Black, 0, _currentY);
+            g.DrawString(invoiceNumber, _bodyFont, Brushes.Black, leftMargin, _currentY);
             _currentY += _lineHeight;
             
-            g.DrawString(date, _bodyFont, Brushes.Black, 0, _currentY);
+            g.DrawString(date, _bodyFont, Brushes.Black, leftMargin, _currentY);
             _currentY += _lineHeight;
             
-            g.DrawString(cashier, _bodyFont, Brushes.Black, 0, _currentY);
+            g.DrawString(cashier, _bodyFont, Brushes.Black, leftMargin, _currentY);
             _currentY += _lineHeight * 2;
 
             // Draw line
-            g.DrawLine(Pens.Black, 0, _currentY, _paperWidth, _currentY);
+            g.DrawLine(Pens.Black, leftMargin, _currentY, rightMargin, _currentY);
             _currentY += _lineHeight;
         }
 
         private void PrintCustomerInfo(Graphics g)
         {
+            int leftMargin = 20;
             if (_currentPurchase != null)
             {
                 // Purchase invoice - show supplier info
                 string supplierName = $"Supplier: {_currentPurchase.SupplierName ?? "N/A"}";
-                g.DrawString(supplierName, _bodyFont, Brushes.Black, 0, _currentY);
+                g.DrawString(supplierName, _bodyFont, Brushes.Black, leftMargin, _currentY);
                 _currentY += _lineHeight;
             }
             else if (_currentSale != null)
@@ -635,12 +665,12 @@ namespace Vape_Store
                 if (_currentSale.CustomerID > 0)
                 {
                     string customerName = $"Customer: {_currentSale.CustomerName ?? "Walk-in Customer"}";
-                    g.DrawString(customerName, _bodyFont, Brushes.Black, 0, _currentY);
+                    g.DrawString(customerName, _bodyFont, Brushes.Black, leftMargin, _currentY);
                     _currentY += _lineHeight;
                 }
                 else
                 {
-                    g.DrawString("Customer: Walk-in Customer", _bodyFont, Brushes.Black, 0, _currentY);
+                    g.DrawString("Customer: Walk-in Customer", _bodyFont, Brushes.Black, leftMargin, _currentY);
                     _currentY += _lineHeight;
                 }
             }
@@ -650,12 +680,35 @@ namespace Vape_Store
 
         private void PrintItems(Graphics g)
         {
+            int leftMargin = _printLeftMargin;
+            int rightMargin = _paperWidth - _printRightMargin;
+            int contentWidth = rightMargin - leftMargin;
+            int itemWidth = (int)(contentWidth * 0.46);
+            int qtyWidth = (int)(contentWidth * 0.115);
+            int priceWidth = (int)(contentWidth * 0.215);
+            int totalWidth = contentWidth - itemWidth - qtyWidth - priceWidth;
+            int rowHeight = _lineHeight;
+
+            StringFormat leftFormat = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+            StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+            StringFormat rightFormat = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+
             // Header
-            g.DrawString("Items:", _bodyFont, Brushes.Black, 0, _currentY);
-            _currentY += _lineHeight;
-            
-            g.DrawString("----------------------------------------", _bodyFont, Brushes.Black, 0, _currentY);
-            _currentY += _lineHeight;
+            Rectangle itemRect = new Rectangle(leftMargin, _currentY, itemWidth, rowHeight);
+            Rectangle qtyRect = new Rectangle(itemRect.Right, _currentY, qtyWidth, rowHeight);
+            Rectangle priceRect = new Rectangle(qtyRect.Right, _currentY, priceWidth, rowHeight);
+            Rectangle totalRect = new Rectangle(priceRect.Right, _currentY, totalWidth, rowHeight);
+
+            g.DrawString("ITEM", _bodyFont, Brushes.Black, itemRect, leftFormat);
+            // Nudge QTY heading left by 3px for header row only
+            var qtyHeaderRect = new Rectangle(qtyRect.Left - 3, _currentY, qtyWidth, rowHeight);
+            g.DrawString("QTY", _bodyFont, Brushes.Black, qtyHeaderRect, centerFormat);
+            g.DrawString("PRICE", _bodyFont, Brushes.Black, priceRect, rightFormat);
+            g.DrawString("TOTAL", _bodyFont, Brushes.Black, totalRect, rightFormat);
+            _currentY += rowHeight;
+
+            g.DrawLine(Pens.Black, leftMargin, _currentY, rightMargin, _currentY);
+            _currentY += Math.Max(2, rowHeight / 5);
 
             // Items - handle both sales and purchases
             if (_currentPurchase != null && _purchaseItems != null && _purchaseItems.Count > 0)
@@ -664,14 +717,15 @@ namespace Vape_Store
                 foreach (var item in _purchaseItems)
                 {
                     // Product name (truncate if too long)
-                    string productName = (item.ProductName ?? "Unknown").Length > 25 ? item.ProductName.Substring(0, 22) + "..." : item.ProductName;
-                    g.DrawString(productName, _bodyFont, Brushes.Black, 0, _currentY);
-                    _currentY += _lineHeight;
+                    string productName = item.ProductName ?? "Unknown";
+                    productName = FitTextToWidth(g, productName, _bodyFont, itemWidth);
+                    g.DrawString(productName, _bodyFont, Brushes.Black, new Rectangle(itemRect.Left, _currentY, itemWidth, rowHeight), leftFormat);
 
                     // Quantity and price
-                    string itemLine = $"Qty: {item.Quantity} x ${item.UnitPrice:F2} = ${item.SubTotal:F2}";
-                    g.DrawString(itemLine, _bodyFont, Brushes.Black, 0, _currentY);
-                    _currentY += _lineHeight;
+                    g.DrawString(item.Quantity.ToString(), _bodyFont, Brushes.Black, new Rectangle(qtyRect.Left, _currentY, qtyWidth, rowHeight), centerFormat);
+                    g.DrawString($"{item.UnitPrice:F2}", _bodyFont, Brushes.Black, new Rectangle(priceRect.Left, _currentY, priceWidth, rowHeight), rightFormat);
+                    g.DrawString($"{item.SubTotal:F2}", _bodyFont, Brushes.Black, new Rectangle(totalRect.Left, _currentY, totalWidth, rowHeight), rightFormat);
+                    _currentY += rowHeight;
                 }
             }
             else if (_currentSale != null)
@@ -683,8 +737,8 @@ namespace Vape_Store
 
                 if (itemsToPrint.Count == 0)
                 {
-                    g.DrawString("No items found", _bodyFont, Brushes.Red, 0, _currentY);
-                    _currentY += _lineHeight;
+                    g.DrawString("No items found", _bodyFont, Brushes.Red, new Rectangle(itemRect.Left, _currentY, contentWidth, rowHeight), leftFormat);
+                    _currentY += rowHeight;
                 }
                 else
                 {
@@ -692,129 +746,247 @@ namespace Vape_Store
                     foreach (var item in itemsToPrint)
                     {
                         // Product name (truncate if too long)
-                        string productName = (item.ProductName ?? "Unknown Product").Length > 25 ? item.ProductName.Substring(0, 22) + "..." : item.ProductName;
-                        g.DrawString(productName, _bodyFont, Brushes.Black, 0, _currentY);
-                        _currentY += _lineHeight;
+                        string productName = item.ProductName ?? "Unknown Product";
+                        productName = FitTextToWidth(g, productName, _bodyFont, itemWidth);
+                        g.DrawString(productName, _bodyFont, Brushes.Black, new Rectangle(itemRect.Left, _currentY, itemWidth, rowHeight), leftFormat);
 
                         // Quantity and price
-                        string itemLine = $"Qty: {item.Quantity} x ${item.UnitPrice:F2} = ${item.SubTotal:F2}";
-                        g.DrawString(itemLine, _bodyFont, Brushes.Black, 0, _currentY);
-                        _currentY += _lineHeight;
+                        g.DrawString(item.Quantity.ToString(), _bodyFont, Brushes.Black, new Rectangle(qtyRect.Left, _currentY, qtyWidth, rowHeight), centerFormat);
+                        g.DrawString($"{item.UnitPrice:F2}", _bodyFont, Brushes.Black, new Rectangle(priceRect.Left, _currentY, priceWidth, rowHeight), rightFormat);
+                        g.DrawString($"{item.SubTotal:F2}", _bodyFont, Brushes.Black, new Rectangle(totalRect.Left, _currentY, totalWidth, rowHeight), rightFormat);
+                        _currentY += rowHeight;
                     }
                 }
             }
 
-            g.DrawString("----------------------------------------", _bodyFont, Brushes.Black, 0, _currentY);
-            _currentY += _lineHeight;
+            g.DrawLine(Pens.Black, leftMargin, _currentY, rightMargin, _currentY);
+            _currentY += Math.Max(2, rowHeight / 2);
         }
 
         private void PrintTotals(Graphics g)
         {
+            int leftMargin = _printLeftMargin;
+            int rightMargin = _paperWidth - _printRightMargin;
+            int contentWidth = rightMargin - leftMargin;
+            int labelWidth = (int)(contentWidth * 0.55);
+            int amountWidth = contentWidth - labelWidth;
+            StringFormat leftFormat = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+            StringFormat rightFormat = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+
             if (_currentPurchase != null)
             {
                 // Purchase totals
-                g.DrawString($"Subtotal: ${_currentPurchase.SubTotal:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
+                DrawTotalLine(g, "Subtotal:", _currentPurchase.SubTotal, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
 
                 // Discount
                 if (_currentPurchase.DiscountAmount > 0)
                 {
-                    g.DrawString($"Discount: ${_currentPurchase.DiscountAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                    _currentY += _lineHeight;
+                    DrawTotalLine(g, "Discount:", _currentPurchase.DiscountAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
                 }
 
                 // Tax
                 if (_currentPurchase.TaxAmount > 0)
                 {
-                    g.DrawString($"Tax ({_currentPurchase.TaxPercent:F1}%): ${_currentPurchase.TaxAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                    _currentY += _lineHeight;
+                    string taxLabel = $"Tax ({_currentPurchase.TaxPercent:F1}%):";
+                    DrawTotalLine(g, taxLabel, _currentPurchase.TaxAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
                 }
 
                 // Total
-                g.DrawString($"TOTAL: ${_currentPurchase.TotalAmount:F2}", _footerFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight * 2;
+                DrawTotalLine(g, "TOTAL:", _currentPurchase.TotalAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat, _footerFont);
+                _currentY += _lineHeight;
 
                 // Payment info
-                g.DrawString($"Payment Method: {_currentPurchase.PaymentMethod}", _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
-                
-                g.DrawString($"Amount Paid: ${_currentPurchase.PaidAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
+                DrawPaymentInfo(g, $"Payment Method: {_currentPurchase.PaymentMethod}", leftMargin, contentWidth);
+                DrawPaymentInfo(g, $"Amount Paid: {_currentPurchase.PaidAmount:F2}", leftMargin, contentWidth);
                 
                 // Calculate balance amount (Total - Paid)
                 decimal balanceAmount = _currentPurchase.TotalAmount - _currentPurchase.PaidAmount;
                 if (balanceAmount > 0)
                 {
-                    g.DrawString($"Balance: ${balanceAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                    _currentY += _lineHeight;
+                    DrawPaymentInfo(g, $"Balance: {balanceAmount:F2}", leftMargin, contentWidth);
                 }
             }
             else if (_currentSale != null)
             {
                 // Sale totals
-                g.DrawString($"Subtotal: ${_currentSale.SubTotal:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
+                DrawTotalLine(g, "Subtotal:", _currentSale.SubTotal, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
 
                 // Discount
                 if (_currentSale.DiscountAmount > 0)
                 {
                     string discountText = _currentSale.DiscountPercent > 0 
-                        ? $"Discount ({_currentSale.DiscountPercent:F1}%): ${_currentSale.DiscountAmount:F2}"
-                        : $"Discount: ${_currentSale.DiscountAmount:F2}";
-                    g.DrawString(discountText, _bodyFont, Brushes.Black, 0, _currentY);
-                    _currentY += _lineHeight;
+                        ? $"Discount ({_currentSale.DiscountPercent:F1}%):"
+                        : "Discount:";
+                    DrawTotalLine(g, discountText, _currentSale.DiscountAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
                 }
 
                 // Tax
                 if (_currentSale.TaxAmount > 0)
                 {
-                    g.DrawString($"Tax ({_currentSale.TaxPercent:F1}%): ${_currentSale.TaxAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                    _currentY += _lineHeight;
+                    string taxLabel = $"Tax ({_currentSale.TaxPercent:F1}%):";
+                    DrawTotalLine(g, taxLabel, _currentSale.TaxAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
                 }
 
                 // Total
-                g.DrawString($"TOTAL: ${_currentSale.TotalAmount:F2}", _footerFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight * 2;
+                DrawTotalLine(g, "TOTAL:", _currentSale.TotalAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat, _footerFont);
+                _currentY += _lineHeight;
 
                 // Payment info
-                g.DrawString($"Payment Method: {_currentSale.PaymentMethod}", _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
-                
-                g.DrawString($"Amount Paid: ${_currentSale.PaidAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                _currentY += _lineHeight;
+                DrawPaymentInfo(g, $"Payment Method: {_currentSale.PaymentMethod}", leftMargin, contentWidth);
+                DrawPaymentInfo(g, $"Amount Paid: {_currentSale.PaidAmount:F2}", leftMargin, contentWidth);
                 
                 if (_currentSale.ChangeAmount > 0)
                 {
-                    g.DrawString($"Change: ${_currentSale.ChangeAmount:F2}", _bodyFont, Brushes.Black, 0, _currentY);
-                    _currentY += _lineHeight;
+                    DrawPaymentInfo(g, $"Change: {_currentSale.ChangeAmount:F2}", leftMargin, contentWidth);
                 }
             }
         }
 
         private void PrintFooter(Graphics g)
         {
+            int leftMargin = _printLeftMargin;
+            int printableWidth = (_paperWidth - _printRightMargin) - leftMargin;
             _currentY += _lineHeight;
             
-            g.DrawString("----------------------------------------", _bodyFont, Brushes.Black, 0, _currentY);
+            g.DrawString(new string('-', Math.Max(20, printableWidth / 6)), _bodyFont, Brushes.Black, leftMargin, _currentY);
             _currentY += _lineHeight;
             
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
             
-            g.DrawString("Note:", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            g.DrawString("Note:", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString("1. Goods once sold are only exchangeable within 3 days", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            g.DrawString("1. Goods once sold are only exchangeable within 3 days", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString("2. No return policy", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            g.DrawString("2. No return policy", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight * 2;
+            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
+            _currentY += _lineHeight;
             
-            g.DrawString("Developed By: DevFleet Technologies | +923225347757", _bodyFont, Brushes.Black, new Rectangle(0, _currentY, _paperWidth, _lineHeight), centerFormat);
+            g.DrawString("   for any warranty claims", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
+            _currentY += _lineHeight;
+            
+            g.DrawString("Developed By: DevFleet Technologies | +923225347757", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
         }
+
+        private string FitTextToWidth(Graphics g, string text, Font font, int targetWidth)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            if (g.MeasureString(text, font).Width <= targetWidth)
+            {
+                return text;
+            }
+
+            string working = text.Trim();
+            while (working.Length > 0)
+            {
+                working = working.Substring(0, working.Length - 1);
+                string candidate = working.TrimEnd() + "...";
+                if (g.MeasureString(candidate, font).Width <= targetWidth)
+                {
+                    return candidate;
+                }
+            }
+
+            return "...";
+        }
+
+        private void DrawTotalLine(Graphics g, string label, decimal amount, int leftMargin, int labelWidth, int amountWidth, StringFormat leftFormat, StringFormat rightFormat, Font overrideFont = null)
+        {
+            Font fontToUse = overrideFont ?? _bodyFont;
+            Rectangle labelRect = new Rectangle(leftMargin, _currentY, labelWidth, _lineHeight);
+            Rectangle amountRect = new Rectangle(labelRect.Right, _currentY, amountWidth, _lineHeight);
+
+            g.DrawString(label, fontToUse, Brushes.Black, labelRect, leftFormat);
+            g.DrawString($"{amount:F2}", fontToUse, Brushes.Black, amountRect, rightFormat);
+            _currentY += _lineHeight;
+        }
+
+        private void DrawPaymentInfo(Graphics g, string text, int leftMargin, int contentWidth)
+        {
+            Rectangle rect = new Rectangle(leftMargin, _currentY, contentWidth, _lineHeight);
+            StringFormat leftFormat = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
+            g.DrawString(text, _bodyFont, Brushes.Black, rect, leftFormat);
+            _currentY += _lineHeight;
+        }
+
+        private int CalculateReceiptHeight()
+        {
+            int height = _printTopMargin;
+            height += GetHeaderHeight();
+            height += GetBusinessInfoHeight();
+            height += GetCustomerInfoHeight();
+            height += GetItemsHeight();
+            height += GetTotalsHeight();
+            height += GetFooterHeight();
+            height += _printBottomMargin;
+            return height;
+        }
+
+        private int GetHeaderHeight() => _lineHeight * 6;
+
+        private int GetBusinessInfoHeight() => _lineHeight * 6;
+
+        private int GetCustomerInfoHeight()
+        {
+            if (_currentPurchase != null || _currentSale != null)
+            {
+                return _lineHeight * 2;
+            }
+            return _lineHeight;
+        }
+
+        private int GetItemsHeight()
+        {
+            int headerAndLine = _lineHeight * 2;
+            int rowHeight = _lineHeight;
+            int itemCount = (_currentPurchase != null ? _purchaseItems?.Count : (_saleItems?.Count ?? _currentSale?.SaleItems?.Count ?? 0)) ?? 0;
+            if (itemCount == 0)
+            {
+                return headerAndLine + rowHeight * 2;
+            }
+
+            return headerAndLine + (itemCount * rowHeight) + _lineHeight;
+        }
+
+        private int GetTotalsHeight()
+        {
+            int lines = 0;
+            if (_currentPurchase != null)
+            {
+                lines++; // subtotal
+                if (_currentPurchase.DiscountAmount > 0) lines++;
+                if (_currentPurchase.TaxAmount > 0) lines++;
+                lines++; // total
+                lines += 2; // payment method, amount paid
+                if (_currentPurchase.TotalAmount - _currentPurchase.PaidAmount > 0) lines++;
+            }
+            else if (_currentSale != null)
+            {
+                lines++; // subtotal
+                if (_currentSale.DiscountAmount > 0) lines++;
+                if (_currentSale.TaxAmount > 0) lines++;
+                lines++; // total
+                lines += 2; // payment method, amount paid
+                if (_currentSale.ChangeAmount > 0) lines++;
+            }
+
+            if (lines == 0)
+            {
+                return _lineHeight * 2;
+            }
+
+            return (lines * _lineHeight) + _lineHeight; // extra spacing after totals
+        }
+
+        private int GetFooterHeight() => _lineHeight * 8;
 
         private void BtnClose_Click(object sender, EventArgs e)
         {
@@ -862,14 +1034,14 @@ namespace Vape_Store
                 lblInvoiceNumber.Text = $"Invoice Number: {_currentPurchase.InvoiceNumber}";
                 lblDate.Text = $"Date: {_currentPurchase.PurchaseDate:MM/dd/yyyy HH:mm}";
                 lblSupplier.Text = $"Supplier: {_currentPurchase.SupplierName ?? "N/A"}";
-                lblTotal.Text = $"Total: ${_currentPurchase.TotalAmount:F2}";
+            lblTotal.Text = $"Total: {_currentPurchase.TotalAmount:F2}";
                 
                 // Enable print and preview buttons
                 btnPrintInvoice.Enabled = true;
                 btnPreviewInvoice.Enabled = true;
                 
                 // Update info label
-                lblSaleInfo.Text = $"Purchase Found: {_currentPurchase.InvoiceNumber} - {_currentPurchase.PurchaseDate:MM/dd/yyyy HH:mm} - ${_currentPurchase.TotalAmount:F2}";
+                lblSaleInfo.Text = $"Purchase Found: {_currentPurchase.InvoiceNumber} - {_currentPurchase.PurchaseDate:MM/dd/yyyy HH:mm} - {_currentPurchase.TotalAmount:F2}";
                 
                 // Update thermal receipt for purchase
                 UpdateThermalReceipt();
@@ -921,17 +1093,19 @@ namespace Vape_Store
 
             // Header
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
-            Font headerFont = new Font("Courier New", 12, FontStyle.Bold);
-            Font bodyFont = new Font("Courier New", 9, FontStyle.Regular);
-            Font footerFont = new Font("Courier New", 10, FontStyle.Bold);
+            Font headerFont = new Font("Courier New", 10.5f, FontStyle.Bold);
+            Font bodyFont = new Font("Courier New", 8.25f, FontStyle.Regular);
+            Font footerFont = new Font("Courier New", 9f, FontStyle.Bold);
 
-            g.DrawString("MADNI MOBILE & PHOTOSTATE", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("MADNI MOBILE AND", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            currentY += lineHeight;
+            g.DrawString("PHOTOSTATE", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             
-            g.DrawString("Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("Shop #3, opp Save Mart, main Tulsa road", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             
-            g.DrawString("Ph: 0345-5518744", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("lalazar, RWP  |  Ph: 0345-5518744", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight * 2;
 
             g.DrawLine(Pens.Black, 0, currentY, paperWidth, currentY);
@@ -967,7 +1141,7 @@ namespace Vape_Store
                 g.DrawString(productName, bodyFont, Brushes.Black, 0, currentY);
                 currentY += lineHeight;
 
-                string itemLine = $"Qty: {item.Quantity} x ${item.UnitPrice:F2} = ${item.SubTotal:F2}";
+                string itemLine = $"Qty: {item.Quantity} x {item.UnitPrice:F2} = {item.SubTotal:F2}";
                 g.DrawString(itemLine, bodyFont, Brushes.Black, 0, currentY);
                 currentY += lineHeight;
             }
@@ -976,37 +1150,37 @@ namespace Vape_Store
             currentY += lineHeight;
 
             // Totals
-            g.DrawString($"Subtotal: ${_sale.SubTotal:F2}", bodyFont, Brushes.Black, 0, currentY);
+            g.DrawString($"Subtotal: {_sale.SubTotal:F2}", bodyFont, Brushes.Black, 0, currentY);
             currentY += lineHeight;
 
             // Discount
             if (_sale.DiscountAmount > 0)
             {
                 string discountText = _sale.DiscountPercent > 0 
-                    ? $"Discount ({_sale.DiscountPercent:F1}%): ${_sale.DiscountAmount:F2}"
-                    : $"Discount: ${_sale.DiscountAmount:F2}";
+                    ? $"Discount ({_sale.DiscountPercent:F1}%): {_sale.DiscountAmount:F2}"
+                    : $"Discount: {_sale.DiscountAmount:F2}";
                 g.DrawString(discountText, bodyFont, Brushes.Black, 0, currentY);
                 currentY += lineHeight;
             }
 
             if (_sale.TaxAmount > 0)
             {
-                g.DrawString($"Tax ({_sale.TaxPercent:F1}%): ${_sale.TaxAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
+                g.DrawString($"Tax ({_sale.TaxPercent:F1}%): {_sale.TaxAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
                 currentY += lineHeight;
             }
 
-            g.DrawString($"TOTAL: ${_sale.TotalAmount:F2}", footerFont, Brushes.Black, 0, currentY);
+            g.DrawString($"TOTAL: {_sale.TotalAmount:F2}", footerFont, Brushes.Black, 0, currentY);
             currentY += lineHeight * 2;
 
             g.DrawString($"Payment Method: {_sale.PaymentMethod}", bodyFont, Brushes.Black, 0, currentY);
             currentY += lineHeight;
             
-            g.DrawString($"Amount Paid: ${_sale.PaidAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
+            g.DrawString($"Amount Paid: {_sale.PaidAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
             currentY += lineHeight;
             
             if (_sale.ChangeAmount > 0)
             {
-                g.DrawString($"Change: ${_sale.ChangeAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
+                g.DrawString($"Change: {_sale.ChangeAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
                 currentY += lineHeight;
             }
 
@@ -1023,7 +1197,9 @@ namespace Vape_Store
             g.DrawString("2. No return policy", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             
-            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            currentY += lineHeight;
+            g.DrawString("   for any warranty claims", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight * 2;
             
             g.DrawString("Developed By: DevFleet Technologies | +923225347757", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
