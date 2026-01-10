@@ -694,8 +694,6 @@ namespace Vape_Store
                 // Refresh the data grid
                 RefreshCartDisplay();
                 CalculateTotals();
-                
-                ShowMessage($"Added {product.ProductName} to cart", "Product Added", MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -820,8 +818,6 @@ namespace Vape_Store
                 RefreshCartDisplay();
                 CalculateTotals();
                 
-                // Show success message
-                ShowMessage($"'{product.ProductName}' added to cart successfully!", "Product Added", MessageBoxIcon.Information);
                 
                 // Clear product search and quantity
                 txtProductName.Clear();
