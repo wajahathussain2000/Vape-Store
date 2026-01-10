@@ -288,19 +288,19 @@ namespace Vape_Store
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
 
             // Header - Store Info
-            g.DrawString("MADNI MOBILE AND", headerFont, Brushes.Black, 
+            g.DrawString("Attock Mobiles Rwp", headerFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("PHOTOSTATE", headerFont, Brushes.Black,
+            g.DrawString("Address : V5 G Mall Ground Floor", headerFont, Brushes.Black,
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("Shop #3, opp Save Mart, main Tulsa road", bodyFont, Brushes.Black, 
+            g.DrawString("Shop no 5 Attock Mobiles Rwp", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("lalazar, RWP  |  Ph: 0345-5518744", bodyFont, Brushes.Black, 
+            g.DrawString("Bahria Phase7 Food Street", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight * 2;
 
@@ -588,10 +588,10 @@ namespace Vape_Store
             int leftMargin = _printLeftMargin;
             int rightMargin = _paperWidth - _printRightMargin;
             int printableWidth = rightMargin - leftMargin;
-            string headerLine1 = "MADNI MOBILE AND";
-            string headerLine2 = "PHOTOSTATE";
-            string addressLine1 = "Shop #3, opp Save Mart, main Tulsa road";
-            string addressLine2 = "lalazar, RWP  |  Ph: 0345-5518744";
+            string headerLine1 = "Attock Mobiles Rwp";
+            string headerLine2 = "Address : V5 G Mall Ground Floor";
+            string addressLine1 = "Shop no 5 Attock Mobiles Rwp";
+            string addressLine2 = "Bahria Phase7 Food Street";
 
             // Center align header
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
@@ -868,7 +868,7 @@ namespace Vape_Store
             g.DrawString("   for any warranty claims", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString("Developed By: DevFleet Technologies | +923225347757", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
+            g.DrawString("Developed By: DevFleet Technologies", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
         }
 
@@ -1097,15 +1097,15 @@ namespace Vape_Store
             Font bodyFont = new Font("Courier New", 8.25f, FontStyle.Regular);
             Font footerFont = new Font("Courier New", 9f, FontStyle.Bold);
 
-            g.DrawString("MADNI MOBILE AND", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("Attock Mobiles Rwp", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
-            g.DrawString("PHOTOSTATE", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            
-            g.DrawString("Shop #3, opp Save Mart, main Tulsa road", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("Address : V5 G Mall Ground Floor", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             
-            g.DrawString("lalazar, RWP  |  Ph: 0345-5518744", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("Shop no 5 Attock Mobiles Rwp", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            currentY += lineHeight;
+            
+            g.DrawString("Bahria Phase7 Food Street", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight * 2;
 
             g.DrawLine(Pens.Black, 0, currentY, paperWidth, currentY);
@@ -1202,7 +1202,7 @@ namespace Vape_Store
             g.DrawString("   for any warranty claims", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight * 2;
             
-            g.DrawString("Developed By: DevFleet Technologies | +923225347757", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("Developed By: DevFleet Technologies", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
         }
 
     }
