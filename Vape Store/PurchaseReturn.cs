@@ -29,6 +29,11 @@ namespace Vape_Store
         
         private bool isEditMode = false;
         private int selectedReturnId = -1;
+        
+        // Barcode scanner input field
+        private TextBox txtBarcodeScanner;
+        private Timer _barcodeTimer;
+        private bool _isShowingBarcodeError = false;
 
         public PurchaseReturnForm()
         {
@@ -46,6 +51,213 @@ namespace Vape_Store
             LoadPurchases();
             GenerateReturnNumber();
             InitializeReturnReasons();
+            CreateBarcodeScanner();
+        }
+
+        private void CreateBarcodeScanner()
+        {
+            // Create barcode scanner input field
+            txtBarcodeScanner = new TextBox
+            {
+                Name = "txtBarcodeScanner",
+                Text = "Scan or enter product barcode...",
+                Location = new Point(20, 100),
+                Size = new Size(200, 25),
+                TabIndex = 0,
+                Font = new Font("Arial", 10),
+                ForeColor = Color.Gray
+            };
+            
+            // Add placeholder functionality
+            txtBarcodeScanner.Enter += (s, e) => {
+                if (txtBarcodeScanner.Text == "Scan or enter product barcode...")
+                {
+                    txtBarcodeScanner.Text = "";
+                    txtBarcodeScanner.ForeColor = Color.Black;
+                }
+            };
+            
+            txtBarcodeScanner.Leave += (s, e) => {
+                if (string.IsNullOrWhiteSpace(txtBarcodeScanner.Text))
+                {
+                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
+                    txtBarcodeScanner.ForeColor = Color.Gray;
+                }
+            };
+            
+            // Add to the first panel (green header panel) if it exists
+            if (this.Controls.Count > 0 && this.Controls[0] is Panel panel1)
+            {
+                panel1.Controls.Add(txtBarcodeScanner);
+                txtBarcodeScanner.BringToFront();
+            }
+            else
+            {
+                // Add to form if no panel found
+                this.Controls.Add(txtBarcodeScanner);
+                txtBarcodeScanner.BringToFront();
+            }
+            
+            // Add event handler for barcode scanning
+            txtBarcodeScanner.KeyPress += TxtBarcodeScanner_KeyPress;
+            txtBarcodeScanner.TextChanged += TxtBarcodeScanner_TextChanged;
+        }
+
+        private void TxtBarcodeScanner_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            // Handle Enter key to process barcode
+            if (e.KeyChar == (char)Keys.Enter)
+            {
+                e.Handled = true;
+                ProcessBarcodeScan();
+            }
+        }
+
+        private void TxtBarcodeScanner_TextChanged(object sender, EventArgs e)
+        {
+            // Auto-process barcode when text is entered (for barcode scanners that don't send Enter)
+            if (txtBarcodeScanner.Text.Length >= 3 && txtBarcodeScanner.Text != "Scan or enter product barcode...") // Minimum barcode length
+            {
+                // Use a timer to avoid processing while user is still typing
+                // Stop any existing timer to prevent multiple executions
+                if (_barcodeTimer != null)
+                {
+                    _barcodeTimer.Stop();
+                    _barcodeTimer.Dispose();
+                }
+                
+                _barcodeTimer = new Timer();
+                _barcodeTimer.Interval = 100; // Reduced delay for better responsiveness
+                _barcodeTimer.Tick += (s, args) => {
+                    _barcodeTimer.Stop();
+                    _barcodeTimer.Dispose();
+                    ProcessBarcodeScan();
+                };
+                _barcodeTimer.Start();
+            }
+        }
+
+        private void ProcessBarcodeScan()
+        {
+            try
+            {
+                string scannedBarcode = txtBarcodeScanner.Text.Trim();
+                
+                // Ignore placeholder text
+                if (string.IsNullOrEmpty(scannedBarcode) || scannedBarcode == "Scan or enter product barcode...")
+                    return;
+
+                // Find product by barcode - need to get all products to check barcodes
+                var products = _productRepository.GetAllProducts();
+                var product = products?.FirstOrDefault(p => 
+                    !string.IsNullOrEmpty(p.Barcode) && 
+                    p.Barcode.Trim().Equals(scannedBarcode, StringComparison.OrdinalIgnoreCase));
+                
+                if (product != null)
+                {
+                    // Product found - increase return quantity in datagridview
+                    IncreaseReturnQuantityForProduct(product);
+                    
+                    // Clear scanner input completely
+                    txtBarcodeScanner.Clear();
+                    txtBarcodeScanner.Focus();
+                    
+                    // Reset error flag
+                    _isShowingBarcodeError = false;
+                }
+                else
+                {
+                    // Only show error if not already showing one
+                    if (!_isShowingBarcodeError)
+                    {
+                        _isShowingBarcodeError = true;
+                        ShowMessage($"Product not found for barcode: {scannedBarcode}", "Product Not Found", MessageBoxIcon.Warning);
+                        txtBarcodeScanner.Clear();
+                        txtBarcodeScanner.Focus();
+                        
+                        // Reset the error flag after a brief delay to allow UI to update
+                        Timer resetTimer = new Timer();
+                        resetTimer.Interval = 500; // 500ms delay
+                        resetTimer.Tick += (s, args) => {
+                            resetTimer.Stop();
+                            resetTimer.Dispose();
+                            _isShowingBarcodeError = false;
+                        };
+                        resetTimer.Start();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error processing barcode: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
+        }
+
+        private void IncreaseReturnQuantityForProduct(Product product)
+        {
+            try
+            {
+                // Find the row in the datagridview that corresponds to this product
+                for (int i = 0; i < dataGridView1.Rows.Count; i++)
+                {
+                    var row = dataGridView1.Rows[i];
+                    var productIdCell = row.Cells["ProductID"];
+                    
+                    if (productIdCell != null && productIdCell.Value != null &&
+                        Convert.ToInt32(productIdCell.Value) == product.ProductID)
+                    {
+                        // Found the product row, increment the return quantity
+                        var returnQtyCell = row.Cells["ReturnQty"];
+                        var originalQtyCell = row.Cells["OrignalQty"];
+                        
+                        if (returnQtyCell != null && originalQtyCell != null &&
+                            returnQtyCell.Value != null && originalQtyCell.Value != null)
+                        {
+                            int currentReturnQty = Convert.ToInt32(returnQtyCell.Value ?? 0);
+                            int originalQty = Convert.ToInt32(originalQtyCell.Value ?? 0);
+                            
+                            // Only increment if we haven't reached the original quantity
+                            if (currentReturnQty < originalQty)
+                            {
+                                int newReturnQty = currentReturnQty + 1;
+                                returnQtyCell.Value = newReturnQty;
+                                
+                                // Calculate and update the total for this row
+                                var priceCell = row.Cells["Price"];
+                                if (priceCell != null && priceCell.Value != null)
+                                {
+                                    decimal price = Convert.ToDecimal(priceCell.Value);
+                                    decimal newTotal = newReturnQty * price;
+                                    row.Cells["Total"].Value = newTotal;
+                                }
+                                
+                                // Update the corresponding item in _returnItems list
+                                if (i < _returnItems.Count)
+                                {
+                                    _returnItems[i].Quantity = newReturnQty;
+                                    _returnItems[i].SubTotal = newReturnQty * _returnItems[i].UnitPrice;
+                                }
+                                
+                                CalculateTotals();
+                                ShowMessage($"Increased return quantity for {product.ProductName}", "Product Added", MessageBoxIcon.Information);
+                                return;
+                            }
+                            else
+                            {
+                                ShowMessage($"Cannot return more than original quantity ({originalQty}) for {product.ProductName}", "Limit Reached", MessageBoxIcon.Warning);
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+                // If we reach here, the product wasn't found in the current invoice
+                ShowMessage($"Product '{product.ProductName}' is not in the selected invoice", "Not In Invoice", MessageBoxIcon.Warning);
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error increasing return quantity: {ex.Message}", "Error", MessageBoxIcon.Error);
+            }
         }
 
         private void InitializeDataGridView()

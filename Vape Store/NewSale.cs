@@ -26,6 +26,7 @@ namespace Vape_Store
         private PictureBox picBarcode;
         private TextBox txtBarcodeScanner;
         private Timer _barcodeTimer;
+        private bool _isShowingBarcodeError = false;
         private List<Models.SaleItem> saleItems;
         private List<Customer> _customers;
         private List<Product> _products;
@@ -463,6 +464,14 @@ namespace Vape_Store
                 }
             };
             
+            // Handle text changed event to clear placeholder when user types
+            txtBarcodeScanner.TextChanged += (s, e) => {
+                if (txtBarcodeScanner.Text != "Scan or enter product barcode...")
+                {
+                    txtBarcodeScanner.ForeColor = Color.Black;
+                }
+            };
+            
             // Add to the first panel (green header panel)
             if (this.Controls.Count > 0 && this.Controls[0] is Panel panel1)
             {
@@ -580,18 +589,33 @@ namespace Vape_Store
                     // Product found - add to cart automatically
                     AddProductToCart(product);
                     
-                    // Clear scanner input and set placeholder
-                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
-                    txtBarcodeScanner.ForeColor = Color.Gray;
+                    // Clear scanner input completely
+                    txtBarcodeScanner.Clear();
                     txtBarcodeScanner.Focus();
+                    
+                    // Reset error flag
+                    _isShowingBarcodeError = false;
                 }
                 else
                 {
-                    ShowMessage($"Product not found for barcode: {scannedBarcode}", "Product Not Found", MessageBoxIcon.Warning);
-                    txtBarcodeScanner.Clear();
-                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
-                    txtBarcodeScanner.ForeColor = Color.Gray;
-                    txtBarcodeScanner.Focus();
+                    // Only show error if not already showing one
+                    if (!_isShowingBarcodeError)
+                    {
+                        _isShowingBarcodeError = true;
+                        ShowMessage($"Product not found for barcode: {scannedBarcode}", "Product Not Found", MessageBoxIcon.Warning);
+                        txtBarcodeScanner.Clear();
+                        txtBarcodeScanner.Focus();
+                        
+                        // Reset the error flag after a brief delay to allow UI to update
+                        Timer resetTimer = new Timer();
+                        resetTimer.Interval = 500; // 500ms delay
+                        resetTimer.Tick += (s, args) => {
+                            resetTimer.Stop();
+                            resetTimer.Dispose();
+                            _isShowingBarcodeError = false;
+                        };
+                        resetTimer.Start();
+                    }
                 }
             }
             catch (Exception ex)

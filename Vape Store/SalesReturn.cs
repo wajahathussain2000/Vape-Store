@@ -36,6 +36,7 @@ namespace Vape_Store
         private TextBox txtBarcodeScanner;
         private Timer _barcodeTimer;
         private PictureBox picBarcode;
+        private bool _isShowingBarcodeError = false;
 
         public SalesReturnForm()
         {
@@ -316,14 +317,32 @@ namespace Vape_Store
                     txtBarcodeScanner.Text = "Scan or enter product barcode...";
                     txtBarcodeScanner.ForeColor = Color.Gray;
                     txtBarcodeScanner.Focus();
+                    
+                    // Reset error flag
+                    _isShowingBarcodeError = false;
                 }
                 else
                 {
-                    ShowMessage($"Product not found for barcode: {scannedBarcode}", "Product Not Found", MessageBoxIcon.Warning);
-                    txtBarcodeScanner.Clear();
-                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
-                    txtBarcodeScanner.ForeColor = Color.Gray;
-                    txtBarcodeScanner.Focus();
+                    // Only show error if not already showing one
+                    if (!_isShowingBarcodeError)
+                    {
+                        _isShowingBarcodeError = true;
+                        ShowMessage($"Product not found for barcode: {scannedBarcode}", "Product Not Found", MessageBoxIcon.Warning);
+                        txtBarcodeScanner.Clear();
+                        txtBarcodeScanner.Text = "Scan or enter product barcode...";
+                        txtBarcodeScanner.ForeColor = Color.Gray;
+                        txtBarcodeScanner.Focus();
+                        
+                        // Reset the error flag after a brief delay to allow UI to update
+                        Timer resetTimer = new Timer();
+                        resetTimer.Interval = 500; // 500ms delay
+                        resetTimer.Tick += (s, args) => {
+                            resetTimer.Stop();
+                            resetTimer.Dispose();
+                            _isShowingBarcodeError = false;
+                        };
+                        resetTimer.Start();
+                    }
                 }
             }
             catch (Exception ex)
