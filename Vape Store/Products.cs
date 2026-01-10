@@ -456,8 +456,37 @@ namespace Vape_Store
                     return;
                 }
 
-                // Auto-generate barcode (UI section removed, always auto-generate)
-                string barcodeText = GenerateUniqueBarcode();
+                // Use custom barcode if entered by user, otherwise auto-generate
+                string barcodeText;
+                if (!string.IsNullOrWhiteSpace(txtBarcode.Text))
+                {
+                    // User has entered custom barcode - validate it
+                    string customBarcode = txtBarcode.Text.Trim();
+                    
+                    // Validate the custom barcode format
+                    if (!_barcodeService.ValidateBarcode(customBarcode))
+                    {
+                        ShowMessage("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.", "Validation Error", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        return;
+                    }
+                    
+                    // Check for duplicate barcode
+                    if (_products.Any(p => p.Barcode != null && p.Barcode.Equals(customBarcode, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        ShowMessage($"Barcode '{customBarcode}' already exists! Please use a different barcode.", "Duplicate Barcode", MessageBoxIcon.Warning);
+                        txtBarcode.Focus();
+                        txtBarcode.SelectAll();
+                        return;
+                    }
+                    
+                    barcodeText = customBarcode;
+                }
+                else
+                {
+                    // No custom barcode entered, generate one
+                    barcodeText = GenerateUniqueBarcode();
+                }
 
                 // Add new product
                 var product = new Product
