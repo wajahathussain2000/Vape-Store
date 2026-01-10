@@ -25,6 +25,7 @@ namespace Vape_Store
         private BusinessDateService _businessDateService;
         private PictureBox picBarcode;
         private TextBox txtBarcodeScanner;
+        private Timer _barcodeTimer;
         private List<Models.SaleItem> saleItems;
         private List<Customer> _customers;
         private List<Product> _products;
@@ -538,17 +539,24 @@ namespace Vape_Store
         private void TxtBarcodeScanner_TextChanged(object sender, EventArgs e)
         {
             // Auto-process barcode when text is entered (for barcode scanners that don't send Enter)
-            if (txtBarcodeScanner.Text.Length >= 8) // Minimum barcode length
+            if (txtBarcodeScanner.Text.Length >= 3 && txtBarcodeScanner.Text != "Scan or enter product barcode...") // Minimum barcode length
             {
                 // Use a timer to avoid processing while user is still typing
-                Timer processTimer = new Timer();
-                processTimer.Interval = 500; // 500ms delay
-                processTimer.Tick += (s, args) => {
-                    processTimer.Stop();
-                    processTimer.Dispose();
+                // Stop any existing timer to prevent multiple executions
+                if (_barcodeTimer != null)
+                {
+                    _barcodeTimer.Stop();
+                    _barcodeTimer.Dispose();
+                }
+                
+                _barcodeTimer = new Timer();
+                _barcodeTimer.Interval = 100; // Reduced delay for better responsiveness
+                _barcodeTimer.Tick += (s, args) => {
+                    _barcodeTimer.Stop();
+                    _barcodeTimer.Dispose();
                     ProcessBarcodeScan();
                 };
-                processTimer.Start();
+                _barcodeTimer.Start();
             }
         }
 
@@ -558,25 +566,31 @@ namespace Vape_Store
             {
                 string scannedBarcode = txtBarcodeScanner.Text.Trim();
                 
-                if (string.IsNullOrEmpty(scannedBarcode))
+                // Ignore placeholder text
+                if (string.IsNullOrEmpty(scannedBarcode) || scannedBarcode == "Scan or enter product barcode...")
                     return;
 
                 // Find product by barcode
-                var product = _products.FirstOrDefault(p => p.Barcode == scannedBarcode);
+                var product = _products.FirstOrDefault(p => 
+                    !string.IsNullOrEmpty(p.Barcode) && 
+                    p.Barcode.Trim().Equals(scannedBarcode, StringComparison.OrdinalIgnoreCase));
                 
                 if (product != null)
                 {
                     // Product found - add to cart automatically
                     AddProductToCart(product);
                     
-                    // Clear scanner input
-                    txtBarcodeScanner.Clear();
+                    // Clear scanner input and set placeholder
+                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
+                    txtBarcodeScanner.ForeColor = Color.Gray;
                     txtBarcodeScanner.Focus();
                 }
                 else
                 {
                     ShowMessage($"Product not found for barcode: {scannedBarcode}", "Product Not Found", MessageBoxIcon.Warning);
                     txtBarcodeScanner.Clear();
+                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
+                    txtBarcodeScanner.ForeColor = Color.Gray;
                     txtBarcodeScanner.Focus();
                 }
             }

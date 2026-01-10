@@ -60,6 +60,7 @@ namespace Vape_Store
         private ListBox _vendorSuggestList;
         // Barcode scanner input field
         private TextBox txtBarcodeScanner;
+        private Timer _barcodeTimer;
         // Barcode display and editing
         private TextBox txtBarcode;
         private Panel pnlBarcode;
@@ -774,14 +775,21 @@ namespace Vape_Store
                 && txtBarcodeScanner.Text.Length >= 3) // Minimum barcode length (supports both auto-generated and custom barcodes)
             {
                 // Use a timer to avoid processing while user is still typing
-                Timer processTimer = new Timer();
-                processTimer.Interval = 500; // 500ms delay
-                processTimer.Tick += (s, args) => {
-                    processTimer.Stop();
-                    processTimer.Dispose();
+                // Stop any existing timer to prevent multiple executions
+                if (_barcodeTimer != null)
+                {
+                    _barcodeTimer.Stop();
+                    _barcodeTimer.Dispose();
+                }
+                
+                _barcodeTimer = new Timer();
+                _barcodeTimer.Interval = 100; // Reduced delay for better responsiveness
+                _barcodeTimer.Tick += (s, args) => {
+                    _barcodeTimer.Stop();
+                    _barcodeTimer.Dispose();
                     ProcessBarcodeScan();
                 };
-                processTimer.Start();
+                _barcodeTimer.Start();
             }
         }
 
@@ -808,14 +816,17 @@ namespace Vape_Store
                     // Product found - add to purchase items automatically
                     AddOrIncrementPurchaseProduct(product);
                     
-                    // Clear scanner input
-                    txtBarcodeScanner.Clear();
+                    // Clear scanner input and set placeholder
+                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
+                    txtBarcodeScanner.ForeColor = Color.Gray;
                     txtBarcodeScanner.Focus();
                 }
                 else
                 {
                     ShowError($"Product not found for barcode: {scannedBarcode}");
                     txtBarcodeScanner.Clear();
+                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
+                    txtBarcodeScanner.ForeColor = Color.Gray;
                     txtBarcodeScanner.Focus();
                 }
             }

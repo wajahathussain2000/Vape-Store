@@ -56,6 +56,7 @@ namespace Vape_Store
             this.lblLowStock = new System.Windows.Forms.Label();
             this.lblTotalProducts = new System.Windows.Forms.Label();
             this.lblTotalValue = new System.Windows.Forms.Label();
+            this.lblStockValue = new System.Windows.Forms.Label();
             this.pnlHeader.SuspendLayout();
             this.pnlFilters.SuspendLayout();
             this.pnlButtons.SuspendLayout();
@@ -341,6 +342,7 @@ namespace Vape_Store
             this.pnlSummary.Controls.Add(this.lblLowStock);
             this.pnlSummary.Controls.Add(this.lblTotalProducts);
             this.pnlSummary.Controls.Add(this.lblTotalValue);
+            this.pnlSummary.Controls.Add(this.lblStockValue);
             this.pnlSummary.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlSummary.Location = new System.Drawing.Point(0, 640);
             this.pnlSummary.Name = "pnlSummary";
@@ -398,6 +400,16 @@ namespace Vape_Store
             this.lblTotalValue.TabIndex = 4;
             this.lblTotalValue.Text = "Total Value: 0.00";
             // 
+            // lblStockValue
+            // 
+            this.lblStockValue.AutoSize = true;
+            this.lblStockValue.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblStockValue.Location = new System.Drawing.Point(800, 20);
+            this.lblStockValue.Name = "lblStockValue";
+            this.lblStockValue.Size = new System.Drawing.Size(100, 15);
+            this.lblStockValue.TabIndex = 5;
+            this.lblStockValue.Text = "Stock Value: 0.00";
+            // 
             // StockReportForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -454,5 +466,6 @@ namespace Vape_Store
         private System.Windows.Forms.Label lblLowStock;
         private System.Windows.Forms.Label lblTotalProducts;
         private System.Windows.Forms.Label lblTotalValue;
+        private System.Windows.Forms.Label lblStockValue;
     }
 }

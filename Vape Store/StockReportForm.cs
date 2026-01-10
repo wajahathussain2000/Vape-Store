@@ -161,6 +161,15 @@ namespace Vape_Store
                 
                 dgvStockReport.Columns.Add(new DataGridViewTextBoxColumn
                 {
+                    Name = "StockValue",
+                    HeaderText = "Stock Value",
+                    DataPropertyName = "StockValue",
+                    Width = 120,
+                    DefaultCellStyle = new DataGridViewCellStyle { Format = "F2" }
+                });
+                
+                dgvStockReport.Columns.Add(new DataGridViewTextBoxColumn
+                {
                     Name = "StockStatus",
                     HeaderText = "Status",
                     DataPropertyName = "StockStatus",
@@ -244,6 +253,7 @@ namespace Vape_Store
                         UnitPrice = product.PurchasePrice > 0 ? product.PurchasePrice : product.CostPrice, // Cost price (what store paid)
                         SellingPrice = product.RetailPrice, // Retail price (selling price to customer)
                         TotalValue = product.StockQuantity * (product.PurchasePrice > 0 ? product.PurchasePrice : product.CostPrice), // Total value at cost
+                        StockValue = product.StockQuantity * product.RetailPrice, // Stock value at selling price (quantity * selling price)
                         StockStatus = GetStockStatus(product.StockQuantity, product.ReorderLevel),
                         IsActive = product.IsActive
                     };
@@ -352,6 +362,7 @@ namespace Vape_Store
                         (item.UnitPrice.ToString("F2").Contains(searchTerm)) ||
                         (item.SellingPrice.ToString("F2").Contains(searchTerm)) ||
                         (item.TotalValue.ToString("F2").Contains(searchTerm)) ||
+                        (item.StockValue.ToString("F2").Contains(searchTerm)) ||
                         (item.StockStatus?.ToLower().Contains(searchTerm) ?? false));
                 }
                 
@@ -388,6 +399,7 @@ namespace Vape_Store
                 decimal totalUnitPrice = _stockReportItems.Sum(item => item.UnitPrice);
                 decimal totalSellingPrice = _stockReportItems.Sum(item => item.SellingPrice);
                 decimal totalValue = _stockReportItems.Sum(item => item.TotalValue);
+                decimal totalStockValue = _stockReportItems.Sum(item => item.StockValue);
 
                 // Remove any existing totals rows first
                 for (int i = dgvStockReport.Rows.Count - 1; i >= 0; i--)
@@ -418,6 +430,7 @@ namespace Vape_Store
                     row.Cells["UnitPrice"].Value = item.UnitPrice.ToString("F2");
                     row.Cells["SellingPrice"].Value = item.SellingPrice.ToString("F2");
                     row.Cells["TotalValue"].Value = item.TotalValue.ToString("F2");
+                    row.Cells["StockValue"].Value = item.StockValue.ToString("F2");
                     row.Cells["StockStatus"].Value = item.StockStatus;
                     row.Cells["IsActive"].Value = item.IsActive;
                     row.ReadOnly = true;
@@ -446,6 +459,8 @@ namespace Vape_Store
                     totalsRow.Cells["SellingPrice"].Style.Alignment = DataGridViewContentAlignment.MiddleRight;
                 if (totalsRow.Cells["TotalValue"] != null)
                     totalsRow.Cells["TotalValue"].Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                if (totalsRow.Cells["StockValue"] != null)
+                    totalsRow.Cells["StockValue"].Style.Alignment = DataGridViewContentAlignment.MiddleRight;
 
                 // Set values for totals row
                 totalsRow.Cells["ProductCode"].Value = "TOTAL";
@@ -457,6 +472,7 @@ namespace Vape_Store
                 totalsRow.Cells["UnitPrice"].Value = totalUnitPrice.ToString("F2");
                 totalsRow.Cells["SellingPrice"].Value = totalSellingPrice.ToString("F2");
                 totalsRow.Cells["TotalValue"].Value = totalValue.ToString("F2");
+                totalsRow.Cells["StockValue"].Value = totalStockValue.ToString("F2");
                 totalsRow.Cells["StockStatus"].Value = "";
                 totalsRow.Cells["IsActive"].Value = false;
 
@@ -476,12 +492,14 @@ namespace Vape_Store
             {
                 var totalProducts = _stockReportItems.Count;
                 var totalValue = _stockReportItems.Sum(item => item.TotalValue);
+                var totalStockValue = _stockReportItems.Sum(item => item.StockValue);
                 var lowStockCount = _stockReportItems.Count(item => item.StockStatus == "Low Stock");
                 var outOfStockCount = _stockReportItems.Count(item => item.StockStatus == "Out of Stock");
                 var inStockCount = _stockReportItems.Count(item => item.StockStatus == "In Stock");
                 
                 lblTotalProducts.Text = $"Total Products: {totalProducts}";
                 lblTotalValue.Text = $"Total Value: {totalValue:F2}";
+                lblStockValue.Text = $"Stock Value: {totalStockValue:F2}";
                 lblLowStock.Text = $"Low Stock: {lowStockCount}";
                 lblOutOfStock.Text = $"Out of Stock: {outOfStockCount}";
                 lblInStock.Text = $"In Stock: {inStockCount}";
@@ -673,14 +691,17 @@ namespace Vape_Store
                 summaryTable.AddCell(new PdfPCell(new Phrase(outOfStock.ToString(), normalFont)) { Border = 0 });
                 summaryTable.AddCell(new PdfPCell(new Phrase("Total Value:", headerFont)) { Border = 0 });
                 summaryTable.AddCell(new PdfPCell(new Phrase($"{totalValue:F2}", normalFont)) { Border = 0 });
+                var totalStockValue = _stockReportItems.Sum(item => item.StockValue);
+                summaryTable.AddCell(new PdfPCell(new Phrase("Stock Value:", headerFont)) { Border = 0 });
+                summaryTable.AddCell(new PdfPCell(new Phrase($"{totalStockValue:F2}", normalFont)) { Border = 0 });
 
                 document.Add(summaryTable);
                 document.Add(new Paragraph(" "));
 
                 // Data table
-                PdfPTable dataTable = new PdfPTable(9);
+                PdfPTable dataTable = new PdfPTable(10);
                 dataTable.WidthPercentage = 100;
-                dataTable.SetWidths(new float[] { 1, 1, 2, 1, 1, 1, 1, 1, 1 });
+                dataTable.SetWidths(new float[] { 1, 1, 2, 1, 1, 1, 1, 1, 1, 1 });
 
                 // Headers
                 dataTable.AddCell(new PdfPCell(new Phrase("Code", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
@@ -691,6 +712,7 @@ namespace Vape_Store
                 dataTable.AddCell(new PdfPCell(new Phrase("Unit Price", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("Selling Price", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("Total Value", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase("Stock Value", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("Status", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
 
                 // Data rows
@@ -704,6 +726,7 @@ namespace Vape_Store
                     dataTable.AddCell(new PdfPCell(new Phrase($"{item.UnitPrice:F2}", smallFont)));
                     dataTable.AddCell(new PdfPCell(new Phrase($"{item.SellingPrice:F2}", smallFont)));
                     dataTable.AddCell(new PdfPCell(new Phrase($"{(item.StockQuantity * item.UnitPrice):F2}", smallFont)));
+                    dataTable.AddCell(new PdfPCell(new Phrase($"{item.StockValue:F2}", smallFont)));
                     dataTable.AddCell(new PdfPCell(new Phrase(item.StockStatus ?? "", smallFont)));
                 }
 
@@ -711,7 +734,7 @@ namespace Vape_Store
                 var totalStockQty = _stockReportItems.Sum(item => item.StockQuantity);
                 var totalUnitPrice = _stockReportItems.Sum(item => item.UnitPrice);
                 var totalSellingPrice = _stockReportItems.Sum(item => item.SellingPrice);
-                // Reuse totalValue already calculated above
+                // Reuse totalValue and totalStockValue already calculated above
                 
                 dataTable.AddCell(new PdfPCell(new Phrase("TOTAL", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("", smallFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
@@ -721,6 +744,7 @@ namespace Vape_Store
                 dataTable.AddCell(new PdfPCell(new Phrase($"{totalUnitPrice:F2}", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase($"{totalSellingPrice:F2}", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase($"{totalValue:F2}", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
+                dataTable.AddCell(new PdfPCell(new Phrase($"{totalStockValue:F2}", headerFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
                 dataTable.AddCell(new PdfPCell(new Phrase("", smallFont)) { BackgroundColor = BaseColor.LIGHT_GRAY });
 
                 document.Add(dataTable);
@@ -744,12 +768,12 @@ namespace Vape_Store
             using (var writer = new System.IO.StreamWriter(filePath))
             {
                 // Write header
-                writer.WriteLine("Product Code,Product Name,Category,Brand,Stock Quantity,Reorder Level,Unit Price,Selling Price,Total Value,Stock Status");
+                writer.WriteLine("Product Code,Product Name,Category,Brand,Stock Quantity,Reorder Level,Unit Price,Selling Price,Total Value,Stock Value,Stock Status");
                 
                 // Write data
                 foreach (var item in _stockReportItems)
                 {
-                    writer.WriteLine($"{item.ProductCode},{item.ProductName},{item.CategoryName},{item.BrandName},{item.StockQuantity},{item.ReorderLevel},{item.UnitPrice:F2},{item.SellingPrice:F2},{item.TotalValue:F2},{item.StockStatus}");
+                    writer.WriteLine($"{item.ProductCode},{item.ProductName},{item.CategoryName},{item.BrandName},{item.StockQuantity},{item.ReorderLevel},{item.UnitPrice:F2},{item.SellingPrice:F2},{item.TotalValue:F2},{item.StockValue:F2},{item.StockStatus}");
                 }
                 
                 // Add totals row
@@ -757,7 +781,8 @@ namespace Vape_Store
                 var totalUnitPrice = _stockReportItems.Sum(item => item.UnitPrice);
                 var totalSellingPrice = _stockReportItems.Sum(item => item.SellingPrice);
                 var totalValue = _stockReportItems.Sum(item => item.TotalValue);
-                writer.WriteLine($"TOTAL,,,,{totalStockQty},,{totalUnitPrice:F2},{totalSellingPrice:F2},{totalValue:F2},");
+                var totalStockValue = _stockReportItems.Sum(item => item.StockValue);
+                writer.WriteLine($"TOTAL,,,,{totalStockQty},,{totalUnitPrice:F2},{totalSellingPrice:F2},{totalValue:F2},{totalStockValue:F2},");
             }
         }
     }
@@ -775,6 +800,7 @@ namespace Vape_Store
         public decimal UnitPrice { get; set; }
         public decimal SellingPrice { get; set; }
         public decimal TotalValue { get; set; }
+        public decimal StockValue { get; set; } // Quantity * Selling Price
         public string StockStatus { get; set; }
         public bool IsActive { get; set; }
     }
