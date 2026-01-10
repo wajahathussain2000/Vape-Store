@@ -758,10 +758,10 @@ namespace Vape_Store
                         (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
                         (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
                         (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-                    ));
+                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0))
+                    );
 
                 if (product == null)
                 {
