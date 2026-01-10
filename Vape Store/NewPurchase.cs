@@ -817,9 +817,11 @@ namespace Vape_Store
                     // Product found - add to purchase items automatically
                     AddOrIncrementPurchaseProduct(product);
                     
-                    // Clear scanner input and set placeholder
+                    // Clear scanner input and set placeholder - ensure complete reset
+                    txtBarcodeScanner.Clear();
                     txtBarcodeScanner.Text = "Scan or enter product barcode...";
                     txtBarcodeScanner.ForeColor = Color.Gray;
+                    txtBarcodeScanner.SelectAll(); // Ensure cursor is positioned properly
                     txtBarcodeScanner.Focus();
                     
                     // Reset error flag
@@ -835,8 +837,11 @@ namespace Vape_Store
                         MessageBox.Show($"Product not found for barcode: {scannedBarcode}", "Scanner", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         
                         
-                        // Clear invalid barcode
-                        txtBarcodeScanner.Text = "";
+                        // Clear invalid barcode - ensure complete reset
+                        txtBarcodeScanner.Clear();
+                        txtBarcodeScanner.Text = "Scan or enter product barcode...";
+                        txtBarcodeScanner.ForeColor = Color.Gray;
+                        txtBarcodeScanner.SelectAll(); // Ensure cursor is positioned properly
                         txtBarcodeScanner.Focus();
                         
                         // Reset the error flag after a brief delay
