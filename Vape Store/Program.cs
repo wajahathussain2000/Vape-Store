@@ -26,6 +26,9 @@ namespace Vape_Store
                 // Configure global exception handling
                 SetupGlobalExceptionHandling();
 
+                // Initialize Database (Create missing tables)
+                Vape_Store.DataAccess.DatabaseInitializer.Initialize();
+
                 // Initialize Windows Forms application
                 InitializeApplication();
 

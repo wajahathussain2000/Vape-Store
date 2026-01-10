@@ -831,8 +831,25 @@ namespace Vape_Store
                     if (!_isShowingBarcodeError)
                     {
                         _isShowingBarcodeError = true;
-                        ShowError($"Product not found for barcode: {scannedBarcode}");
-                        txtBarcodeScanner.Clear();
+                        // Use simple MessageBox for barcode errors to avoid UI clutter
+                        MessageBox.Show($"Product not found for barcode: {scannedBarcode}", "Scanner", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        
+                        
+                        // Clear invalid barcode
+                        txtBarcodeScanner.Text = "";
+                        txtBarcodeScanner.Focus();
+                        
+                        // Reset the error flag after a brief delay
+                        Timer resetTimer = new Timer();
+                        resetTimer.Interval = 500; // 500ms delay
+                        resetTimer.Tick += (s, args) => {
+                            resetTimer.Stop();
+                            resetTimer.Dispose();
+                            _isShowingBarcodeError = false;
+                        };
+                        resetTimer.Start();
+                    }
+                }
                         txtBarcodeScanner.Text = "Scan or enter product barcode...";
                         txtBarcodeScanner.ForeColor = Color.Gray;
                         txtBarcodeScanner.Focus();

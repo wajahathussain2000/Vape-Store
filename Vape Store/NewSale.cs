@@ -144,6 +144,11 @@ namespace Vape_Store
             txtProductName.TextChanged += TxtProductName_TextChanged;
             cmbCategory.SelectedIndexChanged += CmbCategory_SelectedIndexChanged;
             cmbBrand.SelectedIndexChanged += CmbBrand_SelectedIndexChanged;
+
+            // Handle Enter key for manual adding via Quantity box
+            txtQuantity.KeyDown += TxtQuantity_KeyDown;
+            // Hide Add Item button as requested (Auto-add on scan / manual add via Enter)
+            btnAddItem.Visible = false;
             
             // Payment calculation event handlers
             txtPaid.TextChanged += TxtPaid_TextChanged;
@@ -535,6 +540,29 @@ namespace Vape_Store
             }
         }
 
+        private void TxtPaid_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && (e.KeyChar != '.'))
+            {
+                e.Handled = true;
+            }
+
+            // only allow one decimal point
+            if ((e.KeyChar == '.') && ((sender as TextBox).Text.IndexOf('.') > -1))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void TxtQuantity_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                AddItem();
+                e.Handled = true;
+                e.SuppressKeyPress = true; // Prevent beep
+            }
+        }
         private void TxtBarcodeScanner_KeyPress(object sender, KeyPressEventArgs e)
         {
             // Handle Enter key to process barcode
@@ -586,7 +614,7 @@ namespace Vape_Store
                 
                 if (product != null)
                 {
-                    // Product found - add to cart automatically
+                    // Product found - add to cart automatically (Immediate Action)
                     AddProductToCart(product);
                     
                     // Clear scanner input completely
