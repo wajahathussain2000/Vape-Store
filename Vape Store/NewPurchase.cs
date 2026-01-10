@@ -850,21 +850,6 @@ namespace Vape_Store
                         resetTimer.Start();
                     }
                 }
-                        txtBarcodeScanner.Text = "Scan or enter product barcode...";
-                        txtBarcodeScanner.ForeColor = Color.Gray;
-                        txtBarcodeScanner.Focus();
-                        
-                        // Reset the error flag after a brief delay to allow UI to update
-                        Timer resetTimer = new Timer();
-                        resetTimer.Interval = 500; // 500ms delay
-                        resetTimer.Tick += (s, args) => {
-                            resetTimer.Stop();
-                            resetTimer.Dispose();
-                            _isShowingBarcodeError = false;
-                        };
-                        resetTimer.Start();
-                    }
-                }
             }
             catch (Exception ex)
             {
