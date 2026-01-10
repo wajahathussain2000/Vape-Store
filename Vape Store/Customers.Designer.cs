@@ -426,7 +426,7 @@
             this.Controls.Add(this.panel1);
             this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.Name = "Customers";
-            this.Text = "MADNI MOBILE & PHOTOSTATE - Customers";
+            this.Text = "Attock Mobiles Rwp - Customers";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Customers_Load);
             this.panel3.ResumeLayout(false);

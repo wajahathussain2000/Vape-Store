@@ -25,7 +25,7 @@ namespace Vape_Store
             this.SuspendLayout();
             
             // Form properties
-            this.Text = "Receipt Preview - MADNI MOBILE & PHOTOSTATE";
+            this.Text = "Receipt Preview - Attock Mobiles Rwp";
             this.Size = new Size(450, 700);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -111,10 +111,11 @@ namespace Vape_Store
                 float centerX = 225;
 
                 // Store header with better formatting
-                yPosition = DrawCenteredText(g, "MADNI MOBILE & PHOTOSTATE", new Font("Arial", 18, FontStyle.Bold), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Attock Mobiles Rwp", new Font("Arial", 18, FontStyle.Bold), centerX, yPosition);
                 yPosition += 5;
-                yPosition = DrawCenteredText(g, "Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP", new Font("Arial", 9), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Ph: 0345-5518744", new Font("Arial", 9), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Address : V5 G Mall Ground Floor", new Font("Arial", 9), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Shop no 5 Attock Mobiles Rwp", new Font("Arial", 9), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Bahria Phase7 Food Street", new Font("Arial", 9), centerX, yPosition);
                 
                 yPosition += 15;
                 DrawDashedLine(g, leftMargin, yPosition, rightMargin, yPosition);
@@ -277,11 +278,11 @@ namespace Vape_Store
                 yPosition = DrawCenteredText(g, "Note:", new Font("Arial", 9, FontStyle.Bold), centerX, yPosition);
                 yPosition = DrawCenteredText(g, "1. Goods once sold are only exchangeable within 3 days", new Font("Arial", 8), centerX, yPosition);
                 yPosition = DrawCenteredText(g, "2. No return policy", new Font("Arial", 8), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "3. MADNI MOBILE & PHOTOSTATE shop is not responsible for any warranty claims", new Font("Arial", 8), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "3. Attock Mobiles Rwp is not responsible for any warranty claims", new Font("Arial", 8), centerX, yPosition);
                 yPosition += 10;
                 yPosition = DrawCenteredText(g, "---", new Font("Arial", 8), centerX, yPosition);
                 yPosition += 5;
-                yPosition = DrawCenteredText(g, "Developed By: DevFleet Technologies | +923225347757", new Font("Arial", 8), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Developed By: DevFleet Technologies", new Font("Arial", 8), centerX, yPosition);
             }
             catch (Exception ex)
             {

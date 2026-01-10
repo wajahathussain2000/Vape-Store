@@ -595,7 +595,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "EditSale";
-            this.Text = "MADNI MOBILE & PHOTOSTATE - Edit Sale";
+            this.Text = "Attock Mobiles Rwp - Edit Sale";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();

@@ -311,7 +311,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "ExpenseCategory";
-            this.Text = "MADNI MOBILE & PHOTOSTATE - Expense Category";
+            this.Text = "Attock Mobiles Rwp - Expense Category";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.categoryGroup.ResumeLayout(false);
             this.categoryGroup.PerformLayout();

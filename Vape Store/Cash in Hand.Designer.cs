@@ -368,7 +368,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "Cash_in_Hand";
-            this.Text = "MADNI MOBILE & PHOTOSTATE - Cash in Hand";
+            this.Text = "Attock Mobiles Rwp - Cash in Hand";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.headerPanel.ResumeLayout(false);
             this.headerPanel.PerformLayout();

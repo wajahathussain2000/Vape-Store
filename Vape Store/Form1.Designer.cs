@@ -274,7 +274,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "Form1";
-            this.Text = "MADNI MOBILE & PHOTOSTATE - Login";
+            this.Text = "Attock Mobiles Rwp - Login";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             ((System.ComponentModel.ISupportInitialize)(this.picEmailIcon)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.picPasswordIcon)).EndInit();

@@ -184,13 +184,13 @@ namespace Vape_Store
             using (var blackBrush = new SolidBrush(Color.Black))
             {
                 // Column 1: Company Information (Left)
-                g.DrawString("MADNI MOBILE & PHOTOSTATE", headerFont, blackBrush, col1X, yPosition);
+                g.DrawString("Attock Mobiles Rwp", headerFont, blackBrush, col1X, yPosition);
                 yPosition += headerFont.Height + 5f;
-                g.DrawString("Shop #3, opp Save Mart", valueFont, blackBrush, col1X, yPosition);
+                g.DrawString("Address : V5 G Mall Ground Floor", valueFont, blackBrush, col1X, yPosition);
                 yPosition += valueFont.Height + 3f;
-                g.DrawString("main Tulsa road, lalazar, RWP", valueFont, blackBrush, col1X, yPosition);
+                g.DrawString("Shop no 5 Attock Mobiles Rwp", valueFont, blackBrush, col1X, yPosition);
                 yPosition += valueFont.Height + 3f;
-                g.DrawString("Ph: 0345-5518744", valueFont, blackBrush, col1X, yPosition);
+                g.DrawString("Bahria Phase7 Food Street", valueFont, blackBrush, col1X, yPosition);
                 
                 float col1EndY = yPosition + valueFont.Height;
                 yPosition = col1EndY - (valueFont.Height * 4f) - 5f; // Reset to start
@@ -440,7 +440,7 @@ namespace Vape_Store
             using (var whiteBrush = new SolidBrush(Color.White))
             {
                 DrawFont devFont = new DrawFont("Arial", 9, FontStyle.Italic);
-                string devText = "Developed By: DevFleet Technologies | +923225347757";
+                string devText = "Developed By: DevFleet Technologies";
                 SizeF devSize = g.MeasureString(devText, devFont);
                 float centerX = (leftMargin + rightMargin) / 2f;
                 g.DrawString(devText, devFont, whiteBrush, centerX - (devSize.Width / 2), yPosition + 8f);
@@ -524,20 +524,25 @@ namespace Vape_Store
                 PdfFont italicFont = new PdfFont(baseFont, 9, PdfFont.ITALIC);
 
                 // Header - Company Info
-                Paragraph companyName = new Paragraph("MADNI MOBILE & PHOTOSTATE", titleFont);
+                Paragraph companyName = new Paragraph("Attock Mobiles Rwp", titleFont);
                 companyName.Alignment = Element.ALIGN_CENTER;
                 companyName.SpacingAfter = 8f;
                 document.Add(companyName);
 
-                Paragraph address = new Paragraph("Shop #3, opp Save Mart, main Tulsa road, lalazar, RWP", normalFont);
-                address.Alignment = Element.ALIGN_CENTER;
-                address.SpacingAfter = 5f;
-                document.Add(address);
+                Paragraph address1 = new Paragraph("Address : V5 G Mall Ground Floor", normalFont);
+                address1.Alignment = Element.ALIGN_CENTER;
+                address1.SpacingAfter = 5f;
+                document.Add(address1);
 
-                Paragraph phone = new Paragraph("Ph: 0345-5518744", normalFont);
-                phone.Alignment = Element.ALIGN_CENTER;
-                phone.SpacingAfter = 15f;
-                document.Add(phone);
+                Paragraph address2 = new Paragraph("Shop no 5 Attock Mobiles Rwp", normalFont);
+                address2.Alignment = Element.ALIGN_CENTER;
+                address2.SpacingAfter = 5f;
+                document.Add(address2);
+
+                Paragraph address3 = new Paragraph("Bahria Phase7 Food Street", normalFont);
+                address3.Alignment = Element.ALIGN_CENTER;
+                address3.SpacingAfter = 15f;
+                document.Add(address3);
 
                 // Separator line
                 document.Add(new Paragraph(new Chunk(new iTextSharp.text.pdf.draw.LineSeparator(0.5f, 100f, BaseColor.BLACK, Element.ALIGN_CENTER, -1))));
@@ -673,7 +678,7 @@ namespace Vape_Store
                 receiptInfo.SpacingAfter = 10f;
                 document.Add(receiptInfo);
 
-                Paragraph developer = new Paragraph("Developed By: DevFleet Technologies | +923225347757", italicFont);
+                Paragraph developer = new Paragraph("Developed By: DevFleet Technologies", italicFont);
                 developer.Alignment = Element.ALIGN_CENTER;
                 document.Add(developer);
 

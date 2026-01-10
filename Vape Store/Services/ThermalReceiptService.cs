@@ -94,11 +94,10 @@ namespace Vape_Store.Services
                 var rightFormat = new StringFormat { Alignment = StringAlignment.Far, FormatFlags = StringFormatFlags.NoWrap };
 
                 // Store name and header
-                yPosition = DrawCenteredText(g, "MADNI MOBILE AND", _titleFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "PHOTOSTATE", _titleFont, centerX, yPosition);
-                yPosition += 2;
-                yPosition = DrawCenteredText(g, "Shop #3, opp Save Mart, main Tulsa road", _bodyFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "lalazar, RWP  |  Ph: 0345-5518744", _bodyFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Attock Mobiles Rwp", _titleFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Address : V5 G Mall Ground Floor", _titleFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Shop no 5 Attock Mobiles Rwp", _bodyFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Bahria Phase7 Food Street", _bodyFont, centerX, yPosition);
                 
                 // Draw separator line
                 yPosition += 10;
@@ -219,12 +218,12 @@ namespace Vape_Store.Services
                 yPosition = DrawCenteredText(g, "Note:", _footerFont, centerX, yPosition);
                 yPosition = DrawCenteredText(g, "1. Goods once sold are only exchangeable within 3 days", _footerFont, centerX, yPosition);
                 yPosition = DrawCenteredText(g, "2. No return policy", _footerFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "3. MADNI MOBILE & PHOTOSTATE shop is not responsible", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "3. Attock Mobiles Rwp is not responsible", _footerFont, centerX, yPosition);
                 yPosition = DrawCenteredText(g, "   for any warranty claims", _footerFont, centerX, yPosition);
                 yPosition += 10;
                 yPosition = DrawCenteredText(g, "---", _footerFont, centerX, yPosition);
                 yPosition += 5;
-                yPosition = DrawCenteredText(g, "Developed By: DevFleet Technologies | +923225347757", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Developed By: DevFleet Technologies", _footerFont, centerX, yPosition);
             }
             catch (Exception ex)
             {
