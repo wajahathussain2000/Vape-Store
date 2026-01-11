@@ -55,7 +55,7 @@ namespace Vape_Store.Services
         /// <summary>
         /// Gets the application name
         /// </summary>
-        public string ApplicationName => GetConfigValue("ApplicationName", "MADNI MOBILE & PHOTOSTATE POS System");
+        public string ApplicationName => GetConfigValue("ApplicationName", "Attock Mobiles Rwp POS System");
 
         /// <summary>
         /// Gets the application version
@@ -65,7 +65,7 @@ namespace Vape_Store.Services
         /// <summary>
         /// Gets the application company
         /// </summary>
-        public string ApplicationCompany => GetConfigValue("ApplicationCompany", "MADNI MOBILE & PHOTOSTATE");
+        public string ApplicationCompany => GetConfigValue("ApplicationCompany", "Attock Mobiles Rwp");
 
         #endregion
 

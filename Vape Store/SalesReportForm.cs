@@ -1472,8 +1472,8 @@ namespace Vape_Store
 
                 // Title - adjust for item-wise mode
                 string reportTitle = _isItemWiseMode 
-                    ? "MADNI MOBILE & PHOTOSTATE - ITEM-WISE SALES REPORT" 
-                    : "MADNI MOBILE & PHOTOSTATE - SALES REPORT";
+                    ? "Attock Mobiles Rwp - ITEM-WISE SALES REPORT" 
+                    : "Attock Mobiles Rwp - SALES REPORT";
                 Paragraph title = new Paragraph(reportTitle, titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;

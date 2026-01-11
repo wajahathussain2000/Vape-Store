@@ -427,7 +427,7 @@
             this.Controls.Add(this.panel1);
             this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "Supplier_Master";
-            this.Text = "MADNI MOBILE & PHOTOSTATE - Supplier Master";
+            this.Text = "Attock Mobiles Rwp - Supplier Master";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();

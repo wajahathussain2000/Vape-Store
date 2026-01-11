@@ -413,7 +413,7 @@
             this.Controls.Add(this.headerPanel);
             this.Controls.Add(this.contentPanel);
             this.Name = "SupplierPaymentForm";
-            this.Text = "MADNI MOBILE & PHOTOSTATE - Supplier Payment";
+            this.Text = "Attock Mobiles Rwp - Supplier Payment";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.actionsGroup.ResumeLayout(false);
             this.headerPanel.ResumeLayout(false);

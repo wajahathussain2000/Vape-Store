@@ -462,7 +462,7 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("MADNI MOBILE & PHOTOSTATE - SUPPLIER DUE REPORT", titleFont);
+                Paragraph title = new Paragraph("Attock Mobiles Rwp - SUPPLIER DUE REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);
@@ -563,7 +563,7 @@ namespace Vape_Store
                 html.AppendLine("</style>");
                 html.AppendLine("</head><body>");
                 
-                html.AppendLine("<h1>MADNI MOBILE & PHOTOSTATE - SUPPLIER DUE REPORT</h1>");
+                html.AppendLine("<h1>Attock Mobiles Rwp - SUPPLIER DUE REPORT</h1>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 
                 // Summary

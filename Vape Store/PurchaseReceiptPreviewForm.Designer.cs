@@ -19,7 +19,7 @@ namespace Vape_Store
             this.SuspendLayout();
             
             // Form properties for A4 size
-            this.Text = "Purchase Invoice - MADNI MOBILE & PHOTOSTATE";
+            this.Text = "Purchase Invoice - Attock Mobiles Rwp";
             this.Size = new System.Drawing.Size(900, 1100); // A4 proportions with better size
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;

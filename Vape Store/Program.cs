@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace Vape_Store
 {
     /// <summary>
-    /// Main entry point for the MADNI MOBILE & PHOTOSTATE POS System
+    /// Main entry point for the Attock Mobiles Rwp POS System
     /// Handles application startup, global exception handling, and initialization
     /// </summary>
     internal static class Program

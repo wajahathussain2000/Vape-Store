@@ -424,7 +424,7 @@ namespace Vape_Store
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible", bodyFont, Brushes.Black, 
+            g.DrawString("3. Attock Mobiles Rwp is not responsible", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
@@ -862,7 +862,7 @@ namespace Vape_Store
             g.DrawString("2. No return policy", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
-            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
+            g.DrawString("3. Attock Mobiles Rwp is not responsible", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
             _currentY += _lineHeight;
             
             g.DrawString("   for any warranty claims", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
@@ -1197,7 +1197,7 @@ namespace Vape_Store
             g.DrawString("2. No return policy", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             
-            g.DrawString("3. MADNI MOBILE & PHOTOSTATE shop is not responsible", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
+            g.DrawString("3. Attock Mobiles Rwp is not responsible", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight;
             g.DrawString("   for any warranty claims", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
             currentY += lineHeight * 2;
