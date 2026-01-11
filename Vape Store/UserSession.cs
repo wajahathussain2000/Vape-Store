@@ -96,44 +96,60 @@ namespace Vape_Store
             // Normalize
             var role = (CurrentUser.Role ?? string.Empty).Trim().ToLower();
             var perm = (permission ?? string.Empty).Trim().ToLower();
+            var username = CurrentUser.Username;
+            var userId = CurrentUser.UserID;
 
-            // SuperAdmin or Admin always has full access
-            if (role == "superadmin" || role == "super admin" || role == "admin") return true;
+            System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] --- Checking '{perm}' for {username} (ID: {userId}, Role: '{role}') ---");
 
-            // PRIORITY 1: Check cached session permissions (Performance optimization)
+            // SuperAdmin bypass
+            if (role == "superadmin" || role == "super admin" || role == "super administrator" || role == "administrator")
+            {
+                System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] ✓ GRANTED: System bypass for role '{role}'");
+                return true;
+            }
+
+            // Expand permission check for common shorthands
+            var permsToCheck = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase) { perm };
+            if (perm == "sales") { permsToCheck.Add("Create Sales"); permsToCheck.Add("View Sales"); permsToCheck.Add("Edit Sales"); permsToCheck.Add("Delete Sales"); }
+            if (perm == "purchases") { permsToCheck.Add("Create Purchases"); permsToCheck.Add("View Purchases"); permsToCheck.Add("Edit Purchases"); permsToCheck.Add("Delete Purchases"); }
+            if (perm == "sales return") { permsToCheck.Add("Sales Return"); }
+            if (perm == "purchase return") { permsToCheck.Add("Purchase Return"); }
+            if (perm == "inventory") { permsToCheck.Add("Manage Inventory"); permsToCheck.Add("Products"); permsToCheck.Add("Categories"); permsToCheck.Add("Brands"); }
+            if (perm == "people") { permsToCheck.Add("Manage Customers"); permsToCheck.Add("Manage Suppliers"); permsToCheck.Add("Customers"); permsToCheck.Add("Suppliers"); }
+            if (perm == "users") { permsToCheck.Add("Manage Users"); permsToCheck.Add("User Access"); }
+            if (perm == "accounts") { permsToCheck.Add("Manage Accounts"); permsToCheck.Add("Manage Expenses"); permsToCheck.Add("Cash in Hand"); }
+            if (perm == "reports") { permsToCheck.Add("View Reports"); permsToCheck.Add("Daily Report"); permsToCheck.Add("Stock Report"); }
+            if (perm == "settings") { permsToCheck.Add("Manage Settings"); }
+            if (perm == "backup") { permsToCheck.Add("DataBase Backup"); }
+
+            // PRIORITY 1: Cache check
             try
             {
                 if (CurrentUser?.Permissions != null && CurrentUser.Permissions.Count > 0)
                 {
-                    // If user has "*" permission, grant all access
-                    if (CurrentUser.Permissions.Any(p => (p ?? string.Empty).Trim() == "*"))
+                    System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] PRIORITY 1: Checking cache ({CurrentUser.Permissions.Count} items)");
+                    foreach (var p in permsToCheck)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✓ GRANTED: Cached '*' wildcard permission for user {CurrentUser?.Username}");
-                        return true;
+                        if (CurrentUser.Permissions.Contains(p))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] ✓ GRANTED: Cached '{p}' found");
+                            return true;
+                        }
                     }
-                    
-                    // Check if user has the specific permission
-                    if (CurrentUser.Permissions.Contains(perm))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✓ GRANTED: Cached permission '{perm}' for user {CurrentUser?.Username}");
-                        return true;
-                    }
+                    System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] Cache miss. Checking DB.");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] Error checking cached permissions: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] Cache error: {ex.Message}");
             }
 
-            // PRIORITY 2: Database check (if not found in cache)
+            // PRIORITY 2: Database check
             try
             {
                 var roleRepo = new Vape_Store.Repositories.RoleRepository();
+                var dbPerms = roleRepo.GetEffectivePermissionsForUser(userId);
                 
-                // First try to get permissions through UserRoles
-                var dbPerms = roleRepo.GetEffectivePermissionsForUser(CurrentUser?.UserID ?? 0);
-                
-                // If no permissions found through UserRoles, try by role name
                 if ((dbPerms == null || dbPerms.Count == 0) && !string.IsNullOrWhiteSpace(role))
                 {
                     dbPerms = roleRepo.GetPermissionsByRoleName(role);
@@ -141,47 +157,32 @@ namespace Vape_Store
                 
                 if (dbPerms != null && dbPerms.Count > 0)
                 {
-                    // Update the session permissions cache
-                    if (CurrentUser != null)
-                    {
-                        CurrentUser.Permissions = new System.Collections.Generic.HashSet<string>(
-                            dbPerms.Select(p => (p ?? string.Empty).Trim().ToLower()), 
-                            StringComparer.OrdinalIgnoreCase);
-                    }
+                    System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] PRIORITY 2: Found {dbPerms.Count} permissions in DB");
                     
-                    // Check if user has specific permission or wildcard
-                    if (dbPerms.Any(p => {
-                        var normalized = (p ?? string.Empty).Trim().ToLower();
-                        return normalized == perm || normalized == "*";
-                    }))
+                    // Conclusive check: if DB has permissions, we judge based on them only
+                    bool found = false;
+                    foreach (var p in dbPerms)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✓ GRANTED: Database permission confirmed for '{perm}'");
+                        var norm = (p ?? "").Trim().ToLower();
+                        if (norm == "*" || permsToCheck.Contains(norm)) { found = true; break; }
+                    }
+
+                    if (found)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] ✓ GRANTED: DB match found");
                         return true;
                     }
+
+                    System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] ✗ DENIED: Conclusive DB list does not include '{perm}'");
+                    return false;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ERROR in database check: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] DB error: {ex.Message}");
             }
 
-            // PRIORITY 3: Dynamic role manager (JSON-backed fallback)
-            // This ensures that even if DB tables are missing or misconfigured, default permissions can work
-            try
-            {
-                if (Vape_Store.Services.RoleManagerService.Instance.HasPermission(role, perm))
-                {
-                    System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✓ GRANTED: RoleManagerService fallback allows '{perm}' for role '{role}'");
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] Error checking RoleManagerService: {ex.Message}");
-            }
-
-            // PRIORITY 4: Final Denial
-            System.Diagnostics.Debug.WriteLine($"[PERMISSION CHECK] ✗ DENIED: Permission '{perm}' for user {CurrentUser?.Username} (Role: {role})");
+            System.Diagnostics.Debug.WriteLine($"[RBAC DEBUG] ✗ FINAL DENIAL for {username}");
             return false;
         }
 

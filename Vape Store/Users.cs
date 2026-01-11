@@ -236,18 +236,48 @@ namespace Vape_Store
                 };
 
                 bool success;
+                int userId = -1;
                 if (isEditMode)
                 {
                     user.UserID = selectedUserId;
                     success = _userRepository.UpdateUser(user);
+                    userId = selectedUserId;
                 }
                 else
                 {
                     success = _userRepository.AddUser(user);
+                    
+                    // Get the newly created user ID by finding the user with the same username
+                    var newUser = _userRepository.GetAllUsers().FirstOrDefault(u => u.Username == user.Username);
+                    if (newUser != null)
+                    {
+                        userId = newUser.UserID;
+                    }
                 }
                 
-                if (success)
+                if (success && userId > 0)
                 {
+                    // Update the UserRoles table to link the user to their role
+                    try
+                    {
+                        var roleRepo = new Vape_Store.Repositories.RoleRepository();
+                        
+                        // Get the role ID based on the selected role
+                        var roles = roleRepo.GetRoles();
+                        var selectedRole = roles.FirstOrDefault(r => r.Name.Equals(user.Role, StringComparison.OrdinalIgnoreCase));
+                        
+                        if (selectedRole != null)
+                        {
+                            // Replace user roles (this will remove existing and add new ones)
+                            roleRepo.ReplaceUserRoles(userId, new List<int> { selectedRole.RoleId });
+                        }
+                    }
+                    catch (Exception roleEx)
+                    {
+                        // Log the error but don't fail the user creation
+                        System.Diagnostics.Debug.WriteLine($"Error updating user roles: {roleEx.Message}");
+                    }
+                    
                     ShowMessage("User saved successfully!", "Success", MessageBoxIcon.Information);
                     LoadUsers();
                     ClearForm();

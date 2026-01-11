@@ -278,16 +278,21 @@ JOIN Permissions p ON p.PermissionID = rp.PermissionID WHERE rp.RoleID = @RoleId
             try
             {
                 var list = new List<string>();
+                // Use case-insensitive comparison with LOWER() and TRIM to handle mismatches
+                // Also check both RoleName and Name columns, and handle NULL values
                 const string sql = @"SELECT DISTINCT ISNULL(p.Name, p.PermissionKey) AS Name 
 FROM Roles r
 JOIN RolePermissions rp ON rp.RoleID = r.RoleID 
 JOIN Permissions p ON p.PermissionID = rp.PermissionID 
-WHERE r.RoleName = @RoleName OR ISNULL(r.Name, r.RoleName) = @RoleName
+WHERE LOWER(LTRIM(RTRIM(ISNULL(r.RoleName, '')))) = LOWER(LTRIM(RTRIM(@RoleName))) 
+   OR LOWER(LTRIM(RTRIM(ISNULL(r.Name, '')))) = LOWER(LTRIM(RTRIM(@RoleName)))
 ORDER BY ISNULL(p.Name, p.PermissionKey)";
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(sql, conn))
                 {
-                    cmd.Parameters.AddWithValue("@RoleName", roleName ?? string.Empty);
+                    // Normalize the role name parameter (trim and ensure it's not null)
+                    var normalizedRoleName = (roleName ?? string.Empty).Trim();
+                    cmd.Parameters.AddWithValue("@RoleName", normalizedRoleName);
                     conn.Open();
                     using (var r = cmd.ExecuteReader())
                     {
@@ -343,8 +348,17 @@ JOIN Permissions p ON p.PermissionID = rp.PermissionID WHERE ur.UserID = @UserId
                         
                         if (!string.IsNullOrWhiteSpace(roleName))
                         {
-                            // Get permissions by role name
+                            // Normalize role name (trim whitespace)
+                            roleName = roleName.Trim();
+                            
+                            // Get permissions by role name (now with case-insensitive matching)
                             list = GetPermissionsByRoleName(roleName);
+                            
+                            // Debug: Log if still no permissions found
+                            if (list.Count == 0)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[GetEffectivePermissionsForUser] No permissions found for user {userId} with role '{roleName}'. Check if role exists in Roles table and has permissions assigned.");
+                            }
                         }
                     }
                 }

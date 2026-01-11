@@ -119,6 +119,7 @@ namespace Vape_Store
         {
             try
             {
+                if (!RequirePermission("sales")) return;
                 var salesLedgerForm = new SalesLedgerForm();
                 salesLedgerForm.ShowDialog();
             }
@@ -129,12 +130,14 @@ namespace Vape_Store
         }
         private void OpenEditSalesForm()
         {
+            if (!RequirePermission("Edit Sales")) return;
             EditSale editsale = new EditSale();
             editsale.FormClosed += (s, e) => RefreshDashboardData();
             editsale.Show();
         }
         private void OpenSalesReturnForm()
         {
+            if (!RequirePermission("Sales Return")) return;
             SalesReturnForm salesreturn = new SalesReturnForm();
             salesreturn.FormClosed += (s, e) => RefreshDashboardData();
             salesreturn.Show();
@@ -149,13 +152,15 @@ namespace Vape_Store
         }
         private void OpenPurchaseLedgerForm()
         {
+            if (!RequirePermission("purchases")) return;
             PurchaseReportForm purchaseReport = new PurchaseReportForm();
             purchaseReport.Show();
         }
 
         private void OpenPurchaseReturnForm()
         {
-           PurchaseReturnForm purchaseReturn= new PurchaseReturnForm(); 
+            if (!RequirePermission("Purchase Return")) return;
+            PurchaseReturnForm purchaseReturn= new PurchaseReturnForm(); 
             purchaseReturn.FormClosed += (s, e) => RefreshDashboardData();
             purchaseReturn.Show();  
 
@@ -177,6 +182,7 @@ namespace Vape_Store
         }
         private void OpenBrandsForm()
         {
+            if (!RequirePermission("inventory")) return;
             Brands brands = new Brands();   
             brands.Show();
 
@@ -185,6 +191,7 @@ namespace Vape_Store
         {
             try
             {
+                if (!RequirePermission("inventory")) return;
                 var printBarcodeForm = new PrintBarcodeForm();
                 printBarcodeForm.ShowDialog();
             }
@@ -195,6 +202,7 @@ namespace Vape_Store
         }
         private void OpenStockInHandForm()
         {
+            if (!RequirePermission("inventory") && !RequirePermission("reports")) return;
             StockReportForm stockReport = new StockReportForm();
             stockReport.Show();
         }
@@ -233,11 +241,13 @@ namespace Vape_Store
         }
         private void OpenCustomerPaymentForm()
         {
+            if (!RequirePermission("people")) return;
             CustomerPaymentForm customerPayment = new CustomerPaymentForm();    
             customerPayment.Show(); 
         }
         private void OpenSupplierPaymentForm()
         {
+            if (!RequirePermission("people")) return;
             SupplierPaymentForm supplierPayment = new SupplierPaymentForm();
             supplierPayment.Show(); 
         }
@@ -246,6 +256,7 @@ namespace Vape_Store
         {
             try
             {
+                if (!RequirePermission("reports")) return;
                 var profitLossReport = new ProfitAndLossReportForm();
                 profitLossReport.ShowDialog();
             }
@@ -264,18 +275,21 @@ namespace Vape_Store
 
         private void OpenLowStockReportForm()
         {
+            if (!RequirePermission("reports")) return;
             LowStockReportForm lowStockReport = new LowStockReportForm();
             lowStockReport.Show();
         }
 
         private void OpenSummaryReportForm()
         {
+            if (!RequirePermission("reports")) return;
             ProfitAndLossReportForm profitLossReport = new ProfitAndLossReportForm();
             profitLossReport.Show();
         }
 
         private void OpenSalesReportForm()
         {
+            if (!RequirePermission("reports") && !RequirePermission("View Sales")) return;
             SalesReportForm salesReport = new SalesReportForm();
             salesReport.Show();
         }
@@ -284,6 +298,7 @@ namespace Vape_Store
         {
             try
             {
+                if (!RequirePermission("reports")) return;
                 // Create a custom item-wise sales report
                 var itemwiseReport = new SalesReportForm();
                 // Set to show item-wise data by default
@@ -300,6 +315,7 @@ namespace Vape_Store
         {
             try
             {
+                if (!RequirePermission("reports") && !RequirePermission("Sales Return")) return;
                 // Create a specialized sales return report
                 var salesReturnReport = new SalesReturnReportForm();
                 salesReturnReport.ShowDialog();
@@ -312,6 +328,7 @@ namespace Vape_Store
 
         private void OpenPurchaseReportForm()
         {
+            if (!RequirePermission("reports") && !RequirePermission("View Purchases")) return;
             PurchaseReportForm purchaseReport = new PurchaseReportForm();
             purchaseReport.Show();
         }
@@ -320,6 +337,7 @@ namespace Vape_Store
         {
             try
             {
+                if (!RequirePermission("reports") && !RequirePermission("Purchase Return")) return;
                 // Create a specialized purchase return report
                 var purchaseReturnReport = new PurchaseReturnReportForm();
                 purchaseReturnReport.ShowDialog();
@@ -332,36 +350,42 @@ namespace Vape_Store
 
         private void OpenProfitMarginReportForm()
         {
+            if (!RequirePermission("reports")) return;
             ProfitAndLossReportForm profitLossReport = new ProfitAndLossReportForm();
             profitLossReport.Show();
         }
 
         private void OpenExpenseReportForm()
         {
+            if (!RequirePermission("reports") && !RequirePermission("accounts")) return;
             ExpenseReportForm expenseReport = new ExpenseReportForm();
             expenseReport.Show();
         }
 
         private void OpenDailyReportForm()
         {
+            if (!RequirePermission("reports")) return;
             DailyReportForm dailyReport = new DailyReportForm();
             dailyReport.Show();
         }
 
         private void OpenDailySaleReportForm()
         {
+            if (!RequirePermission("reports")) return;
             DailySaleReportForm dailySaleReport = new DailySaleReportForm();
             dailySaleReport.Show();
         }
 
         private void OpenSupplierDueReportForm()
         {
+            if (!RequirePermission("reports") && !RequirePermission("people")) return;
             SupplierDueReportForm supplierDueReport = new SupplierDueReportForm();
             supplierDueReport.Show();
         }
 
         private void OpenCustomerDueReportForm()
         {
+            if (!RequirePermission("reports") && !RequirePermission("people")) return;
             CustomerDueReportForm customerDueReport = new CustomerDueReportForm();
             customerDueReport.Show();
         }
@@ -404,12 +428,14 @@ namespace Vape_Store
 
         private void OpenThermalInvoiceForm()
         {
+            if (!RequirePermission("utilities")) return;
             ThermalInvoiceForm thermalInvoice = new ThermalInvoiceForm();
             thermalInvoice.Show();
         }
 
         private void OpenDatabaseStatisticsForm()
         {
+            if (!RequirePermission("reports")) return;
             DatabaseStatisticsReport databaseStats = new DatabaseStatisticsReport();
             databaseStats.Show();
         }

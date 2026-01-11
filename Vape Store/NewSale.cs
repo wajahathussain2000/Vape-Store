@@ -46,7 +46,7 @@ namespace Vape_Store
         private decimal paidAmount = 0;
         private decimal changeAmount = 0;
         private string invoiceNumber = "";
-        private int currentUserID = 1; // Default user ID, should be from UserSession
+        private int currentUserID = 0; // Will be set from UserSession
         private bool _isUpdatingDiscount = false; // Flag to prevent recursive updates
         private bool _isUpdatingTax = false; // Flag to prevent recursive tax updates
 
@@ -90,6 +90,12 @@ namespace Vape_Store
             
             // Handle form closing to unsubscribe from events
             this.FormClosing += NewSale_FormClosing;
+            
+            // Set current user from session
+            if (UserSession.CurrentUser != null)
+            {
+                currentUserID = UserSession.CurrentUser.UserID;
+            }
         }
 
         private void InitializeDataGridView()

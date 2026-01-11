@@ -55,19 +55,21 @@ namespace Vape_Store.Services
 
         private Dictionary<string, HashSet<string>> GetDefaultRoleMap()
         {
-            // Give all roles full access like superadmin
+            // Give system admin roles full access
+            // Limited access for other roles unless configured in the JSON file or database
             return new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
             {
                 { "superadmin", new HashSet<string>(new []{ "*" }) },
+                { "super admin", new HashSet<string>(new []{ "*" }) },
                 { "admin", new HashSet<string>(new []{ "*" }) },
-                { "manager", new HashSet<string>(new []{ "*" }) },
-                { "sales", new HashSet<string>(new []{ "*" }) },
-                { "cashier", new HashSet<string>(new []{ "*" }) },
-                { "cashcounter", new HashSet<string>(new []{ "*" }) },
-                { "hr", new HashSet<string>(new []{ "*" }) },
-                { "inventory", new HashSet<string>(new []{ "*" }) },
-                { "user", new HashSet<string>(new []{ "*" }) },
-                { "seller", new HashSet<string>(new []{ "*" }) }
+                { "manager", new HashSet<string>(new []{ "View Sales", "View Purchases", "Manage Inventory", "View Reports", "Manage Customers", "Manage Suppliers" }) },
+                { "sales", new HashSet<string>(new []{ "View Sales", "Create Sales", "Edit Sales", "Manage Inventory" }) },
+                { "cashier", new HashSet<string>(new []{ "View Sales", "Create Sales" }) },
+                { "cashcounter", new HashSet<string>(new []{ "View Sales", "Create Sales" }) },
+                { "hr", new HashSet<string>(new []{ "Manage Customers", "Manage Suppliers" }) },
+                { "inventory", new HashSet<string>(new []{ "Manage Inventory", "View Purchases", "Create Purchases" }) },
+                { "user", new HashSet<string>(new []{ "View Sales" }) },
+                { "seller", new HashSet<string>(new []{ "View Sales", "Create Sales" }) }
             };
         }
 

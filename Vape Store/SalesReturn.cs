@@ -909,7 +909,7 @@ namespace Vape_Store
                     ReturnReason = cmbreturnreason.SelectedItem?.ToString(),
                     Description = txtdescription.Text.Trim(),
                     TotalAmount = ParseDecimal(txtTotal.Text),
-                    UserID = 1, // TODO: Get from current user session
+                    UserID = UserSession.CurrentUser?.UserID ?? 1, // Get from current user session
                     CreatedDate = DateTime.Now,
                     ReturnItems = selectedItems
                 };

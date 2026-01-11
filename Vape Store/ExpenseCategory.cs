@@ -192,7 +192,7 @@ namespace Vape_Store
                     CategoryName = txtCategoryName.Text.Trim(),
                     Description = txtDescription.Text.Trim(),
                     IsActive = chkIsActive.Checked,
-                    UserID = 1, // TODO: Get from current user session
+                    UserID = UserSession.CurrentUser?.UserID ?? 1, // Get from current user session
                     CreatedDate = DateTime.Now
                 };
 

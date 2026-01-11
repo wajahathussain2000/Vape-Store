@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Vape_Store.Models;
 using Vape_Store.Repositories;
 
@@ -101,15 +103,35 @@ namespace Vape_Store.Services
         {
             try
             {
-                var user = GetUserById(userID);
-                if (user == null || !user.IsActive)
+                var currentUser = GetUserById(userID);
+                if (currentUser == null || !currentUser.IsActive)
                 {
                     return false;
                 }
                 
-                // All roles now have full access like superadmin
-                // Return true for all active users regardless of role
-                return true;
+                // Check permissions through RoleRepository
+                var roleRepo = new RoleRepository();
+                
+                // First try to get permissions through UserRoles
+                var dbPerms = roleRepo.GetEffectivePermissionsForUser(userID);
+                
+                // If no permissions found through UserRoles, try by role name from Users table
+                if (dbPerms == null || dbPerms.Count == 0)
+                {
+                    if (currentUser != null && !string.IsNullOrWhiteSpace(currentUser.Role))
+                    {
+                        dbPerms = roleRepo.GetPermissionsByRoleName(currentUser.Role);
+                    }
+                }
+                
+                // Check if user has the requested permission
+                if (dbPerms != null && dbPerms.Contains(permission, StringComparer.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                
+                // Also check via RoleManagerService as fallback
+                return Vape_Store.Services.RoleManagerService.Instance.HasPermission(currentUser?.Role ?? "", permission);
             }
             catch (Exception ex)
             {

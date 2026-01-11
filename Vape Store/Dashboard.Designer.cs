@@ -714,6 +714,7 @@
             this.Name = "Dashboard";
             this.Text = "Attock Mobiles Rwp - Dashboard";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
+            this.Load += new System.EventHandler(this.Dashboard_Load);
             this.contextMenuStrip1.ResumeLayout(false);
             this.contextMenuStrip2.ResumeLayout(false);
             this.panel1.ResumeLayout(false);

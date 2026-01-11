@@ -271,7 +271,7 @@ namespace Vape_Store
                     ReferenceNumber = txtReferenceNumber.Text.Trim(),
                     Remarks = txtRemarks.Text.Trim(),
                     Status = status,
-                    UserID = 1, // TODO: Get from current user session
+                    UserID = UserSession.CurrentUser?.UserID ?? 1, // Get from current user session
                     CreatedDate = DateTime.Now
                 };
 
