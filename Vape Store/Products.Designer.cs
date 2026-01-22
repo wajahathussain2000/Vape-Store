@@ -100,6 +100,7 @@
             this.Del_button.TabIndex = 27;
             this.Del_button.Text = "Delete";
             this.Del_button.UseVisualStyleBackColor = true;
+            this.Del_button.Click += new System.EventHandler(this.DeleteButton_Click);
             // 
             // barcodeGroup
             // 
@@ -137,6 +138,7 @@
             this.generateBtn.TabIndex = 2;
             this.generateBtn.Text = "Generate/Validate";
             this.generateBtn.UseVisualStyleBackColor = false;
+            this.generateBtn.Click += new System.EventHandler(this.GenerateBarcode_Click);
             // 
             // txtBarcode
             // 
@@ -165,6 +167,7 @@
             this.Exit_button.TabIndex = 26;
             this.Exit_button.Text = "Exit";
             this.Exit_button.UseVisualStyleBackColor = true;
+            this.Exit_button.Click += new System.EventHandler(this.ExitButton_Click);
             // 
             // gridGroup
             // 
@@ -228,6 +231,7 @@
             this.Clear_button.TabIndex = 25;
             this.Clear_button.Text = "Clear";
             this.Clear_button.UseVisualStyleBackColor = true;
+            this.Clear_button.Click += new System.EventHandler(this.ClearButton_Click);
             // 
             // Save_button
             // 
@@ -238,6 +242,7 @@
             this.Save_button.TabIndex = 24;
             this.Save_button.Text = "Save";
             this.Save_button.UseVisualStyleBackColor = true;
+            this.Save_button.Click += new System.EventHandler(this.SaveButton_Click);
             // 
             // productGroup
             // 
@@ -454,6 +459,7 @@
             this.Print_button.TabIndex = 23;
             this.Print_button.Text = "Print";
             this.Print_button.UseVisualStyleBackColor = true;
+            this.Print_button.Click += new System.EventHandler(this.PrintButton_Click);
             // 
             // ADD_button
             // 
@@ -464,6 +470,7 @@
             this.ADD_button.TabIndex = 22;
             this.ADD_button.Text = "Add";
             this.ADD_button.UseVisualStyleBackColor = true;
+            this.ADD_button.Click += new System.EventHandler(this.AddButton_Click);
             // 
             // panel4
             // 

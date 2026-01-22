@@ -283,7 +283,8 @@
             this.dgvPurchaseItems.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
             this.dgvPurchaseItems.Location = new System.Drawing.Point(20, 20);
             this.dgvPurchaseItems.Name = "dgvPurchaseItems";
-            this.dgvPurchaseItems.RowHeadersWidth = 51;
+            this.dgvPurchaseItems.RowHeadersWidth = 25;
+            this.dgvPurchaseItems.ScrollBars = System.Windows.Forms.ScrollBars.Both;
             this.dgvPurchaseItems.Size = new System.Drawing.Size(1120, 540);
             this.dgvPurchaseItems.TabIndex = 0;
             // 
