@@ -95,9 +95,9 @@
             this.panel1.Controls.Add(this.lblTitle);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.panel1.Location = new System.Drawing.Point(0, 0);
-            this.panel1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.panel1.Margin = new System.Windows.Forms.Padding(2);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1327, 60);
+            this.panel1.Size = new System.Drawing.Size(1370, 60);
             this.panel1.TabIndex = 0;
             // 
             // lblTitle
@@ -120,7 +120,7 @@
             this.pnlReturnInfo.Controls.Add(this.lblReturnDate);
             this.pnlReturnInfo.Controls.Add(this.dtpReturnDate);
             this.pnlReturnInfo.Location = new System.Drawing.Point(8, 77);
-            this.pnlReturnInfo.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pnlReturnInfo.Margin = new System.Windows.Forms.Padding(2);
             this.pnlReturnInfo.Name = "pnlReturnInfo";
             this.pnlReturnInfo.Size = new System.Drawing.Size(637, 76);
             this.pnlReturnInfo.TabIndex = 2;
@@ -140,7 +140,7 @@
             // 
             this.txtReturnNumber.BackColor = System.Drawing.Color.White;
             this.txtReturnNumber.Location = new System.Drawing.Point(118, 10);
-            this.txtReturnNumber.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtReturnNumber.Margin = new System.Windows.Forms.Padding(2);
             this.txtReturnNumber.Name = "txtReturnNumber";
             this.txtReturnNumber.ReadOnly = true;
             this.txtReturnNumber.Size = new System.Drawing.Size(131, 20);
@@ -162,7 +162,7 @@
             this.dtpReturnDate.CustomFormat = "dddd, MMMM dd, yyyy";
             this.dtpReturnDate.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpReturnDate.Location = new System.Drawing.Point(115, 36);
-            this.dtpReturnDate.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.dtpReturnDate.Margin = new System.Windows.Forms.Padding(2);
             this.dtpReturnDate.Name = "dtpReturnDate";
             this.dtpReturnDate.Size = new System.Drawing.Size(135, 20);
             this.dtpReturnDate.TabIndex = 3;
@@ -174,7 +174,7 @@
             this.pnlInvoiceSelection.Controls.Add(this.lblInvoiceNumber);
             this.pnlInvoiceSelection.Controls.Add(this.cmbInvoiceNumber);
             this.pnlInvoiceSelection.Location = new System.Drawing.Point(8, 166);
-            this.pnlInvoiceSelection.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pnlInvoiceSelection.Margin = new System.Windows.Forms.Padding(2);
             this.pnlInvoiceSelection.Name = "pnlInvoiceSelection";
             this.pnlInvoiceSelection.Size = new System.Drawing.Size(637, 53);
             this.pnlInvoiceSelection.TabIndex = 3;
@@ -185,7 +185,7 @@
             this.btnLoadInvoice.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnLoadInvoice.ForeColor = System.Drawing.Color.White;
             this.btnLoadInvoice.Location = new System.Drawing.Point(348, 13);
-            this.btnLoadInvoice.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.btnLoadInvoice.Margin = new System.Windows.Forms.Padding(2);
             this.btnLoadInvoice.Name = "btnLoadInvoice";
             this.btnLoadInvoice.Size = new System.Drawing.Size(75, 20);
             this.btnLoadInvoice.TabIndex = 2;
@@ -209,7 +209,7 @@
             this.cmbInvoiceNumber.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbInvoiceNumber.FormattingEnabled = true;
             this.cmbInvoiceNumber.Location = new System.Drawing.Point(93, 13);
-            this.cmbInvoiceNumber.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.cmbInvoiceNumber.Margin = new System.Windows.Forms.Padding(2);
             this.cmbInvoiceNumber.Name = "cmbInvoiceNumber";
             this.cmbInvoiceNumber.Size = new System.Drawing.Size(235, 21);
             this.cmbInvoiceNumber.TabIndex = 0;
@@ -226,7 +226,7 @@
             this.pnlCustomerInfo.Controls.Add(this.lblCustomer);
             this.pnlCustomerInfo.Controls.Add(this.cmbCustomer);
             this.pnlCustomerInfo.Location = new System.Drawing.Point(669, 77);
-            this.pnlCustomerInfo.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pnlCustomerInfo.Margin = new System.Windows.Forms.Padding(2);
             this.pnlCustomerInfo.Name = "pnlCustomerInfo";
             this.pnlCustomerInfo.Size = new System.Drawing.Size(391, 76);
             this.pnlCustomerInfo.TabIndex = 5;
@@ -246,7 +246,7 @@
             // 
             this.txtCustomerAddress.BackColor = System.Drawing.Color.White;
             this.txtCustomerAddress.Location = new System.Drawing.Point(222, 32);
-            this.txtCustomerAddress.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCustomerAddress.Margin = new System.Windows.Forms.Padding(2);
             this.txtCustomerAddress.Name = "txtCustomerAddress";
             this.txtCustomerAddress.ReadOnly = true;
             this.txtCustomerAddress.Size = new System.Drawing.Size(153, 20);
@@ -267,7 +267,7 @@
             // 
             this.txtCustomerPhone.BackColor = System.Drawing.Color.White;
             this.txtCustomerPhone.Location = new System.Drawing.Point(58, 34);
-            this.txtCustomerPhone.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCustomerPhone.Margin = new System.Windows.Forms.Padding(2);
             this.txtCustomerPhone.Name = "txtCustomerPhone";
             this.txtCustomerPhone.ReadOnly = true;
             this.txtCustomerPhone.Size = new System.Drawing.Size(81, 20);
@@ -288,7 +288,7 @@
             // 
             this.txtCustomerName.BackColor = System.Drawing.Color.White;
             this.txtCustomerName.Location = new System.Drawing.Point(257, 10);
-            this.txtCustomerName.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCustomerName.Margin = new System.Windows.Forms.Padding(2);
             this.txtCustomerName.Name = "txtCustomerName";
             this.txtCustomerName.ReadOnly = true;
             this.txtCustomerName.Size = new System.Drawing.Size(119, 20);
@@ -311,7 +311,7 @@
             this.cmbCustomer.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbCustomer.FormattingEnabled = true;
             this.cmbCustomer.Location = new System.Drawing.Point(68, 7);
-            this.cmbCustomer.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.cmbCustomer.Margin = new System.Windows.Forms.Padding(2);
             this.cmbCustomer.Name = "cmbCustomer";
             this.cmbCustomer.Size = new System.Drawing.Size(135, 21);
             this.cmbCustomer.TabIndex = 1;
@@ -327,7 +327,7 @@
             this.pnlOriginalInvoiceDetails.Controls.Add(this.lblOriginalInvoiceTotal);
             this.pnlOriginalInvoiceDetails.Controls.Add(this.txtOriginalInvoiceTotal);
             this.pnlOriginalInvoiceDetails.Location = new System.Drawing.Point(669, 166);
-            this.pnlOriginalInvoiceDetails.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pnlOriginalInvoiceDetails.Margin = new System.Windows.Forms.Padding(2);
             this.pnlOriginalInvoiceDetails.Name = "pnlOriginalInvoiceDetails";
             this.pnlOriginalInvoiceDetails.Size = new System.Drawing.Size(404, 75);
             this.pnlOriginalInvoiceDetails.TabIndex = 6;
@@ -359,7 +359,7 @@
             // 
             this.txtOriginalInvoiceNumber.BackColor = System.Drawing.Color.White;
             this.txtOriginalInvoiceNumber.Location = new System.Drawing.Point(76, 38);
-            this.txtOriginalInvoiceNumber.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtOriginalInvoiceNumber.Margin = new System.Windows.Forms.Padding(2);
             this.txtOriginalInvoiceNumber.Name = "txtOriginalInvoiceNumber";
             this.txtOriginalInvoiceNumber.ReadOnly = true;
             this.txtOriginalInvoiceNumber.Size = new System.Drawing.Size(81, 20);
@@ -380,7 +380,7 @@
             // 
             this.txtOriginalInvoiceDate.BackColor = System.Drawing.Color.White;
             this.txtOriginalInvoiceDate.Location = new System.Drawing.Point(200, 38);
-            this.txtOriginalInvoiceDate.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtOriginalInvoiceDate.Margin = new System.Windows.Forms.Padding(2);
             this.txtOriginalInvoiceDate.Name = "txtOriginalInvoiceDate";
             this.txtOriginalInvoiceDate.ReadOnly = true;
             this.txtOriginalInvoiceDate.Size = new System.Drawing.Size(77, 20);
@@ -401,7 +401,7 @@
             // 
             this.txtOriginalInvoiceTotal.BackColor = System.Drawing.Color.White;
             this.txtOriginalInvoiceTotal.Location = new System.Drawing.Point(320, 38);
-            this.txtOriginalInvoiceTotal.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtOriginalInvoiceTotal.Margin = new System.Windows.Forms.Padding(2);
             this.txtOriginalInvoiceTotal.Name = "txtOriginalInvoiceTotal";
             this.txtOriginalInvoiceTotal.ReadOnly = true;
             this.txtOriginalInvoiceTotal.Size = new System.Drawing.Size(68, 20);
@@ -424,11 +424,11 @@
             this.Price,
             this.Total});
             this.dataGridView1.Location = new System.Drawing.Point(0, 244);
-            this.dataGridView1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.dataGridView1.Margin = new System.Windows.Forms.Padding(2);
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.RowHeadersWidth = 25;
             this.dataGridView1.RowTemplate.Height = 28;
-            this.dataGridView1.Size = new System.Drawing.Size(1020, 432);
+            this.dataGridView1.Size = new System.Drawing.Size(1063, 432);
             this.dataGridView1.TabIndex = 7;
             // 
             // Select
@@ -490,7 +490,7 @@
             this.cmbreturnreason.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbreturnreason.FormattingEnabled = true;
             this.cmbreturnreason.Location = new System.Drawing.Point(164, 679);
-            this.cmbreturnreason.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.cmbreturnreason.Margin = new System.Windows.Forms.Padding(2);
             this.cmbreturnreason.Name = "cmbreturnreason";
             this.cmbreturnreason.Size = new System.Drawing.Size(181, 21);
             this.cmbreturnreason.TabIndex = 9;
@@ -510,7 +510,7 @@
             // 
             this.txtdescription.BackColor = System.Drawing.Color.White;
             this.txtdescription.Location = new System.Drawing.Point(102, 706);
-            this.txtdescription.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtdescription.Margin = new System.Windows.Forms.Padding(2);
             this.txtdescription.Multiline = true;
             this.txtdescription.Name = "txtdescription";
             this.txtdescription.ReadOnly = true;
@@ -529,8 +529,8 @@
             this.panel2.Controls.Add(this.label13);
             this.panel2.Controls.Add(this.label14);
             this.panel2.Controls.Add(this.cmbTax);
-            this.panel2.Location = new System.Drawing.Point(1024, 245);
-            this.panel2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.panel2.Location = new System.Drawing.Point(1082, 244);
+            this.panel2.Margin = new System.Windows.Forms.Padding(2);
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(229, 170);
             this.panel2.TabIndex = 35;
@@ -648,7 +648,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1327, 749);
+            this.ClientSize = new System.Drawing.Size(1370, 749);
             this.Controls.Add(this.CancelBtn);
             this.Controls.Add(this.NewItemBtn);
             this.Controls.Add(this.panel2);
@@ -662,7 +662,7 @@
             this.Controls.Add(this.pnlInvoiceSelection);
             this.Controls.Add(this.pnlReturnInfo);
             this.Controls.Add(this.panel1);
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "SalesReturnForm";
             this.Text = "madni mobile Mobiles Rwp - Sales Return";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

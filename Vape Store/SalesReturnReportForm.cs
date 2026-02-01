@@ -473,7 +473,7 @@ namespace Vape_Store
         {
             try
             {
-                var totalReturns = _salesReturnReportItems.Sum(item => item.TotalAmount);
+                var totalReturns = _salesReturnReportItems.GroupBy(x => x.ReturnID).Sum(g => g.First().TotalAmount);
                 var totalQuantity = _salesReturnReportItems.Sum(item => item.Quantity);
                 var uniqueCustomers = _salesReturnReportItems.Select(item => item.CustomerName).Distinct().Count();
                 var uniqueProducts = _salesReturnReportItems.Select(item => item.ProductName).Distinct().Count();
@@ -629,14 +629,14 @@ namespace Vape_Store
                 html.AppendLine("<body>");
                 
                 // Header
-                html.AppendLine("<h1>SALES RETURN REPORT</h1>");
+                html.AppendLine("<h1>MADNI MOBILE AND PHOTOSTATE - SALES RETURN REPORT</h1>");
                 html.AppendLine($"<p><strong>Report Period:</strong> {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}</p>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 
                 // Summary
                 html.AppendLine("<h2>Summary</h2>");
                 html.AppendLine("<div class='summary'>");
-                html.AppendLine($"<div class='summary-item'>Total Returns: {_salesReturnReportItems.Sum(x => x.TotalAmount):F2}</div>");
+                html.AppendLine($"<div class='summary-item'>Total Returns: {_salesReturnReportItems.GroupBy(x => x.ReturnID).Sum(g => g.First().TotalAmount):F2}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Quantity: {_salesReturnReportItems.Sum(x => x.Quantity)}</div>");
                 html.AppendLine($"<div class='summary-item'>Total Returns Count: {_salesReturnReportItems.Select(x => x.ReturnID).Distinct().Count()}</div>");
                 html.AppendLine($"<div class='summary-item'>Unique Customers: {_salesReturnReportItems.Select(x => x.CustomerName).Distinct().Count()}</div>");
@@ -704,7 +704,7 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("madni mobile Mobiles Rwp - SALES RETURN REPORT", titleFont);
+                Paragraph title = new Paragraph("MADNI MOBILE AND PHOTOSTATE - SALES RETURN REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);
@@ -715,7 +715,7 @@ namespace Vape_Store
                 document.Add(reportInfo);
 
                 // Summary section
-                var totalReturns = _salesReturnReportItems.Sum(item => item.TotalAmount);
+                var totalReturns = _salesReturnReportItems.GroupBy(x => x.ReturnID).Sum(g => g.First().TotalAmount);
                 var totalQuantity = _salesReturnReportItems.Sum(item => item.Quantity);
                 var totalReturnsCount = _salesReturnReportItems.Select(item => item.ReturnID).Distinct().Count();
                 var uniqueCustomers = _salesReturnReportItems.Select(item => item.CustomerName).Distinct().Count();

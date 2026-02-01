@@ -38,6 +38,8 @@ namespace Vape_Store
         // New tax UI controls (runtime)
         private TextBox taxPercentTextBox; // user enters percent
         private TextBox taxAmountTextBox;  // readonly amount
+        private ListBox _suggestionListBox; // Custom suggestion box for "Contains" search
+        private bool _isSelectingSuggestion = false; // Flag to ignore text changes during selection
         
         private decimal subtotal = 0;
         private decimal discount = 0;
@@ -96,6 +98,76 @@ namespace Vape_Store
             {
                 currentUserID = UserSession.CurrentUser.UserID;
             }
+
+            InitializeSuggestionBox();
+        }
+
+        private void InitializeSuggestionBox()
+        {
+            _suggestionListBox = new ListBox
+            {
+                Visible = false,
+                Font = new Font("Segoe UI", 10),
+                ScrollAlwaysVisible = true,
+                Height = 150,
+                Cursor = Cursors.Hand
+            };
+            
+            // Add to the same parent as txtProductName (Panel1)
+            // We'll set location/width dynamically in case layout changes, 
+            // but for now ensuring it's relative to the textbox
+            if (txtProductName.Parent != null)
+            {
+                txtProductName.Parent.Controls.Add(_suggestionListBox);
+                _suggestionListBox.Location = new Point(txtProductName.Left, txtProductName.Bottom);
+                _suggestionListBox.Width = txtProductName.Width;
+                _suggestionListBox.BringToFront();
+            }
+
+            // Events
+            _suggestionListBox.Click += SuggestionListBox_Click;
+            _suggestionListBox.KeyDown += SuggestionListBox_KeyDown;
+        }
+
+        private void SuggestionListBox_Click(object sender, EventArgs e)
+        {
+            if (_suggestionListBox.SelectedItem != null)
+            {
+                SelectSuggestion(_suggestionListBox.SelectedItem.ToString());
+            }
+        }
+
+        private void SuggestionListBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter && _suggestionListBox.SelectedItem != null)
+            {
+                SelectSuggestion(_suggestionListBox.SelectedItem.ToString());
+                e.Handled = true;
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                _suggestionListBox.Visible = false;
+                txtProductName.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void SelectSuggestion(string text)
+        {
+            _isSelectingSuggestion = true;
+            
+            // Extract Product Name if it's a formatted string (though we currently just store Name or Barcode)
+            txtProductName.Text = text;
+            _suggestionListBox.Visible = false;
+            
+            // Trigger logic to update stock/reorder levels based on this exact match
+            UpdateProductDetails(text);
+            
+            _isSelectingSuggestion = false;
+            
+            // Move focus to Quantity or back to Name
+            txtQuantity.Focus();
+            txtQuantity.SelectAll();
         }
 
         private void InitializeDataGridView()
@@ -155,11 +227,41 @@ namespace Vape_Store
             txtQuantity.KeyDown += TxtQuantity_KeyDown;
             // Also handle Enter key in product name textbox to add item
             txtProductName.KeyDown += (s, e) => {
+                // If suggestion box is visible and user hits Down, move focus to it
+                if (_suggestionListBox.Visible && e.KeyCode == Keys.Down)
+                {
+                    _suggestionListBox.Focus();
+                    if (_suggestionListBox.Items.Count > 0) _suggestionListBox.SelectedIndex = 0;
+                    e.Handled = true;
+                    return;
+                }
+                
+                // If suggestion box is visible and user hits Enter, select the top item if none selected, or just hide?
+                // Actually, if they hit Enter in the Textbox while suggestions are there, 
+                // we might want to pick the TOP suggestion if it's a good match, OR just proceed with current text.
+                // For now, if they hit Enter, we let the existing logic Run (AddItem) UNLESS the box is focused.
+                // But if they haven't picked anything, AddItem attempts to find match. 
+                
                 if (e.KeyCode == Keys.Enter)
                 {
+                    // If suggestions are visible and they hit enter, 
+                    // should we select the first one?
+                    if (_suggestionListBox.Visible && _suggestionListBox.Items.Count > 0)
+                    {
+                        SelectSuggestion(_suggestionListBox.Items[0].ToString());
+                        e.Handled = true; // Consume enter so we don't Add Item twice
+                        return;
+                    }
+
                     AddItem();
                     e.Handled = true;
                     e.SuppressKeyPress = true; // Prevent beep
+                }
+                
+                if (e.KeyCode == Keys.Escape)
+                {
+                    _suggestionListBox.Visible = false;
+                    e.Handled = true;
                 }
             };
             // Hide Add Item button as requested (Auto-add on scan / manual add via Enter)
@@ -1235,8 +1337,36 @@ namespace Vape_Store
         }
 
         // Event Handlers
+        private void UpdateProductDetails(string productNameOrBarcode)
+        {
+            try
+            {
+               var productsToSearch = _filteredProducts ?? _products ?? new List<Product>();
+               var exactMatch = productsToSearch.FirstOrDefault(p => 
+                    p != null && (
+                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.Equals(productNameOrBarcode, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(productNameOrBarcode, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.Equals(productNameOrBarcode, StringComparison.OrdinalIgnoreCase))
+                    ));
+
+                if (exactMatch != null)
+                {
+                    txtStockQuantity.Text = exactMatch.StockQuantity.ToString();
+                    txtReorderLevel.Text = exactMatch.ReorderLevel.ToString();
+                }
+                else
+                {
+                    txtStockQuantity.Clear();
+                    txtReorderLevel.Clear();
+                }
+            }
+            catch {}
+        }
+
         private void TxtProductName_TextChanged(object sender, EventArgs e)
         {
+            if (_isSelectingSuggestion) return;
+            
             try
             {
                 string searchText = txtProductName.Text.Trim();
@@ -1246,51 +1376,46 @@ namespace Vape_Store
                     // Clear stock display when search is empty
                     txtStockQuantity.Clear();
                     txtReorderLevel.Clear();
+                    _suggestionListBox.Visible = false;
                     return;
                 }
 
-                // Find exact match first (for AutoComplete selection)
-                var productsToSearch = _filteredProducts ?? _products ?? new List<Product>();
-                var exactMatch = productsToSearch.FirstOrDefault(p => 
-                    p != null && (
-                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.Equals(searchText, StringComparison.OrdinalIgnoreCase))
-                    ));
+                // 1. Update Stock/Reorder info if we have an exact match already
+                UpdateProductDetails(searchText);
 
-                if (exactMatch != null)
+                // 2. Perform Contains Search for Suggestions
+                var productsToSearch = _filteredProducts ?? _products ?? new List<Product>();
+                
+                // Find all matching products
+                var matches = productsToSearch.Where(p => 
+                    p != null && (
+                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                    ))
+                    .Select(p => p.ProductName) // Just display names
+                    .Distinct() // Avoid duplicates
+                    .Take(20) // Limit results
+                    .ToList();
+
+                if (matches.Any())
                 {
-                    // Show exact match details
-                    txtStockQuantity.Text = exactMatch.StockQuantity.ToString();
-                    txtReorderLevel.Text = exactMatch.ReorderLevel.ToString();
+                    _suggestionListBox.DataSource = matches;
+                    if (!_suggestionListBox.Visible)
+                    {
+                        _suggestionListBox.BringToFront();
+                        _suggestionListBox.Visible = true;
+                    }
                 }
                 else
                 {
-                    // Search for products that contain the search text
-                    var matchingProducts = productsToSearch.Where(p => 
-                        p.ProductName.ToLower().Contains(searchText.ToLower()) ||
-                        p.ProductCode.ToLower().Contains(searchText.ToLower()) ||
-                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(searchText.ToLower()))
-                    ).ToList();
-
-                    if (matchingProducts.Count > 0)
-                    {
-                        // Show the first matching product's stock info
-                        var firstProduct = matchingProducts.First();
-                        txtStockQuantity.Text = firstProduct.StockQuantity.ToString();
-                        txtReorderLevel.Text = firstProduct.ReorderLevel.ToString();
-                    }
-                    else
-                    {
-                        // No matches found
-                        txtStockQuantity.Clear();
-                        txtReorderLevel.Clear();
-                    }
+                    _suggestionListBox.Visible = false;
                 }
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error searching products: {ex.Message}", "Search Error", MessageBoxIcon.Error);
+                // Silent catch for UI events to prevent crashing
+                System.Diagnostics.Debug.WriteLine($"Error searching products: {ex.Message}");
             }
         }
 
@@ -1432,33 +1557,15 @@ namespace Vape_Store
         {
             try
             {
-                var productsToUse = _filteredProducts ?? _products;
+                // DISABLE Standard AutoComplete
+                txtProductName.AutoCompleteMode = AutoCompleteMode.None;
+                txtProductName.AutoCompleteSource = AutoCompleteSource.None;
                 
-                // Enable AutoComplete for the ProductName TextBox (supports name and barcode)
-                txtProductName.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                txtProductName.AutoCompleteSource = AutoCompleteSource.CustomSource;
-
-                // Create AutoComplete collection
-                AutoCompleteStringCollection productCollection = new AutoCompleteStringCollection();
-
-                // Add filtered product names and barcodes to the collection
-                if (productsToUse != null)
-                {
-                    foreach (var product in productsToUse)
-                    {
-                        if (!string.IsNullOrWhiteSpace(product.ProductName))
-                            productCollection.Add(product.ProductName);
-                        if (!string.IsNullOrWhiteSpace(product.Barcode))
-                            productCollection.Add(product.Barcode);
-                    }
-                }
-
-                // Set the custom source
-                txtProductName.AutoCompleteCustomSource = productCollection;
+                // We use our custom _suggestionListBox instead
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error updating product autocomplete: {ex.Message}", "Error", MessageBoxIcon.Error);
+               System.Diagnostics.Debug.WriteLine($"Error updating product autocomplete: {ex.Message}");
             }
         }
 

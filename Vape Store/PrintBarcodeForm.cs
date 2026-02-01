@@ -110,12 +110,24 @@ namespace Vape_Store
         {
             try
             {
-                // Clear all fields on form load
-                txtLabel.Clear();
+                // Set Default Settings as per User Request (madni mobile)
+                txtLabel.Text = "MADNI MOBILE AND PHOTOSTATE";
                 txtCode.Clear();
                 lblBarcodeValue.Text = "";
                 cmbProduct.SelectedIndex = -1;
                 pictureBox.Image = null;
+
+                // Apply Default Layout Settings
+                chkThermal.Checked = true;
+                numWidth.Value = 105;
+                numHeight.Value = 90;
+                numGap.Value = 3;
+                
+                // Margins
+                numMarginLeft.Value = 0;
+                numMarginRight.Value = 12;
+                numMarginTop.Value = 4;
+                numMarginBottom.Value = 0;
             }
             catch { }
         }

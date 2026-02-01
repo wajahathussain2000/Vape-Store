@@ -1191,7 +1191,7 @@ namespace Vape_Store
                 html.AppendLine("<body>");
                 
                 // Header
-                string reportTitle = _isItemWiseMode ? "ITEM-WISE SALES REPORT" : "SALES REPORT";
+                string reportTitle = _isItemWiseMode ? "MADNI MOBILE AND PHOTOSTATE - ITEM-WISE SALES REPORT" : "MADNI MOBILE AND PHOTOSTATE - SALES REPORT";
                 html.AppendLine($"<h1>{reportTitle}</h1>");
                 html.AppendLine($"<p><strong>Report Period:</strong> {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}</p>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
@@ -1472,8 +1472,8 @@ namespace Vape_Store
 
                 // Title - adjust for item-wise mode
                 string reportTitle = _isItemWiseMode 
-                    ? "madni mobile Mobiles Rwp - ITEM-WISE SALES REPORT" 
-                    : "madni mobile Mobiles Rwp - SALES REPORT";
+                    ? "MADNI MOBILE AND PHOTOSTATE - ITEM-WISE SALES REPORT" 
+                    : "MADNI MOBILE AND PHOTOSTATE - SALES REPORT";
                 Paragraph title = new Paragraph(reportTitle, titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;

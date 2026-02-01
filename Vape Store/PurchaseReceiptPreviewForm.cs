@@ -184,13 +184,13 @@ namespace Vape_Store
             using (var blackBrush = new SolidBrush(Color.Black))
             {
                 // Column 1: Company Information (Left)
-                g.DrawString("madni mobile Mobiles Rwp", headerFont, blackBrush, col1X, yPosition);
+                g.DrawString("MADNI MOBILE AND PHOTOSTATE", headerFont, blackBrush, col1X, yPosition);
                 yPosition += headerFont.Height + 5f;
-                g.DrawString("Address : V5 G Mall Ground Floor", valueFont, blackBrush, col1X, yPosition);
+                g.DrawString("Ph: 0345:5518744", valueFont, blackBrush, col1X, yPosition);
                 yPosition += valueFont.Height + 3f;
-                g.DrawString("Shop no 5 madni mobile Mobiles Rwp", valueFont, blackBrush, col1X, yPosition);
+                g.DrawString("Shop#3, opp Save Mart,", valueFont, blackBrush, col1X, yPosition);
                 yPosition += valueFont.Height + 3f;
-                g.DrawString("Bahria Phase7 Food Street", valueFont, blackBrush, col1X, yPosition);
+                g.DrawString("main Tulsa road, lalazar,Rwp", valueFont, blackBrush, col1X, yPosition);
                 
                 float col1EndY = yPosition + valueFont.Height;
                 yPosition = col1EndY - (valueFont.Height * 4f) - 5f; // Reset to start
@@ -524,22 +524,22 @@ namespace Vape_Store
                 PdfFont italicFont = new PdfFont(baseFont, 9, PdfFont.ITALIC);
 
                 // Header - Company Info
-                Paragraph companyName = new Paragraph("madni mobile Mobiles Rwp", titleFont);
+                Paragraph companyName = new Paragraph("MADNI MOBILE AND PHOTOSTATE", titleFont);
                 companyName.Alignment = Element.ALIGN_CENTER;
                 companyName.SpacingAfter = 8f;
                 document.Add(companyName);
 
-                Paragraph address1 = new Paragraph("Address : V5 G Mall Ground Floor", normalFont);
+                Paragraph address1 = new Paragraph("Ph: 0345:5518744", normalFont);
                 address1.Alignment = Element.ALIGN_CENTER;
                 address1.SpacingAfter = 5f;
                 document.Add(address1);
 
-                Paragraph address2 = new Paragraph("Shop no 5 madni mobile Mobiles Rwp", normalFont);
+                Paragraph address2 = new Paragraph("Shop#3, opp Save Mart,", normalFont);
                 address2.Alignment = Element.ALIGN_CENTER;
                 address2.SpacingAfter = 5f;
                 document.Add(address2);
 
-                Paragraph address3 = new Paragraph("Bahria Phase7 Food Street", normalFont);
+                Paragraph address3 = new Paragraph("main Tulsa road, lalazar,Rwp", normalFont);
                 address3.Alignment = Element.ALIGN_CENTER;
                 address3.SpacingAfter = 15f;
                 document.Add(address3);

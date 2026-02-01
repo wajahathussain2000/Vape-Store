@@ -288,19 +288,19 @@ namespace Vape_Store
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
 
             // Header - Store Info
-            g.DrawString("madni mobile Mobiles Rwp", headerFont, Brushes.Black, 
+            g.DrawString("MADNI MOBILE AND PHOTOSTATE", headerFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("Address : V5 G Mall Ground Floor", headerFont, Brushes.Black,
+            g.DrawString("Ph: 0345:5518744", headerFont, Brushes.Black,
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("Shop no 5 madni mobile Mobiles Rwp", bodyFont, Brushes.Black, 
+            g.DrawString("Shop#3, opp Save Mart,", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("Bahria Phase7 Food Street", bodyFont, Brushes.Black, 
+            g.DrawString("main Tulsa road, lalazar,Rwp", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight * 2;
 
@@ -424,7 +424,7 @@ namespace Vape_Store
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
-            g.DrawString("3. madni mobile Mobiles Rwp is not responsible", bodyFont, Brushes.Black, 
+            g.DrawString("3. MADNI MOBILE AND PHOTOSTATE is not responsible", bodyFont, Brushes.Black, 
                 new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
             currentY += lineHeight;
 
@@ -588,10 +588,10 @@ namespace Vape_Store
             int leftMargin = _printLeftMargin;
             int rightMargin = _paperWidth - _printRightMargin;
             int printableWidth = rightMargin - leftMargin;
-            string headerLine1 = "madni mobile Mobiles Rwp";
-            string headerLine2 = "Address : V5 G Mall Ground Floor";
-            string addressLine1 = "Shop no 5 madni mobile Mobiles Rwp";
-            string addressLine2 = "Bahria Phase7 Food Street";
+            string headerLine1 = "MADNI MOBILE AND PHOTOSTATE";
+            string headerLine2 = "Ph: 0345:5518744";
+            string addressLine1 = "Shop#3, opp Save Mart,";
+            string addressLine2 = "main Tulsa road, lalazar,Rwp";
 
             // Center align header
             StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };

@@ -516,7 +516,7 @@ namespace Vape_Store
                 html.AppendLine("<body>");
                 
                 // Header
-                html.AppendLine("<h1>SALES LEDGER REPORT</h1>");
+                html.AppendLine("<h1>MADNI MOBILE AND PHOTOSTATE - SALES LEDGER REPORT</h1>");
                 html.AppendLine($"<p><strong>Report Period:</strong> {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}</p>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 
@@ -585,7 +585,7 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("madni mobile Mobiles Rwp - SALES LEDGER REPORT", titleFont);
+                Paragraph title = new Paragraph("MADNI MOBILE AND PHOTOSTATE - SALES LEDGER REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);

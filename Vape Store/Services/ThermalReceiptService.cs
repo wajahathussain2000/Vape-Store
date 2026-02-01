@@ -94,11 +94,10 @@ namespace Vape_Store.Services
                 var rightFormat = new StringFormat { Alignment = StringAlignment.Far, FormatFlags = StringFormatFlags.NoWrap };
 
                 // Store name and header
-                yPosition = DrawCenteredText(g, "madni mobile Mobiles Rwp", _titleFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Mobile: 0300-1234567", _bodyFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Address : V5 G Mall Ground Floor", _titleFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Shop no 5 madni mobile Mobiles Rwp", _bodyFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Bahria Phase7 Food Street", _bodyFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "MADNI MOBILE AND PHOTOSTATE", _titleFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Ph: 0345:5518744", _bodyFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Shop#3, opp Save Mart,", _bodyFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "main Tulsa road, lalazar,Rwp", _bodyFont, centerX, yPosition);
                 
                 // Draw separator line
                 yPosition += 10;
