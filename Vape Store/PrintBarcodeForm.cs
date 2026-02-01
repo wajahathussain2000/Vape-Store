@@ -19,6 +19,20 @@ namespace Vape_Store
         private readonly ProductRepository _productRepository = new ProductRepository();
         private System.Collections.Generic.List<Product> _products;
 
+        // Snapshot fields for printing to ensure thread safety and consistent state
+        private string _jobCode;
+        private string _jobLabel;
+        private int _jobWidth;
+        private int _jobHeight;
+        private int _jobCount;
+        private int _jobCols;
+        private bool _jobIsThermal;
+        private double _jobGap;
+        private double _jobMarginLeft;
+        private double _jobMarginRight;
+        private double _jobMarginTop;
+        private double _jobMarginBottom;
+
         public PrintBarcodeForm()
         {
             InitializeComponent();
@@ -28,9 +42,61 @@ namespace Vape_Store
 
             // Wire events
             btnPreview.Click += (s, e) => Preview();
-            btnPrint.Click += (s, e) => { if (_previewImage != null) try { _printDocument.Print(); } catch (Exception ex) { MessageBox.Show(ex.Message, "Print Error"); } };
+            btnPrint.Click += (s, e) => {
+                try
+                {
+                    // Validate barcode data
+                    if (string.IsNullOrWhiteSpace(txtCode.Text))
+                    {
+                        MessageBox.Show("Please enter barcode data.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // Ensure we have a preview image (needed for validation)
+                    if (_previewImage == null)
+                    {
+                        _previewImage = GenerateCompositePreview();
+                    }
+
+                    // CAPTURE SETTINGS SNAPSHOT
+                    _jobCode = txtCode.Text.Trim();
+                    _jobLabel = txtLabel.Text;
+                    _jobWidth = (int)numWidth.Value;
+                    _jobHeight = (int)numHeight.Value;
+                    _jobCount = (int)numCount.Value;
+                    _jobCols = (int)numCols.Value;
+                    _jobIsThermal = chkThermal.Checked;
+                    _jobGap = (double)numGap.Value;
+                    _jobMarginLeft = (double)numMarginLeft.Value;
+                    _jobMarginRight = (double)numMarginRight.Value;
+                    _jobMarginTop = (double)numMarginTop.Value;
+                    _jobMarginBottom = (double)numMarginBottom.Value;
+
+                    // Reset print counter before printing
+                    _printedCount = 0;
+
+                    // Re-initialize PrintDocument to prevent state issues (fixes single-page print bug)
+                    if (_printDocument != null) _printDocument.Dispose();
+                    _printDocument = new PrintDocument();
+                    _printDocument.PrintPage += PrintDocumentOnPrintPage;
+
+                    SetupThermalPageSettings();
+                    _printDocument.Print();
+                }
+                catch (Exception ex) { MessageBox.Show(ex.Message, "Print Error"); }
+            };
             btnSave.Click += (s, e) => SaveComposite();
             cmbProduct.SelectedIndexChanged += (s, e) => OnProductSelected();
+            chkThermal.CheckedChanged += (s, e) => {
+                numCols.Enabled = !chkThermal.Checked;
+                if (chkThermal.Checked) numCols.Value = 1;
+            };
+            InitializePresets();
+            cmbSizePreset.SelectedIndexChanged += (s, e) => OnPresetChanged();
+            
+            // Update size info when user manually changes width/height
+            numWidth.ValueChanged += (s, e) => UpdateSizeInfo();
+            numHeight.ValueChanged += (s, e) => UpdateSizeInfo();
 
             // Skip database calls during design-time to let the Designer load
             if (!IsDesignMode())
@@ -113,13 +179,104 @@ namespace Vape_Store
             catch { }
         }
 
+        private void InitializePresets()
+        {
+            cmbSizePreset.Items.Add("Custom (Adjust Manually)");
+            
+            // Common thermal sticker sizes
+            cmbSizePreset.Items.Add("40mm x 30mm (Small Sticker)");
+            cmbSizePreset.Items.Add("50mm x 25mm (Standard Label)");
+            cmbSizePreset.Items.Add("50mm x 30mm (Medium Label)");
+            cmbSizePreset.Items.Add("60mm x 40mm (Large Label)");
+            cmbSizePreset.Items.Add("70mm x 30mm (Wide Label)");
+            cmbSizePreset.Items.Add("80mm x 40mm (Extra Large)");
+            
+            // Standard paper sizes
+            cmbSizePreset.Items.Add("100mm x 50mm (Shipping Label)");
+            cmbSizePreset.Items.Add("100mm x 150mm (4x6\" Label)");
+            
+            cmbSizePreset.SelectedIndex = 0; // Default to Custom
+        }
+
+        private void OnPresetChanged()
+        {
+            switch (cmbSizePreset.SelectedIndex)
+            {
+                case 0: // Custom - do nothing
+                    break;
+                case 1: // 40x30mm
+                    numWidth.Value = 150;
+                    numHeight.Value = 115;
+                    break;
+                case 2: // 50x25mm (Standard)
+                    numWidth.Value = 190;
+                    numHeight.Value = 95;
+                    break;
+                case 3: // 50x30mm
+                    numWidth.Value = 190;
+                    numHeight.Value = 115;
+                    break;
+                case 4: // 60x40mm
+                    numWidth.Value = 230;
+                    numHeight.Value = 150;
+                    break;
+                case 5: // 70x30mm
+                    numWidth.Value = 265;
+                    numHeight.Value = 115;
+                    break;
+                case 6: // 80x40mm
+                    numWidth.Value = 300;
+                    numHeight.Value = 150;
+                    break;
+                case 7: // 100x50mm
+                    numWidth.Value = 380;
+                    numHeight.Value = 190;
+                    break;
+                case 8: // 100x150mm (4x6")
+                    numWidth.Value = 380;
+                    numHeight.Value = 570;
+                    break;
+            }
+            
+            // Update size info label when preset changes
+            UpdateSizeInfo();
+        }
+
+        private void UpdateSizeInfo()
+        {
+            // Calculate actual size in mm and inches
+            // Assuming 96 DPI (standard screen resolution)
+            // 1 inch = 96 pixels, 1 inch = 25.4mm
+            
+            double widthMm = ((double)numWidth.Value / 96.0) * 25.4;
+            double heightMm = ((double)numHeight.Value / 96.0) * 25.4;
+            
+            double widthInch = (double)numWidth.Value / 96.0;
+            double heightInch = (double)numHeight.Value / 96.0;
+            
+            // Update label if it exists
+            if (lblSizeInfo != null)
+            {
+                lblSizeInfo.Text = $"≈ {widthMm:F0}mm × {heightMm:F0}mm  ({widthInch:F1}\" × {heightInch:F1}\")";
+            }
+        }
+
         private System.Drawing.Image GenerateCompositePreview()
         {
             // Create one barcode image
             var single = _barcodeService.GenerateBarcodeImageObject(txtCode.Text.Trim(), (int)numWidth.Value, (int)numHeight.Value);
+
             int count = (int)numCount.Value;
             int cols = (int)numCols.Value;
             if (cols <= 0) cols = 1;
+
+            // Thermal mode: Show vertical roll format with separators
+            if (chkThermal.Checked)
+            {
+                return GenerateThermalPreview(single, count);
+            }
+
+            // Standard mode: Grid layout
             int rows = (int)Math.Ceiling(count / (double)cols);
 
             int gutter = 10;
@@ -155,6 +312,100 @@ namespace Vape_Store
             return bmp;
         }
 
+        private System.Drawing.Image GenerateThermalPreview(System.Drawing.Image barcodeImage, int count)
+        {
+            // Thermal roll preview: Show stickers vertically with dashed separators
+            int stickerWidth = (int)numWidth.Value;
+            int stickerHeight = (int)numHeight.Value;
+            int labelHeight = 25; // Space for text label
+            
+            // Convert gap from mm to pixels (1mm ≈ 3.78 pixels at 96 DPI)
+            // Formula: pixels = (mm / 25.4) * 96
+            double gapMm = (double)numGap.Value;
+            int gapPixels = (int)Math.Round((gapMm / 25.4) * 96);
+            int separatorHeight = Math.Max(15, gapPixels); // Minimum 15px for visual separator
+            
+            // Convert margins from mm to pixels
+            double marginLeftMm = (double)numMarginLeft.Value;
+            double marginTopMm = (double)numMarginTop.Value;
+            int marginLeftPx = (int)Math.Round((marginLeftMm / 25.4) * 96);
+            int marginTopPx = (int)Math.Round((marginTopMm / 25.4) * 96);
+            
+            // Total height for one sticker unit (barcode + label + gap)
+            int unitHeight = stickerHeight + labelHeight + separatorHeight + marginTopPx;
+            
+            // Canvas size (include margins)
+            int canvasWidth = stickerWidth + 40 + marginLeftPx; // Add padding + left margin
+            int canvasHeight = (unitHeight * count) + 20; // Add top/bottom padding
+            
+            var bmp = new Bitmap(canvasWidth, canvasHeight);
+            using (var g = Graphics.FromImage(bmp))
+            using (var font = new System.Drawing.Font("Segoe UI", 8))
+            using (var brush = new SolidBrush(Color.Black))
+            using (var grayBrush = new SolidBrush(Color.Gray))
+            using (var sf = new StringFormat { Alignment = StringAlignment.Center })
+            using (var dashedPen = new Pen(Color.Gray, 1) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash })
+            using (var marginPen = new Pen(Color.LightBlue, 1) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dot })
+            {
+                g.Clear(Color.White);
+                
+                for (int i = 0; i < count; i++)
+                {
+                    int yOffset = 10 + (i * unitHeight) + marginTopPx; // Apply top margin
+                    int xOffset = 20 + marginLeftPx; // Apply left margin
+                    
+                    // Draw margin guides (light blue dotted lines) if margins are set
+                    if (marginLeftMm > 0 || marginTopMm > 0)
+                    {
+                        // Left margin line
+                        if (marginLeftMm > 0)
+                            g.DrawLine(marginPen, xOffset, yOffset - marginTopPx, xOffset, yOffset + stickerHeight + labelHeight);
+                        
+                        // Top margin line
+                        if (marginTopMm > 0)
+                            g.DrawLine(marginPen, xOffset, yOffset, xOffset + stickerWidth, yOffset);
+                    }
+                    
+                    // Draw barcode
+                    g.DrawImage(barcodeImage, xOffset, yOffset, stickerWidth, stickerHeight);
+                    
+                    // Draw label text below barcode
+                    if (!string.IsNullOrWhiteSpace(txtLabel.Text))
+                    {
+                        g.DrawString(txtLabel.Text, font, brush, 
+                            new RectangleF(xOffset, yOffset + stickerHeight + 3, stickerWidth, 20), sf);
+                    }
+                    
+                    // Draw dashed separator line (except after last sticker)
+                    if (i < count - 1)
+                    {
+                        int separatorY = yOffset + stickerHeight + labelHeight + (separatorHeight / 2);
+                        
+                        // Draw dashed line across the width
+                        g.DrawLine(dashedPen, 5, separatorY, canvasWidth - 5, separatorY);
+                        
+                        // Optional: Add small "CUT HERE" text or gap indicator
+                        using (var smallFont = new System.Drawing.Font("Segoe UI", 6, FontStyle.Italic))
+                        {
+                            if (gapMm > 0)
+                            {
+                                g.DrawString($"✂ {gapMm}mm gap", smallFont, grayBrush, 
+                                    new RectangleF(0, separatorY - 8, canvasWidth, 16), sf);
+                            }
+                            else
+                            {
+                                g.DrawString("✂", smallFont, grayBrush, 
+                                    new RectangleF(0, separatorY - 8, canvasWidth, 16), sf);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            barcodeImage.Dispose();
+            return bmp;
+        }
+
         private void SaveComposite()
         {
             try
@@ -163,17 +414,17 @@ namespace Vape_Store
                 {
                     _previewImage = GenerateCompositePreview();
                 }
-                using (var sfd = new SaveFileDialog 
-                { 
-                    Filter = "PNG Image|*.png|PDF Document|*.pdf", 
+                using (var sfd = new SaveFileDialog
+                {
+                    Filter = "PNG Image|*.png|PDF Document|*.pdf",
                     FilterIndex = 1,
-                    FileName = $"barcode_{DateTime.Now:yyyyMMdd_HHmmss}" 
+                    FileName = $"barcode_{DateTime.Now:yyyyMMdd_HHmmss}"
                 })
                 {
                     if (sfd.ShowDialog(this) == DialogResult.OK)
                     {
                         string extension = Path.GetExtension(sfd.FileName).ToLower();
-                        
+
                         if (extension == ".pdf")
                         {
                             SaveAsPdf(sfd.FileName);
@@ -213,7 +464,7 @@ namespace Vape_Store
                 // Scale image to fit page width while maintaining aspect ratio
                 float pageWidth = document.PageSize.Width - document.LeftMargin - document.RightMargin;
                 float pageHeight = document.PageSize.Height - document.TopMargin - document.BottomMargin;
-                
+
                 if (pdfImage.Width > pageWidth)
                 {
                     float ratio = pageWidth / pdfImage.Width;
@@ -236,6 +487,53 @@ namespace Vape_Store
             }
         }
 
+        private void SetupThermalPageSettings()
+        {
+            if (_jobIsThermal)
+            {
+                // For thermal sticker printing, set page size to ONE sticker
+                // Each sticker will be printed as a separate page
+                
+                int barcodeWidth = _jobWidth;
+                int barcodeHeight = _jobHeight;
+                int labelHeight = 25; // Space for text label below barcode
+                
+                // Add gap spacing (convert mm to pixels)
+                double gapMm = _jobGap;
+                int gapPixels = (int)Math.Round((gapMm / 25.4) * 96);
+                
+                // Total sticker height = barcode + label text area + gap
+                int stickerHeightPixels = barcodeHeight + labelHeight + gapPixels;
+                
+                // Convert pixels to hundredths of an inch (1 inch = 96 pixels at standard DPI)
+                // PrintDocument uses hundredths of an inch (1 inch = 100 units)
+                double widthInches = (double)barcodeWidth / 96.0;
+                double heightInches = (double)stickerHeightPixels / 96.0;
+                
+                int widthInHundredths = (int)(widthInches * 100);
+                int heightInHundredths = (int)(heightInches * 100);
+                
+                // Set minimum dimensions to prevent error but ALLOW small labels (e.g. 0.5 inch)
+                // Removed arbitrary < 100 checks that forced 1 inch minimum
+                if (widthInHundredths < 10) widthInHundredths = 10; 
+                if (heightInHundredths < 10) heightInHundredths = 10;
+                
+                // Create custom paper size matching ONE sticker
+                PaperSize customSize = new PaperSize("Sticker", widthInHundredths, heightInHundredths);
+                _printDocument.DefaultPageSettings.PaperSize = customSize;
+                _printDocument.DefaultPageSettings.Landscape = false;
+                
+                // Use minimal margins for sticker printing
+                _printDocument.DefaultPageSettings.Margins = new Margins(5, 5, 5, 5);
+            }
+            else
+            {
+                // Use default paper size for standard printing
+                _printDocument.DefaultPageSettings.PaperSize = null;
+                _printDocument.DefaultPageSettings.Margins = new Margins(100, 100, 100, 100);
+            }
+        }
+
         private void PrintDocumentOnPrintPage(object sender, PrintPageEventArgs e)
         {
             if (_previewImage == null)
@@ -244,57 +542,133 @@ namespace Vape_Store
                 return;
             }
 
+            if (_jobIsThermal)
+            {
+                PrintThermal(e);
+            }
+            else
+            {
+                PrintStandard(e);
+            }
+        }
+
+        private int _printedCount = 0;
+
+        private void PrintThermal(PrintPageEventArgs e)
+        {
+            int count = _jobCount;
+            int drawW = _jobWidth;
+            int drawH = _jobHeight;
+
+            // Print ONE barcode per sticker/page
+            // Each page represents one physical sticker
+            
+            // Convert margins from mm to pixels
+            double marginLeftMm = _jobMarginLeft;
+            double marginRightMm = _jobMarginRight;
+            double marginTopMm = _jobMarginTop;
+            double marginBottomMm = _jobMarginBottom;
+            
+            int marginLeftPx = (int)Math.Round((marginLeftMm / 25.4) * 96);
+            int marginTopPx = (int)Math.Round((marginTopMm / 25.4) * 96);
+            
+            using (var font = new System.Drawing.Font("Segoe UI", 8))
+            using (var brush = new SolidBrush(Color.Black))
+            using (var sf = new StringFormat { Alignment = StringAlignment.Center })
+            {
+                // Get the page bounds (full page area)
+                RectangleF pageBounds = e.PageBounds;
+                
+                // Apply left margin and center horizontally
+                float x = marginLeftPx + ((pageBounds.Width - marginLeftPx - drawW) / 2);
+                
+                // Apply top margin
+                float y = marginTopPx;
+                
+                // Draw barcode
+                var img = _barcodeService.GenerateBarcodeImageObject(_jobCode, drawW, drawH);
+                e.Graphics.DrawImage(img, x, y, drawW, drawH);
+                img.Dispose();
+                
+                // Draw label text below the barcode (centered)
+                if (!string.IsNullOrWhiteSpace(_jobLabel))
+                {
+                    float labelY = y + drawH + 3; // 3 pixels below barcode
+                    e.Graphics.DrawString(_jobLabel, font, brush,
+                        new RectangleF(marginLeftPx, labelY, pageBounds.Width - marginLeftPx, 20), sf);
+                }
+                
+                // Increment counter
+                _printedCount++;
+                
+                // Check if we need to print more stickers
+                // Using class variable _printedCount which persists across calls
+                if (_printedCount < count)
+                {
+                    e.HasMorePages = true; // Print next sticker on new page
+                }
+                else
+                {
+                    e.HasMorePages = false; // Done printing
+                    _printedCount = 0; // Reset for next print job
+                }
+            }
+        }
+
+
+
+
+
+        private void PrintStandard(PrintPageEventArgs e)
+        {
             // Tiled printing of N barcodes (numCount) in numCols columns
-            int count = (int)numCount.Value;
-            int cols = (int)numCols.Value;
+            int count = _jobCount;
+            int cols = _jobCols;
             if (cols <= 0) cols = 1;
 
             var margin = e.MarginBounds;
             int gutter = 10;
             int cellWidth = (margin.Width - (cols - 1) * gutter) / cols;
-            int cellHeight = (int)Math.Max(numHeight.Value + 30, 60); // barcode + label area
+            // Use snapshot height
+            int cellHeight = (int)Math.Max(_jobHeight + 30, 60); // barcode + label area
 
-            int printed = 0;
             int row = 0;
             using (var font = new System.Drawing.Font("Segoe UI", 9))
             using (var brush = new SolidBrush(Color.Black))
             using (var sf = new StringFormat { Alignment = StringAlignment.Center })
             {
-                while (printed < count)
+                while (_printedCount < count)
                 {
-                    for (int col = 0; col < cols && printed < count; col++)
+                    for (int col = 0; col < cols && _printedCount < count; col++)
                     {
                         int x = margin.Left + col * (cellWidth + gutter);
                         int y = margin.Top + row * (cellHeight + gutter);
 
-                        // Generate image for each (so scaling matches current settings)
-                        var img = _barcodeService.GenerateBarcodeImageObject(txtCode.Text.Trim(), (int)numWidth.Value, (int)numHeight.Value);
+                        var img = _barcodeService.GenerateBarcodeImageObject(_jobCode, _jobWidth, _jobHeight);
                         int drawW = cellWidth;
-                        int drawH = (int)numHeight.Value;
+                        int drawH = _jobHeight;
                         e.Graphics.DrawImage(img, new System.Drawing.Rectangle(x, y, drawW, drawH));
                         img.Dispose();
 
-                        // Draw label text if provided
-                        if (!string.IsNullOrWhiteSpace(txtLabel.Text))
+                        if (!string.IsNullOrWhiteSpace(_jobLabel))
                         {
-                            e.Graphics.DrawString(txtLabel.Text, font, brush, new RectangleF(x, y + drawH + 5, drawW, 20), sf);
+                            e.Graphics.DrawString(_jobLabel, font, brush, new RectangleF(x, y + drawH + 5, drawW, 20), sf);
                         }
 
-                        printed++;
+                        _printedCount++;
                     }
 
                     row++;
 
-                    // Check if another row fits; if not, continue on next page
                     if (margin.Top + (row + 1) * (cellHeight + gutter) > margin.Bottom)
                     {
-                        e.HasMorePages = printed < count;
+                        e.HasMorePages = _printedCount < count;
+                        if (!e.HasMorePages) _printedCount = 0;
                         return;
                     }
                 }
+                _printedCount = 0;
             }
         }
     }
 }
-
-

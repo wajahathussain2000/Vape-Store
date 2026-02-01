@@ -20,6 +20,14 @@ namespace Vape_Store
         private ComboBox cmbProduct;
         private Label lblProduct;
         private Label lblBarcodeValue;
+        private CheckBox chkThermal;
+        private ComboBox cmbSizePreset;
+        private Label lblSizeInfo;
+        private NumericUpDown numGap;
+        private NumericUpDown numMarginLeft;
+        private NumericUpDown numMarginRight;
+        private NumericUpDown numMarginTop;
+        private NumericUpDown numMarginBottom;
 
         protected override void Dispose(bool disposing)
         {
@@ -58,6 +66,25 @@ namespace Vape_Store
 
             var lblText = new Label { Text = "Label (optional):", Left = 20, Top = 160, Width = 120 };
             txtLabel = new TextBox { Left = 150, Top = 156, Width = 280 };
+            
+            // Sticker gap control (for thermal printing)
+            var lblGap = new Label { Text = "Gap (mm):", Left = 450, Top = 160, Width = 70 };
+            numGap = new NumericUpDown { Left = 520, Top = 156, Width = 80, Minimum = 0, Maximum = 50, Value = 3, DecimalPlaces = 0 };
+            
+            // Margin controls - for fine-tuning barcode position
+            var lblMargins = new Label { Text = "Margins (mm):", Left = 20, Top = 195, Width = 120, Font = new System.Drawing.Font("Segoe UI", 9, FontStyle.Bold) };
+            
+            var lblMarginLeft = new Label { Text = "Left:", Left = 150, Top = 195, Width = 40 };
+            numMarginLeft = new NumericUpDown { Left = 190, Top = 191, Width = 60, Minimum = 0, Maximum = 50, Value = 0, DecimalPlaces = 0 };
+            
+            var lblMarginRight = new Label { Text = "Right:", Left = 260, Top = 195, Width = 45 };
+            numMarginRight = new NumericUpDown { Left = 305, Top = 191, Width = 60, Minimum = 0, Maximum = 50, Value = 0, DecimalPlaces = 0 };
+            
+            var lblMarginTop = new Label { Text = "Top:", Left = 375, Top = 195, Width = 35 };
+            numMarginTop = new NumericUpDown { Left = 410, Top = 191, Width = 60, Minimum = 0, Maximum = 50, Value = 0, DecimalPlaces = 0 };
+            
+            var lblMarginBottom = new Label { Text = "Bottom:", Left = 480, Top = 195, Width = 55 };
+            numMarginBottom = new NumericUpDown { Left = 535, Top = 191, Width = 60, Minimum = 0, Maximum = 50, Value = 0, DecimalPlaces = 0 };
 
             // Action bar at bottom
             panelActions = new Panel { Dock = DockStyle.Bottom, Height = 56, Padding = new Padding(10), BackColor = SystemColors.Control };
@@ -72,7 +99,13 @@ namespace Vape_Store
             panelActions.Controls.Add(btnPreview);
             panelActions.Controls.Add(btnPrint);
 
-            pictureBox = new PictureBox { Left = 20, Top = 190, Width = 650, Height = 170, BorderStyle = BorderStyle.FixedSingle, SizeMode = PictureBoxSizeMode.Zoom };
+            pictureBox = new PictureBox { Left = 20, Top = 225, Width = 650, Height = 135, BorderStyle = BorderStyle.FixedSingle, SizeMode = PictureBoxSizeMode.Zoom };
+
+            chkThermal = new CheckBox { Text = "Thermal Size (Roll)", Left = 450, Top = 125, Width = 150 };
+            
+            var lblPreset = new Label { Text = "Size Preset:", Left = 440, Top = 90, Width = 80 };
+            cmbSizePreset = new ComboBox { Left = 520, Top = 86, Width = 150, DropDownStyle = ComboBoxStyle.DropDownList };
+            
 
             this.Controls.Add(lblProduct);
             this.Controls.Add(cmbProduct);
@@ -83,12 +116,27 @@ namespace Vape_Store
             this.Controls.Add(numWidth);
             this.Controls.Add(lblH);
             this.Controls.Add(numHeight);
+            this.Controls.Add(lblPreset);
+            this.Controls.Add(cmbSizePreset);
+            this.Controls.Add(lblSizeInfo);
+            this.Controls.Add(lblGap);
+            this.Controls.Add(numGap);
+            this.Controls.Add(lblMargins);
+            this.Controls.Add(lblMarginLeft);
+            this.Controls.Add(numMarginLeft);
+            this.Controls.Add(lblMarginRight);
+            this.Controls.Add(numMarginRight);
+            this.Controls.Add(lblMarginTop);
+            this.Controls.Add(numMarginTop);
+            this.Controls.Add(lblMarginBottom);
+            this.Controls.Add(numMarginBottom);
             this.Controls.Add(lblCount);
             this.Controls.Add(numCount);
             this.Controls.Add(lblCols);
             this.Controls.Add(numCols);
             this.Controls.Add(lblText);
             this.Controls.Add(txtLabel);
+            this.Controls.Add(chkThermal);
             this.Controls.Add(panelActions);
             this.Controls.Add(pictureBox);
         }

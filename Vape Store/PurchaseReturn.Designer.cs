@@ -649,7 +649,7 @@
             this.Controls.Add(this.pnlInvoiceSelection);
             this.Controls.Add(this.panel1);
             this.Name = "PurchaseReturnForm";
-            this.Text = "Attock Mobiles Rwp - Purchase Return";
+            this.Text = "madni mobile Mobiles Rwp - Purchase Return";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();

@@ -144,7 +144,7 @@
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Margin = new System.Windows.Forms.Padding(2);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1084, 145);
+            this.panel1.Size = new System.Drawing.Size(1177, 145);
             this.panel1.TabIndex = 6;
             // 
             // label6
@@ -316,8 +316,7 @@
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.RowHeadersWidth = 25;
             this.dataGridView1.RowTemplate.Height = 28;
-            this.dataGridView1.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.dataGridView1.Size = new System.Drawing.Size(1116, 237);
+            this.dataGridView1.Size = new System.Drawing.Size(1209, 361);
             this.dataGridView1.TabIndex = 7;
             // 
             // SrNo
@@ -325,35 +324,30 @@
             this.SrNo.HeaderText = "Sr.No";
             this.SrNo.MinimumWidth = 8;
             this.SrNo.Name = "SrNo";
-            this.SrNo.Width = 150;
             // 
             // ItemName
             // 
             this.ItemName.HeaderText = "ItemName";
             this.ItemName.MinimumWidth = 8;
             this.ItemName.Name = "ItemName";
-            this.ItemName.Width = 450;
             // 
             // Qty
             // 
             this.Qty.HeaderText = "Qty";
             this.Qty.MinimumWidth = 8;
             this.Qty.Name = "Qty";
-            this.Qty.Width = 180;
             // 
             // Price
             // 
             this.Price.HeaderText = "Price";
             this.Price.MinimumWidth = 8;
             this.Price.Name = "Price";
-            this.Price.Width = 180;
             // 
             // SubTotal
             // 
             this.SubTotal.HeaderText = "SubTotal";
             this.SubTotal.MinimumWidth = 8;
             this.SubTotal.Name = "SubTotal";
-            this.SubTotal.Width = 200;
             // 
             // ClearBtn
             // 
@@ -361,7 +355,7 @@
             this.ClearBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.ClearBtn.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.ClearBtn.ForeColor = System.Drawing.Color.White;
-            this.ClearBtn.Location = new System.Drawing.Point(399, 567);
+            this.ClearBtn.Location = new System.Drawing.Point(432, 529);
             this.ClearBtn.Name = "ClearBtn";
             this.ClearBtn.Size = new System.Drawing.Size(125, 40);
             this.ClearBtn.TabIndex = 17;
@@ -374,7 +368,7 @@
             this.CancelBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.CancelBtn.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.CancelBtn.ForeColor = System.Drawing.Color.White;
-            this.CancelBtn.Location = new System.Drawing.Point(263, 567);
+            this.CancelBtn.Location = new System.Drawing.Point(296, 529);
             this.CancelBtn.Name = "CancelBtn";
             this.CancelBtn.Size = new System.Drawing.Size(125, 40);
             this.CancelBtn.TabIndex = 16;
@@ -387,7 +381,7 @@
             this.NewItemBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.NewItemBtn.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.NewItemBtn.ForeColor = System.Drawing.Color.White;
-            this.NewItemBtn.Location = new System.Drawing.Point(147, 567);
+            this.NewItemBtn.Location = new System.Drawing.Point(180, 529);
             this.NewItemBtn.Name = "NewItemBtn";
             this.NewItemBtn.Size = new System.Drawing.Size(105, 40);
             this.NewItemBtn.TabIndex = 15;
@@ -400,7 +394,7 @@
             this.saveBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.saveBtn.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.saveBtn.ForeColor = System.Drawing.Color.White;
-            this.saveBtn.Location = new System.Drawing.Point(8, 567);
+            this.saveBtn.Location = new System.Drawing.Point(41, 529);
             this.saveBtn.Name = "saveBtn";
             this.saveBtn.Size = new System.Drawing.Size(129, 40);
             this.saveBtn.TabIndex = 14;
@@ -413,7 +407,7 @@
             this.RefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.RefreshBtn.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.RefreshBtn.ForeColor = System.Drawing.Color.White;
-            this.RefreshBtn.Location = new System.Drawing.Point(535, 567);
+            this.RefreshBtn.Location = new System.Drawing.Point(568, 529);
             this.RefreshBtn.Name = "RefreshBtn";
             this.RefreshBtn.Size = new System.Drawing.Size(125, 40);
             this.RefreshBtn.TabIndex = 18;
@@ -425,7 +419,7 @@
             this.cmbPaymentMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbPaymentMethod.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cmbPaymentMethod.FormattingEnabled = true;
-            this.cmbPaymentMethod.Location = new System.Drawing.Point(20, 454);
+            this.cmbPaymentMethod.Location = new System.Drawing.Point(30, 628);
             this.cmbPaymentMethod.Name = "cmbPaymentMethod";
             this.cmbPaymentMethod.Size = new System.Drawing.Size(200, 25);
             this.cmbPaymentMethod.TabIndex = 19;
@@ -434,7 +428,7 @@
             // 
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(17, 426);
+            this.label1.Location = new System.Drawing.Point(27, 600);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(128, 19);
             this.label1.TabIndex = 18;
@@ -559,7 +553,7 @@
             this.panel2.Controls.Add(this.cmbTax);
             this.panel2.Controls.Add(this.txtTaxPercentInput);
             this.panel2.Controls.Add(this.txtTaxAmountInput);
-            this.panel2.Location = new System.Drawing.Point(748, 409);
+            this.panel2.Location = new System.Drawing.Point(748, 514);
             this.panel2.Margin = new System.Windows.Forms.Padding(2);
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(328, 224);
@@ -606,7 +600,7 @@
             // 
             this.label7.AutoSize = true;
             this.label7.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label7.Location = new System.Drawing.Point(326, 426);
+            this.label7.Location = new System.Drawing.Point(336, 600);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(65, 19);
             this.label7.TabIndex = 35;
@@ -617,7 +611,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1084, 573);
+            this.ClientSize = new System.Drawing.Size(1177, 749);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.panel2);
             this.Controls.Add(this.RefreshBtn);
@@ -631,7 +625,7 @@
             this.Controls.Add(this.panel1);
             this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "NewSale";
-            this.Text = "Attock Mobiles Rwp - New Sale";
+            this.Text = "madni mobile Mobiles Rwp - New Sale";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.NewSale_Load);
             this.panel1.ResumeLayout(false);

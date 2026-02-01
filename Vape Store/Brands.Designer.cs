@@ -258,7 +258,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "Brands";
-            this.Text = "Attock Mobiles Rwp - Brands";
+            this.Text = "madni mobile Mobiles Rwp - Brands";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel4.ResumeLayout(false);
             this.panel4.PerformLayout();

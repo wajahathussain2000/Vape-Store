@@ -463,7 +463,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "ExpenseEntry";
-            this.Text = "Attock Mobiles Rwp - Expense Entry";
+            this.Text = "madni mobile Mobiles Rwp - Expense Entry";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.headerPanel.ResumeLayout(false);
             this.headerPanel.PerformLayout();

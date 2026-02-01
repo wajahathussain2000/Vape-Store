@@ -494,6 +494,12 @@ namespace Vape_Store
                 {
                     txtTaxPercent.Text = _selectedSale.DiscountPercent.ToString("F2");
                 }
+                else if (_selectedSale.DiscountAmount > 0 && _selectedSale.SubTotal > 0)
+                {
+                    // Calculate implied percentage from flat discount so it applies proportionally to return items
+                    decimal impliedPercent = (_selectedSale.DiscountAmount / _selectedSale.SubTotal) * 100;
+                    txtTaxPercent.Text = impliedPercent.ToString("F2");
+                }
                 else
                 {
                     txtTaxPercent.Text = "0";

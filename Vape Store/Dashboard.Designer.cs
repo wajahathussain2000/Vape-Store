@@ -712,7 +712,7 @@
             this.Controls.Add(this.panel1);
             this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "Dashboard";
-            this.Text = "Attock Mobiles Rwp - Dashboard";
+            this.Text = "madni mobile Mobiles Rwp - Dashboard";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Dashboard_Load);
             this.contextMenuStrip1.ResumeLayout(false);

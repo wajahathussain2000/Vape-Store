@@ -259,7 +259,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "Categories";
-            this.Text = "Attock Mobiles Rwp - Categories";
+            this.Text = "madni mobile Mobiles Rwp - Categories";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Categories_Load);
             this.categoryInputGroup.ResumeLayout(false);

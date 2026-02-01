@@ -94,9 +94,10 @@ namespace Vape_Store.Services
                 var rightFormat = new StringFormat { Alignment = StringAlignment.Far, FormatFlags = StringFormatFlags.NoWrap };
 
                 // Store name and header
-                yPosition = DrawCenteredText(g, "Attock Mobiles Rwp", _titleFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "madni mobile Mobiles Rwp", _titleFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Mobile: 0300-1234567", _bodyFont, centerX, yPosition);
                 yPosition = DrawCenteredText(g, "Address : V5 G Mall Ground Floor", _titleFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "Shop no 5 Attock Mobiles Rwp", _bodyFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Shop no 5 madni mobile Mobiles Rwp", _bodyFont, centerX, yPosition);
                 yPosition = DrawCenteredText(g, "Bahria Phase7 Food Street", _bodyFont, centerX, yPosition);
                 
                 // Draw separator line
@@ -214,12 +215,11 @@ namespace Vape_Store.Services
 
                 yPosition += 20;
 
-                // Footer
-                yPosition = DrawCenteredText(g, "Note:", _footerFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "1. Goods once sold are only exchangeable within 3 days", _footerFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "2. No return policy", _footerFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "3. Attock Mobiles Rwp is not responsible", _footerFont, centerX, yPosition);
-                yPosition = DrawCenteredText(g, "   for any warranty claims", _footerFont, centerX, yPosition);
+                // Footer - Terms and Conditions
+                yPosition = DrawCenteredText(g, "Terms & Conditions:", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "1. No Sale Return", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "2. No Discount", _footerFont, centerX, yPosition);
+                yPosition = DrawCenteredText(g, "3. No Refund", _footerFont, centerX, yPosition);
                 yPosition += 10;
                 yPosition = DrawCenteredText(g, "---", _footerFont, centerX, yPosition);
                 yPosition += 5;

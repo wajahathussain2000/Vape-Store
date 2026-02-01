@@ -25,6 +25,7 @@ namespace Vape_Store
         private ExpenseRepository _expenseRepository;
         private ReportingService _reportingService;
         private DayClosingRepository _dayClosingRepository;
+        private SalesReturnRepository _salesReturnRepository;
         
         private List<DailyReportItem> _dailyReportItems;
         private List<DailyReportItem> _filteredItems = new List<DailyReportItem>();
@@ -38,7 +39,10 @@ namespace Vape_Store
             _purchaseRepository = new PurchaseRepository();
             _expenseRepository = new ExpenseRepository();
             _reportingService = new ReportingService();
+            _expenseRepository = new ExpenseRepository();
+            _reportingService = new ReportingService();
             _dayClosingRepository = new DayClosingRepository();
+            _salesReturnRepository = new SalesReturnRepository();
             
             _dailyReportItems = new List<DailyReportItem>();
             
@@ -262,6 +266,22 @@ namespace Vape_Store
                         Reference = expense.ExpenseCode,
                         Description = $"{expense.CategoryName ?? "Expense"}: {expense.Description ?? ""}",
                         Debit = expense.Amount,
+                        Credit = 0,
+                        Balance = 0 // Will be calculated after sorting
+                    });
+                }
+                
+                // Load Sales Returns (DEBIT) - Acts like an expense/refund
+                var returns = _salesReturnRepository.GetSalesReturnsByDateRange(fromDate, toDate);
+                foreach (var ret in returns)
+                {
+                    _dailyReportItems.Add(new DailyReportItem
+                    {
+                        Date = ret.ReturnDate,
+                        Type = "Sales Return",
+                        Reference = ret.ReturnNumber,
+                        Description = $"Return from {ret.CustomerName ?? "Customer"} (Original: {ret.InvoiceNumber})",
+                        Debit = ret.TotalAmount, // Debited because we pay back
                         Credit = 0,
                         Balance = 0 // Will be calculated after sorting
                     });
@@ -502,34 +522,38 @@ namespace Vape_Store
                     lblNetBalance.Text = "Net Balance: No results";
                     lblTotalSales.Text = "Total Sales: No results";
                     lblTotalPurchases.Text = "Total Purchases: No results";
+                    lblTotalPurchases.Text = "Total Purchases: No results";
                     lblTotalExpenses.Text = "Total Expenses: No results";
+                    lblTotalReturns.Text = "Total Returns: No results";
                 }
                 else
                 {
                     var totalDebit = itemsForSummary.Sum(item => item.Debit);
                     var totalCredit = itemsForSummary.Sum(item => item.Credit);
-                var netBalance = totalCredit - totalDebit;
+                    var netBalance = totalCredit - totalDebit;
                     var totalSales = itemsForSummary.Where(x => x.Type == "Sale").Sum(x => x.Credit);
                     var totalPurchases = itemsForSummary.Where(x => x.Type == "Purchase").Sum(x => x.Debit);
                     var totalExpenses = itemsForSummary.Where(x => x.Type == "Expense").Sum(x => x.Debit);
+                    var totalReturns = itemsForSummary.Where(x => x.Type == "Sales Return").Sum(x => x.Debit);
                 
-                lblTotalDebit.Text = $"Total Debit: {totalDebit:F2}";
-                lblTotalCredit.Text = $"Total Credit: {totalCredit:F2}";
-                lblOpeningBalance.Text = $"Opening Balance: {_openingBalance:F2}";
+                    lblTotalDebit.Text = $"Total Debit: {totalDebit:F2}";
+                    lblTotalCredit.Text = $"Total Credit: {totalCredit:F2}";
+                    lblOpeningBalance.Text = $"Opening Balance: {_openingBalance:F2}";
                     // For closing balance, use actual closing balance if showing all data, otherwise calculate from filtered
                     if (!hasSearchFilter || itemsForSummary.Count == _dailyReportItems.Count)
                     {
-                lblClosingBalance.Text = $"Closing Balance: {_closingBalance:F2}";
+                        lblClosingBalance.Text = $"Closing Balance: {_closingBalance:F2}";
                     }
                     else
                     {
                         decimal filteredBalance = _openingBalance + totalCredit - totalDebit;
                         lblClosingBalance.Text = $"Closing Balance: {filteredBalance:F2} (filtered)";
                     }
-                lblNetBalance.Text = $"Net Balance: {netBalance:F2}";
-                lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
-                lblTotalPurchases.Text = $"Total Purchases: {totalPurchases:F2}";
-                lblTotalExpenses.Text = $"Total Expenses: {totalExpenses:F2}";
+                    lblNetBalance.Text = $"Net Balance: {netBalance:F2}";
+                    lblTotalSales.Text = $"Total Sales: {totalSales:F2}";
+                    lblTotalPurchases.Text = $"Total Purchases: {totalPurchases:F2}";
+                    lblTotalExpenses.Text = $"Total Expenses: {totalExpenses:F2}";
+                    lblTotalReturns.Text = $"Total Returns: {totalReturns:F2}";
                 }
             }
             catch (Exception ex)
@@ -585,6 +609,7 @@ namespace Vape_Store
                     $"Total Sales: {_dailyReportItems.Where(x => x.Type == "Sale").Sum(x => x.Credit):F2}\n" +
                     $"Total Purchases: {_dailyReportItems.Where(x => x.Type == "Purchase").Sum(x => x.Debit):F2}\n" +
                     $"Total Expenses: {_dailyReportItems.Where(x => x.Type == "Expense").Sum(x => x.Debit):F2}\n" +
+                    $"Total Returns: {_dailyReportItems.Where(x => x.Type == "Sales Return").Sum(x => x.Debit):F2}\n" +
                     $"Closing Balance: {_closingBalance:F2}\n\n" +
                     "This action cannot be undone.",
                     "End Day Confirmation",
@@ -799,7 +824,7 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("Attock Mobiles Rwp - DAILY REPORT", titleFont);
+                Paragraph title = new Paragraph("madni mobile Mobiles Rwp - DAILY REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);
@@ -911,7 +936,7 @@ namespace Vape_Store
                 html.AppendLine("</style>");
                 html.AppendLine("</head><body>");
                 
-                html.AppendLine("<h1>Attock Mobiles Rwp - DAILY REPORT</h1>");
+                html.AppendLine("<h1>madni mobile Mobiles Rwp - DAILY REPORT</h1>");
                 html.AppendLine($"<p><strong>Date:</strong> {dtpDate.Value:yyyy-MM-dd}</p>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 

@@ -54,6 +54,7 @@ namespace Vape_Store
             this.lblTotalExpenses = new System.Windows.Forms.Label();
             this.lblOpeningBalance = new System.Windows.Forms.Label();
             this.lblClosingBalance = new System.Windows.Forms.Label();
+            this.lblTotalReturns = new System.Windows.Forms.Label();
             this.lblDayStatus = new System.Windows.Forms.Label();
             this.pnlHeader.SuspendLayout();
             this.pnlFilters.SuspendLayout();
@@ -288,6 +289,8 @@ namespace Vape_Store
             this.pnlSummary.Controls.Add(this.lblTotalSales);
             this.pnlSummary.Controls.Add(this.lblTotalPurchases);
             this.pnlSummary.Controls.Add(this.lblTotalExpenses);
+            this.pnlSummary.Controls.Add(this.lblTotalExpenses);
+            this.pnlSummary.Controls.Add(this.lblTotalReturns);
             this.pnlSummary.Controls.Add(this.lblDayStatus);
             this.pnlSummary.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlSummary.Location = new System.Drawing.Point(0, 640);
@@ -356,7 +359,19 @@ namespace Vape_Store
             this.lblTotalExpenses.Name = "lblTotalExpenses";
             this.lblTotalExpenses.Size = new System.Drawing.Size(130, 15);
             this.lblTotalExpenses.TabIndex = 5;
+            this.lblTotalExpenses.TabIndex = 5;
             this.lblTotalExpenses.Text = "Total Expenses: 0.00";
+            // 
+            // lblTotalReturns
+            // 
+            this.lblTotalReturns.AutoSize = true;
+            this.lblTotalReturns.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblTotalReturns.Location = new System.Drawing.Point(820, 45); // Adjust position as needed
+            this.lblTotalReturns.Name = "lblTotalReturns";
+            this.lblTotalReturns.Size = new System.Drawing.Size(130, 15);
+            this.lblTotalReturns.TabIndex = 9;
+            this.lblTotalReturns.Text = "Total Returns: 0.00";
+            this.lblTotalReturns.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(57)))), ((int)(((byte)(43)))));
             // 
             // lblOpeningBalance
             // 
@@ -443,6 +458,7 @@ namespace Vape_Store
         private System.Windows.Forms.Label lblTotalSales;
         private System.Windows.Forms.Label lblTotalPurchases;
         private System.Windows.Forms.Label lblTotalExpenses;
+        private System.Windows.Forms.Label lblTotalReturns;
         private System.Windows.Forms.Label lblDayStatus;
         private System.Windows.Forms.Button btnEndDay;
     }
