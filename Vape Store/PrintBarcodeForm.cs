@@ -491,44 +491,33 @@ namespace Vape_Store
         {
             if (_jobIsThermal)
             {
-                // For thermal sticker printing, set page size to ONE sticker
-                // Each sticker will be printed as a separate page
+                // For thermal sticker printing, we rely on the Printer Driver to handle copies
+                // This is much more robust than sending multiple pages manually
+                _printDocument.PrinterSettings.Copies = (short)_jobCount;
+
+                // IMPORTANT: Set page size to the EXACT user-defined physical label size
+                // Do NOT add extra height for text/gap here, or the printer will see a size mismatch
+                // and stop after the first label (the "1 print" bug).
                 
-                int barcodeWidth = _jobWidth;
-                int barcodeHeight = _jobHeight;
-                int labelHeight = 25; // Space for text label below barcode
+                int widthInHundredths = (int)((double)_jobWidth / 96.0 * 100);
+                int heightInHundredths = (int)((double)_jobHeight / 96.0 * 100);
                 
-                // Add gap spacing (convert mm to pixels)
-                double gapMm = _jobGap;
-                int gapPixels = (int)Math.Round((gapMm / 25.4) * 96);
+                // Minimum safety constraint (e.g., 0.2 inches)
+                if (widthInHundredths < 20) widthInHundredths = 20; 
+                if (heightInHundredths < 20) heightInHundredths = 20;
                 
-                // Total sticker height = barcode + label text area + gap
-                int stickerHeightPixels = barcodeHeight + labelHeight + gapPixels;
-                
-                // Convert pixels to hundredths of an inch (1 inch = 96 pixels at standard DPI)
-                // PrintDocument uses hundredths of an inch (1 inch = 100 units)
-                double widthInches = (double)barcodeWidth / 96.0;
-                double heightInches = (double)stickerHeightPixels / 96.0;
-                
-                int widthInHundredths = (int)(widthInches * 100);
-                int heightInHundredths = (int)(heightInches * 100);
-                
-                // Set minimum dimensions to prevent error but ALLOW small labels (e.g. 0.5 inch)
-                // Removed arbitrary < 100 checks that forced 1 inch minimum
-                if (widthInHundredths < 10) widthInHundredths = 10; 
-                if (heightInHundredths < 10) heightInHundredths = 10;
-                
-                // Create custom paper size matching ONE sticker
+                // Create custom paper size matching the PHYSICAL sticker
                 PaperSize customSize = new PaperSize("Sticker", widthInHundredths, heightInHundredths);
                 _printDocument.DefaultPageSettings.PaperSize = customSize;
                 _printDocument.DefaultPageSettings.Landscape = false;
                 
-                // Use minimal margins for sticker printing
-                _printDocument.DefaultPageSettings.Margins = new Margins(5, 5, 5, 5);
+                // Minimal margins
+                _printDocument.DefaultPageSettings.Margins = new Margins(2, 2, 2, 2);
             }
             else
             {
-                // Use default paper size for standard printing
+                // Standard printing: Reset copies to 1 (we handle tiling manually)
+                _printDocument.PrinterSettings.Copies = 1;
                 _printDocument.DefaultPageSettings.PaperSize = null;
                 _printDocument.DefaultPageSettings.Margins = new Margins(100, 100, 100, 100);
             }
@@ -556,63 +545,53 @@ namespace Vape_Store
 
         private void PrintThermal(PrintPageEventArgs e)
         {
-            int count = _jobCount;
-            int drawW = _jobWidth;
-            int drawH = _jobHeight;
+            // For Thermal, we use PrinterSettings.Copies, so we only render ONE page here.
+            // No loops, no HasMorePages logic.
 
-            // Print ONE barcode per sticker/page
-            // Each page represents one physical sticker
+            // Available space depends on the configured Page Size (which matches _jobHeight)
+            int pageW = (int)e.PageBounds.Width;
+            int pageH = (int)e.PageBounds.Height;
             
-            // Convert margins from mm to pixels
-            double marginLeftMm = _jobMarginLeft;
-            double marginRightMm = _jobMarginRight;
-            double marginTopMm = _jobMarginTop;
-            double marginBottomMm = _jobMarginBottom;
+            // Calculate content layout
+            int textHeight = 20;
+            int availableHeightForBarcode = pageH - textHeight;
             
-            int marginLeftPx = (int)Math.Round((marginLeftMm / 25.4) * 96);
-            int marginTopPx = (int)Math.Round((marginTopMm / 25.4) * 96);
+            // Safety check for very small labels
+            if (availableHeightForBarcode < 10) availableHeightForBarcode = 10;
+            if (pageW < 10) pageW = 10;
+
+            // Convert margins
+            int marginLeftPx = (int)Math.Round((_jobMarginLeft / 25.4) * 96);
+            int marginTopPx = (int)Math.Round((_jobMarginTop / 25.4) * 96);
             
             using (var font = new System.Drawing.Font("Segoe UI", 8))
             using (var brush = new SolidBrush(Color.Black))
             using (var sf = new StringFormat { Alignment = StringAlignment.Center })
             {
-                // Get the page bounds (full page area)
-                RectangleF pageBounds = e.PageBounds;
-                
-                // Apply left margin and center horizontally
-                float x = marginLeftPx + ((pageBounds.Width - marginLeftPx - drawW) / 2);
-                
-                // Apply top margin
+                float x = marginLeftPx;
                 float y = marginTopPx;
                 
                 // Draw barcode
-                var img = _barcodeService.GenerateBarcodeImageObject(_jobCode, drawW, drawH);
-                e.Graphics.DrawImage(img, x, y, drawW, drawH);
+                // We use availableHeightForBarcode ensuring it fits within the physical page
+                var img = _barcodeService.GenerateBarcodeImageObject(_jobCode, pageW, availableHeightForBarcode);
+                e.Graphics.DrawImage(img, x, y, pageW, availableHeightForBarcode);
                 img.Dispose();
                 
-                // Draw label text below the barcode (centered)
+                // Draw label text below barcode
                 if (!string.IsNullOrWhiteSpace(_jobLabel))
                 {
-                    float labelY = y + drawH + 3; // 3 pixels below barcode
-                    e.Graphics.DrawString(_jobLabel, font, brush,
-                        new RectangleF(marginLeftPx, labelY, pageBounds.Width - marginLeftPx, 20), sf);
-                }
-                
-                // Increment counter
-                _printedCount++;
-                
-                // Check if we need to print more stickers
-                // Using class variable _printedCount which persists across calls
-                if (_printedCount < count)
-                {
-                    e.HasMorePages = true; // Print next sticker on new page
-                }
-                else
-                {
-                    e.HasMorePages = false; // Done printing
-                    _printedCount = 0; // Reset for next print job
+                    float labelY = y + availableHeightForBarcode + 1; 
+                    // Ensure text doesn't flow off page bottom
+                    if (labelY < pageH)
+                    {
+                        e.Graphics.DrawString(_jobLabel, font, brush,
+                            new RectangleF(marginLeftPx, labelY, pageW, textHeight), sf);
+                    }
                 }
             }
+            
+            // Strictly ONE page. The Driver handles the 'Copies'.
+            e.HasMorePages = false;
         }
 
 
