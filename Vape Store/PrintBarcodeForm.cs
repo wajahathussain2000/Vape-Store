@@ -552,41 +552,46 @@ namespace Vape_Store
             int pageW = (int)e.PageBounds.Width;
             int pageH = (int)e.PageBounds.Height;
             
-            // Calculate content layout
-            int textHeight = 20;
-            int availableHeightForBarcode = pageH - textHeight;
-            
-            // Safety check for very small labels
-            if (availableHeightForBarcode < 10) availableHeightForBarcode = 10;
-            if (pageW < 10) pageW = 10;
-
             // Convert margins
             int marginLeftPx = (int)Math.Round((_jobMarginLeft / 25.4) * 96);
             int marginTopPx = (int)Math.Round((_jobMarginTop / 25.4) * 96);
+            int marginBottomPx = (int)Math.Round((_jobMarginBottom / 25.4) * 96);
             
+            // Determine required space for text
+            int textHeight = !string.IsNullOrWhiteSpace(_jobLabel) ? 25 : 0; 
+            
+            // Safety Buffer: Add 5px padding at the bottom to prevent "last label cutoff"
+            // This lifts the text away from the tear-off line/gap
+            int safetyPad = 5;
+            
+            // Calculate strictly available height for the BARCODE
+            // Total - Top Margin - Bottom Margin - Text - Safety Pad
+            int availableHeightForBarcode = pageH - marginTopPx - marginBottomPx - textHeight - safetyPad;
+            
+            // Safety: Ensure barcode has at least minimal visibility (e.g., 20px)
+            if (availableHeightForBarcode < 20) availableHeightForBarcode = 20;
+
             using (var font = new System.Drawing.Font("Segoe UI", 8))
             using (var brush = new SolidBrush(Color.Black))
-            using (var sf = new StringFormat { Alignment = StringAlignment.Center })
+            using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
             {
                 float x = marginLeftPx;
                 float y = marginTopPx;
                 
                 // Draw barcode
-                // We use availableHeightForBarcode ensuring it fits within the physical page
+                // It will stretch/shrink to fit exactly in the calculated available space
                 var img = _barcodeService.GenerateBarcodeImageObject(_jobCode, pageW, availableHeightForBarcode);
                 e.Graphics.DrawImage(img, x, y, pageW, availableHeightForBarcode);
                 img.Dispose();
                 
                 // Draw label text below barcode
-                if (!string.IsNullOrWhiteSpace(_jobLabel))
+                if (textHeight > 0)
                 {
-                    float labelY = y + availableHeightForBarcode + 1; 
-                    // Ensure text doesn't flow off page bottom
-                    if (labelY < pageH)
-                    {
-                        e.Graphics.DrawString(_jobLabel, font, brush,
-                            new RectangleF(marginLeftPx, labelY, pageW, textHeight), sf);
-                    }
+                    // Center the text in the designated text area
+                    // Position: Top Margin + Barcode Height
+                    float labelY = y + availableHeightForBarcode;
+                    var textRect = new RectangleF(0, labelY, pageW, textHeight);
+                    e.Graphics.DrawString(_jobLabel, font, brush, textRect, sf);
                 }
             }
             
