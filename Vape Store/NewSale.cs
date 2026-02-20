@@ -1248,7 +1248,7 @@ namespace Vape_Store
                 // Immediately prepare next invoice/barcode so the UI updates even if later steps fail
                 GenerateInvoiceNumber();
 
-                // Reload lookups and set sensible defaults so dropdowns aren't blank
+                // Reload lookups
                 LoadCustomers();
                 LoadCategories();
                 LoadBrands();
@@ -1744,18 +1744,14 @@ namespace Vape_Store
         {
             try
             {
-                // Refresh products and autocomplete on UI thread
-                if (this.InvokeRequired)
+                // ALWAYS use BeginInvoke to refresh products asynchronously.
+                // This prevents deadlocks when the update is triggered from the UI thread itself.
+                if (this.IsHandleCreated)
                 {
-                    this.Invoke(new Action(() => {
+                    this.BeginInvoke(new Action(() => {
                         LoadProducts();
-                        System.Diagnostics.Debug.WriteLine("Products automatically refreshed due to update");
+                        System.Diagnostics.Debug.WriteLine("Products asynchronously refreshed due to update");
                     }));
-                }
-                else
-                {
-                    LoadProducts();
-                    System.Diagnostics.Debug.WriteLine("Products automatically refreshed due to update");
                 }
             }
             catch (Exception ex)

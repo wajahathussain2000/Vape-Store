@@ -54,13 +54,87 @@ namespace Vape_Store.Services
                         // Insert sale
                         int saleID = InsertSale(sale, connection, transaction);
                         
-                        // Insert sale items and update stock
+                        // Process each sale item using FIFO logic
                         foreach (var item in sale.SaleItems)
                         {
                             item.SaleID = saleID;
-                            InsertSaleItem(item, connection, transaction);
-                            
-                            // Update product stock
+                            int remainingToSell = item.Quantity;
+
+                            // 1. Get available batches for this product, ordered by purchase date (FIFO)
+                            string batchQuery = @"
+                                SELECT pi.PurchaseItemID, pi.RemainingQuantity, pi.UnitPrice as CostPrice, pi.SellingPrice
+                                FROM PurchaseItems pi
+                                JOIN Purchases p ON pi.PurchaseID = p.PurchaseID
+                                WHERE pi.ProductID = @ProductID AND pi.RemainingQuantity > 0
+                                ORDER BY p.PurchaseDate ASC, pi.PurchaseItemID ASC";
+
+                            using (var batchCmd = new SqlCommand(batchQuery, connection, transaction))
+                            {
+                                batchCmd.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                List<dynamic> batches = new List<dynamic>();
+                                using (var reader = batchCmd.ExecuteReader())
+                                {
+                                    while (reader.Read())
+                                    {
+                                        batches.Add(new {
+                                            Id = Convert.ToInt32(reader["PurchaseItemID"]),
+                                            Remaining = Convert.ToInt32(reader["RemainingQuantity"]),
+                                            Cost = Convert.ToDecimal(reader["CostPrice"]),
+                                            Price = Convert.ToDecimal(reader["SellingPrice"])
+                                        });
+                                    }
+                                }
+
+                                foreach (var batch in batches)
+                                {
+                                    if (remainingToSell <= 0) break;
+
+                                    int consume = Math.Min(remainingToSell, batch.Remaining);
+                                    
+                                    // Create a sale item for this batch portion
+                                    var saleItemPart = new SaleItem
+                                    {
+                                        SaleID = saleID,
+                                        ProductID = item.ProductID,
+                                        Quantity = consume,
+                                        UnitPrice = item.UnitPrice,
+                                        SubTotal = consume * item.UnitPrice,
+                                        CostPrice = batch.Cost,
+                                        PurchaseItemID = batch.Id
+                                    };
+                                    
+                                    InsertSaleItem(saleItemPart, connection, transaction);
+
+                                    // 2. Update RemainingQuantity in PurchaseItems
+                                    string updateBatchQuery = "UPDATE PurchaseItems SET RemainingQuantity = RemainingQuantity - @Consume WHERE PurchaseItemID = @BatchID";
+                                    using (var updateBatchCmd = new SqlCommand(updateBatchQuery, connection, transaction))
+                                    {
+                                        updateBatchCmd.Parameters.AddWithValue("@Consume", consume);
+                                        updateBatchCmd.Parameters.AddWithValue("@BatchID", batch.Id);
+                                        updateBatchCmd.ExecuteNonQuery();
+                                    }
+
+                                    remainingToSell -= consume;
+                                }
+                            }
+
+                            // If there's still quantity to sell but no batches (over-selling scenario)
+                            if (remainingToSell > 0)
+                            {
+                                // Over-sell: Record with no specific batch, use product's default cost if available
+                                var overflowItem = new SaleItem
+                                {
+                                    SaleID = saleID,
+                                    ProductID = item.ProductID,
+                                    Quantity = remainingToSell,
+                                    UnitPrice = item.UnitPrice,
+                                    CostPrice = 0, // Unknown cost for over-sold items
+                                    PurchaseItemID = null
+                                };
+                                InsertSaleItem(overflowItem, connection, transaction);
+                            }
+
+                            // 3. Update global Product stock quantity
                             _productRepository.UpdateStock(item.ProductID, -item.Quantity);
                         }
                         
@@ -70,6 +144,9 @@ namespace Vape_Store.Services
                         }
                         
                         transaction.Commit();
+                        // Trigger product update event to refresh sales form
+                        ProductRepository.OnProductsUpdated();
+                        
                         return true;
                     }
                     catch (Exception ex)
@@ -154,8 +231,8 @@ namespace Vape_Store.Services
         
         private void InsertSaleItem(SaleItem item, SqlConnection connection, SqlTransaction transaction)
         {
-            string query = @"INSERT INTO SaleItems (SaleID, ProductID, Quantity, UnitPrice, SubTotal) 
-                           VALUES (@SaleID, @ProductID, @Quantity, @UnitPrice, @SubTotal)";
+            string query = @"INSERT INTO SaleItems (SaleID, ProductID, Quantity, UnitPrice, SubTotal, CostPrice, PurchaseItemID) 
+                           VALUES (@SaleID, @ProductID, @Quantity, @UnitPrice, @SubTotal, @CostPrice, @PurchaseItemID)";
             
             using (var command = new SqlCommand(query, connection, transaction))
             {
@@ -164,6 +241,8 @@ namespace Vape_Store.Services
                 command.Parameters.AddWithValue("@Quantity", item.Quantity);
                 command.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
                 command.Parameters.AddWithValue("@SubTotal", item.SubTotal);
+                command.Parameters.AddWithValue("@CostPrice", item.CostPrice);
+                command.Parameters.AddWithValue("@PurchaseItemID", (object)item.PurchaseItemID ?? DBNull.Value);
                 
                 command.ExecuteNonQuery();
             }

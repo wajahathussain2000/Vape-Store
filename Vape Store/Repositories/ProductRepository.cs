@@ -20,7 +20,9 @@ namespace Vape_Store.Repositories
         {
             List<Product> products = new List<Product>();
             string query = @"SELECT p.ProductID, p.ProductCode, p.ProductName, p.Description, p.CategoryID, p.BrandID,
-                           p.PurchasePrice, ISNULL(p.CostPrice, p.PurchasePrice) as CostPrice, p.RetailPrice, p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, ISNULL(p.IsAvailableForSale, 1) as IsAvailableForSale, p.CreatedDate,
+                           p.PurchasePrice, ISNULL(p.CostPrice, p.PurchasePrice) as CostPrice, 
+                           ISNULL((SELECT TOP 1 pi.SellingPrice FROM PurchaseItems pi JOIN Purchases pur ON pi.PurchaseID = pur.PurchaseID WHERE pi.ProductID = p.ProductID AND pi.RemainingQuantity > 0 ORDER BY pur.PurchaseDate ASC, pi.PurchaseItemID ASC), p.RetailPrice) as RetailPrice, 
+                           p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, ISNULL(p.IsAvailableForSale, 1) as IsAvailableForSale, p.CreatedDate,
                            c.CategoryName, b.BrandName
                            FROM Products p
                            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
@@ -81,7 +83,9 @@ namespace Vape_Store.Repositories
         {
             Product product = null;
             string query = @"SELECT p.ProductID, p.ProductCode, p.ProductName, p.Description, p.CategoryID, p.BrandID,
-                           p.PurchasePrice, p.CostPrice, p.RetailPrice, p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, p.CreatedDate,
+                           p.PurchasePrice, p.CostPrice, 
+                           ISNULL((SELECT TOP 1 pi.SellingPrice FROM PurchaseItems pi JOIN Purchases pur ON pi.PurchaseID = pur.PurchaseID WHERE pi.ProductID = p.ProductID AND pi.RemainingQuantity > 0 ORDER BY pur.PurchaseDate ASC, pi.PurchaseItemID ASC), p.RetailPrice) as RetailPrice, 
+                           p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, p.CreatedDate,
                            c.CategoryName, b.BrandName
                            FROM Products p
                            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
@@ -284,7 +288,12 @@ namespace Vape_Store.Repositories
                     command.Parameters.AddWithValue("@ProductID", productID);
                     command.Parameters.AddWithValue("@QuantityChange", quantityChange);
                     connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    bool success = command.ExecuteNonQuery() > 0;
+                    if (success)
+                    {
+                        OnProductsUpdated();
+                    }
+                    return success;
                 }
             }
         }
@@ -301,7 +310,12 @@ namespace Vape_Store.Repositories
                     command.Parameters.AddWithValue("@QuantityChange", quantityChange);
                     command.Parameters.AddWithValue("@Bonus", bonus);
                     connection.Open();
-                    return command.ExecuteNonQuery() > 0;
+                    bool success = command.ExecuteNonQuery() > 0;
+                    if (success)
+                    {
+                        OnProductsUpdated();
+                    }
+                    return success;
                 }
             }
         }
@@ -419,7 +433,9 @@ namespace Vape_Store.Repositories
 
             Product product = null;
             string query = @"SELECT p.ProductID, p.ProductCode, p.ProductName, p.Description, p.CategoryID, p.BrandID,
-                           p.PurchasePrice, p.CostPrice, p.RetailPrice, p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, p.CreatedDate,
+                           p.PurchasePrice, p.CostPrice, 
+                           ISNULL((SELECT TOP 1 pi.SellingPrice FROM PurchaseItems pi JOIN Purchases pur ON pi.PurchaseID = pur.PurchaseID WHERE pi.ProductID = p.ProductID AND pi.RemainingQuantity > 0 ORDER BY pur.PurchaseDate ASC, pi.PurchaseItemID ASC), p.RetailPrice) as RetailPrice, 
+                           p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, p.CreatedDate,
                            c.CategoryName, b.BrandName
                            FROM Products p
                            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID

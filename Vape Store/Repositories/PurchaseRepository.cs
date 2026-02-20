@@ -330,10 +330,10 @@ namespace Vape_Store.Repositories
                                 var itemQuery = @"
                                     INSERT INTO PurchaseItems (PurchaseID, ProductID, ProductName, ProductCode, Quantity, Unit, 
                                                                UnitPrice, SellingPrice, SubTotal, Bonus, BatchNumber, ExpiryDate, 
-                                                               DiscountAmount, TaxPercent, Remarks)
+                                                               DiscountAmount, TaxPercent, Remarks, RemainingQuantity)
                                     VALUES (@PurchaseID, @ProductID, @ProductName, @ProductCode, @Quantity, @Unit, 
                                             @UnitPrice, @SellingPrice, @SubTotal, @Bonus, @BatchNumber, @ExpiryDate, 
-                                            @DiscountAmount, @TaxPercent, @Remarks)";
+                                            @DiscountAmount, @TaxPercent, @Remarks, @RemainingQuantity)";
 
                                 using (var itemCommand = new SqlCommand(itemQuery, connection, transaction))
                                 {
@@ -352,6 +352,7 @@ namespace Vape_Store.Repositories
                                     itemCommand.Parameters.AddWithValue("@DiscountAmount", item.DiscountAmount);
                                     itemCommand.Parameters.AddWithValue("@TaxPercent", item.TaxPercent);
                                     itemCommand.Parameters.AddWithValue("@Remarks", item.Remarks ?? (object)DBNull.Value);
+                                    itemCommand.Parameters.AddWithValue("@RemainingQuantity", item.Quantity + item.Bonus);
 
                                     itemCommand.ExecuteNonQuery();
                                 }
@@ -715,10 +716,10 @@ namespace Vape_Store.Repositories
                                     string itemQuery = @"
                                         INSERT INTO PurchaseItems (PurchaseID, ProductID, ProductName, ProductCode, Quantity, Unit, 
                                                                    UnitPrice, SellingPrice, SubTotal, Bonus, BatchNumber, ExpiryDate, 
-                                                                   DiscountAmount, TaxPercent, Remarks)
+                                                                   DiscountAmount, TaxPercent, Remarks, RemainingQuantity)
                                         VALUES (@PurchaseID, @ProductID, @ProductName, @ProductCode, @Quantity, @Unit, 
                                                 @UnitPrice, @SellingPrice, @SubTotal, @Bonus, @BatchNumber, @ExpiryDate, 
-                                                @DiscountAmount, @TaxPercent, @Remarks)";
+                                                @DiscountAmount, @TaxPercent, @Remarks, @RemainingQuantity)";
 
                                     using (var itemCommand = new SqlCommand(itemQuery, connection, transaction))
                                     {
@@ -737,6 +738,7 @@ namespace Vape_Store.Repositories
                                         itemCommand.Parameters.AddWithValue("@DiscountAmount", item.DiscountAmount);
                                         itemCommand.Parameters.AddWithValue("@TaxPercent", item.TaxPercent);
                                         itemCommand.Parameters.AddWithValue("@Remarks", item.Remarks ?? (object)DBNull.Value);
+                                    itemCommand.Parameters.AddWithValue("@RemainingQuantity", item.Quantity + item.Bonus);
                                         itemCommand.ExecuteNonQuery();
                                     }
 

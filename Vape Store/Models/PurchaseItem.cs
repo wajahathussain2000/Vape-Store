@@ -12,6 +12,7 @@ namespace Vape_Store.Models
         public decimal UnitPrice { get; set; }
         public decimal SellingPrice { get; set; }
         public decimal SubTotal { get; set; }
+        public int RemainingQuantity { get; set; }
         public int Bonus { get; set; }
         
         // Additional purchase item fields

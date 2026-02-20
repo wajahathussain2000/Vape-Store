@@ -44,6 +44,8 @@ namespace Vape_Store.Models
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal SubTotal { get; set; }
+        public decimal CostPrice { get; set; }
+        public int? PurchaseItemID { get; set; }
         public DateTime? LastModified { get; set; }
         
         // Navigation properties
