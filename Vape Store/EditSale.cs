@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -33,10 +33,13 @@ namespace Vape_Store
         
         private bool isEditMode = false;
         private int selectedSaleId = -1;
+        private ListBox _suggestionListBox;
+        private bool _isSelectingSuggestion = false;
 
         public EditSale()
         {
             InitializeComponent();
+            
             _saleRepository = new SaleRepository();
             _customerRepository = new CustomerRepository();
             _productRepository = new ProductRepository();
@@ -55,6 +58,74 @@ namespace Vape_Store
             SetupSearchableInvoiceComboBox();
             InitializePaymentMethods();
             InitializeTaxOptions();
+            InitializeSuggestionBox();
+        }
+
+        private void InitializeSuggestionBox()
+        {
+            _suggestionListBox = new ListBox
+            {
+                Visible = false,
+                Font = new Font("Segoe UI", 10),
+                ScrollAlwaysVisible = true,
+                Height = 150,
+                Cursor = Cursors.Hand
+            };
+            
+            if (txtProductName.Parent != null)
+            {
+                txtProductName.Parent.Controls.Add(_suggestionListBox);
+                _suggestionListBox.Location = new Point(txtProductName.Left, txtProductName.Bottom);
+                _suggestionListBox.Width = txtProductName.Width;
+                _suggestionListBox.BringToFront();
+            }
+
+            _suggestionListBox.Click += SuggestionListBox_Click;
+            _suggestionListBox.KeyDown += SuggestionListBox_KeyDown;
+        }
+
+        private void SuggestionListBox_Click(object sender, EventArgs e)
+        {
+            if (_suggestionListBox.SelectedItem != null)
+            {
+                SelectSuggestion(_suggestionListBox.SelectedItem.ToString());
+            }
+        }
+
+        private void SuggestionListBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter && _suggestionListBox.SelectedItem != null)
+            {
+                SelectSuggestion(_suggestionListBox.SelectedItem.ToString());
+                e.Handled = true;
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                _suggestionListBox.Visible = false;
+                txtProductName.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void SelectSuggestion(string text)
+        {
+            _isSelectingSuggestion = true;
+            
+            string actualName = text;
+            if (text.StartsWith("[") && text.Contains("] "))
+            {
+                int closingBracket = text.IndexOf("] ");
+                actualName = text.Substring(closingBracket + 2);
+            }
+
+            txtProductName.Text = actualName;
+            _suggestionListBox.Visible = false;
+            
+            // Auto-trigger AddNewItem or just focus?
+            // In EditSale, adding usually requires an explicit Add button or hitting AddNewItem logic
+            AddNewItem();
+            
+            _isSelectingSuggestion = false;
         }
 
         private void InitializeDataGridView()
@@ -759,16 +830,9 @@ namespace Vape_Store
         {
             try
             {
-                if (products == null) return;
-                var ac = new AutoCompleteStringCollection();
-                foreach (var p in products)
-                {
-                    if (!string.IsNullOrWhiteSpace(p.ProductName)) ac.Add(p.ProductName);
-                    if (!string.IsNullOrWhiteSpace(p.Barcode)) ac.Add(p.Barcode);
-                }
-                txtProductName.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                txtProductName.AutoCompleteSource = AutoCompleteSource.CustomSource;
-                txtProductName.AutoCompleteCustomSource = ac;
+                // DISABLE Standard AutoComplete in favor of custom fuzzy search
+                txtProductName.AutoCompleteMode = AutoCompleteMode.None;
+                txtProductName.AutoCompleteSource = AutoCompleteSource.None;
             }
             catch { }
         }
@@ -889,46 +953,67 @@ namespace Vape_Store
 
         private void TxtProductName_TextChanged(object sender, EventArgs e)
         {
+            if (_isSelectingSuggestion) return;
+
             try
             {
-                string searchText = txtProductName.Text?.Trim();
+                string searchText = txtProductName.Text.Trim();
+                
                 if (string.IsNullOrEmpty(searchText))
                 {
                     txtStockQuantity.Clear();
                     txtReorderLevel.Clear();
+                    _suggestionListBox.Visible = false;
                     return;
                 }
 
-                var productsToSearch = _products ?? new List<Product>();
+                if (_products == null || _products.Count == 0) return;
+                
+                var matches = _products.Where(p => 
+                    p != null && (
+                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                    ))
+                    .Select(p => !string.IsNullOrEmpty(p.ProductCode) ? $"[{p.ProductCode}] {p.ProductName}" : p.ProductName)
+                    .Distinct()
+                    .Take(25)
+                    .ToList();
 
-                var exact = productsToSearch.FirstOrDefault(p =>
-                    p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase) ||
-                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(searchText, StringComparison.OrdinalIgnoreCase)));
-
-                if (exact != null)
+                if (matches.Any())
                 {
-                    txtStockQuantity.Text = exact.StockQuantity.ToString();
-                    txtReorderLevel.Text = exact.ReorderLevel.ToString();
-                    return;
-                }
-
-                var any = productsToSearch.FirstOrDefault(p =>
-                    p.ProductName.ToLower().Contains(searchText.ToLower()) ||
-                    p.ProductCode.ToLower().Contains(searchText.ToLower()) ||
-                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.ToLower().Contains(searchText.ToLower())));
-
-                if (any != null)
-                {
-                    txtStockQuantity.Text = any.StockQuantity.ToString();
-                    txtReorderLevel.Text = any.ReorderLevel.ToString();
+                    _suggestionListBox.DataSource = matches;
+                    _suggestionListBox.Location = new Point(txtProductName.Left, txtProductName.Bottom);
+                    _suggestionListBox.Width = txtProductName.Width;
+                    _suggestionListBox.BringToFront();
+                    _suggestionListBox.Visible = true;
                 }
                 else
                 {
-                    txtStockQuantity.Clear();
-                    txtReorderLevel.Clear();
+                    _suggestionListBox.Visible = false;
+                    // Try to update details if it's an exact match even without list
+                    // Find product by name, code, or barcode
+                    var product = _products.FirstOrDefault(p =>
+                        p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase) ||
+                        p.ProductCode.Equals(searchText, StringComparison.OrdinalIgnoreCase) ||
+                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(searchText, StringComparison.OrdinalIgnoreCase)));
+                    
+                    if (product != null)
+                    {
+                        txtStockQuantity.Text = product.StockQuantity.ToString();
+                        txtReorderLevel.Text = product.ReorderLevel.ToString();
+                    }
+                    else
+                    {
+                        txtStockQuantity.Clear();
+                        txtReorderLevel.Clear();
+                    }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error searching products in EditSale: {ex.Message}");
+            }
         }
 
         private void CmbTax_SelectedIndexChanged(object sender, EventArgs e)
@@ -984,11 +1069,19 @@ namespace Vape_Store
                     ShowMessage("Invalid paid amount.", "Validation Error", MessageBoxIcon.Warning);
                     return;
                 }
+
+                // Paid is mandatory for cash transactions
+                if (cmbPaymentMethod.Text.Equals("Cash", StringComparison.OrdinalIgnoreCase) && paid <= 0)
+                {
+                    ShowMessage("Paid amount is mandatory for cash transactions.", "Validation Error", MessageBoxIcon.Warning);
+                    txtPaid.Focus();
+                    return;
+                }
                 
                 if (paid < total)
                 {
                     var result = MessageBox.Show(
-                        $"Paid amount (${paid:F2}) is less than total amount (${total:F2}). Do you want to continue?",
+                        $"Paid amount ({paid:N2}) is less than total amount ({total:N2}). Do you want to continue?",
                         "Payment Warning",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning);

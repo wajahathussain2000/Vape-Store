@@ -10,8 +10,11 @@ namespace Vape_Store.Repositories
 {
     public class PurchaseReturnRepository
     {
+        private readonly SupplierLedgerRepository _supplierLedgerRepository;
+        
         public PurchaseReturnRepository()
         {
+            _supplierLedgerRepository = new SupplierLedgerRepository();
         }
 
         public List<PurchaseReturn> GetAllPurchaseReturns()
@@ -194,7 +197,7 @@ namespace Vape_Store.Repositories
                                 returnCommand.Parameters.AddWithValue("@UserID", purchaseReturn.UserID);
                                 returnCommand.Parameters.AddWithValue("@CreatedDate", purchaseReturn.CreatedDate);
 
-                                var returnId = Convert.ToInt32(returnCommand.ExecuteScalar());
+                                 var returnId = Convert.ToInt32(returnCommand.ExecuteScalar());
 
                                 // Insert return items
                                 foreach (var item in purchaseReturn.ReturnItems)
@@ -213,6 +216,24 @@ namespace Vape_Store.Repositories
 
                                         itemCommand.ExecuteNonQuery();
                                     }
+                                }
+
+                                // Add Supplier Ledger Entry
+                                if (purchaseReturn.SupplierID > 0 && purchaseReturn.TotalAmount > 0)
+                                {
+                                    var ledgerEntry = new SupplierLedgerEntry
+                                    {
+                                        SupplierID = purchaseReturn.SupplierID,
+                                        EntryDate = purchaseReturn.ReturnDate,
+                                        ReferenceType = "PurchaseReturn",
+                                        ReferenceID = returnId,
+                                        InvoiceNumber = purchaseReturn.ReturnNumber,
+                                        Description = $"Purchase Return for Invoice: {purchaseReturn.InvoiceNumber}",
+                                        Debit = purchaseReturn.TotalAmount, // Debiting supplier reduces our debt
+                                        Credit = 0,
+                                        CreatedDate = DateTime.Now
+                                    };
+                                    _supplierLedgerRepository.InsertEntry(connection, transaction, ledgerEntry);
                                 }
 
                                 transaction.Commit();
@@ -337,6 +358,9 @@ namespace Vape_Store.Repositories
                                 deleteReturnCommand.Parameters.AddWithValue("@ReturnID", returnId);
                                 deleteReturnCommand.ExecuteNonQuery();
                             }
+
+                            // Delete corresponding ledger entry
+                            _supplierLedgerRepository.DeleteEntriesByReference("PurchaseReturn", returnId, connection, transaction);
 
                             transaction.Commit();
                             return true;
@@ -474,9 +498,22 @@ namespace Vape_Store.Repositories
 
                                 reader.Close();
 
-                                // Get purchase items
+                                // Get purchase items with remaining quantities calculated
                                 var itemsQuery = @"
-                                    SELECT pi.*, p.ProductName, p.ProductCode
+                                    SELECT 
+                                        pi.PurchaseItemID,
+                                        pi.PurchaseID,
+                                        pi.ProductID,
+                                        pi.Quantity - ISNULL((
+                                            SELECT SUM(pri.Quantity) 
+                                            FROM PurchaseReturnItems pri 
+                                            JOIN PurchaseReturns pr ON pri.ReturnID = pr.ReturnID
+                                            WHERE pr.PurchaseID = pi.PurchaseID AND pri.ProductID = pi.ProductID
+                                        ), 0) as Quantity,
+                                        pi.UnitPrice,
+                                        pi.SubTotal,
+                                        p.ProductName,
+                                        p.ProductCode
                                     FROM PurchaseItems pi
                                     LEFT JOIN Products p ON pi.ProductID = p.ProductID
                                     WHERE pi.PurchaseID = @PurchaseID";

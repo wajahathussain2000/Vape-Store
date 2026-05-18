@@ -6,7 +6,7 @@ namespace Vape_Store
 {
     public partial class ProductEntryForm : Form
     {
-        public string ProductName { get; private set; }
+        public string SelectedProductName { get; private set; }
         public string ProductCode { get; private set; }
         public decimal Quantity { get; private set; }
         public string Unit { get; private set; }
@@ -29,6 +29,7 @@ namespace Vape_Store
         public ProductEntryForm()
         {
             InitializeComponent();
+            
         }
 
         private void InitializeComponent()
@@ -42,7 +43,6 @@ namespace Vape_Store
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.BackColor = Color.White;
 
             // Create controls
             CreateControls();
@@ -285,7 +285,7 @@ namespace Vape_Store
                 }
 
                 // Set properties
-                ProductName = txtProductName.Text.Trim();
+                SelectedProductName = txtProductName.Text.Trim();
                 ProductCode = txtProductCode.Text.Trim();
                 Quantity = quantity;
                 Unit = cmbUnit.SelectedItem?.ToString() ?? "pcs";

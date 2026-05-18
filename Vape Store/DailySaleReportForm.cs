@@ -30,6 +30,7 @@ namespace Vape_Store
         public DailySaleReportForm()
         {
             InitializeComponent();
+            
             _saleRepository = new SaleRepository();
             _reportingService = new ReportingService();
             

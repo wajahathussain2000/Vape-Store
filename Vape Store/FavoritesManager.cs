@@ -70,6 +70,7 @@ namespace Vape_Store
         public FavoritesPanel()
         {
             InitializeComponent();
+            
             LoadFavorites();
             FavoritesManager.OnFavoritesChanged += LoadFavorites;
         }
@@ -202,7 +203,7 @@ namespace Vape_Store
                         form = new Customers();
                         break;
                     case "new sale":
-                        form = new NewSale();
+                        form = new SalesForm();
                         break;
                     case "new purchase":
                         form = new NewPurchase();
@@ -286,6 +287,7 @@ namespace Vape_Store
         public AddFavoriteDialog()
         {
             InitializeComponent();
+            
         }
 
         private void InitializeComponent()

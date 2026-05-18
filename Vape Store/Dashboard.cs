@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -42,8 +42,10 @@ namespace Vape_Store
             SalesDropdown = new ContextMenuStrip();
             SalesDropdown.Items.Add("New Sale",null, (s,e) => OpenNewSaleForm());
             SalesDropdown.Items.Add("Sales Return", null, (s, e) => OpenSalesReturnForm());
-            SalesDropdown.Items.Add("Edit Sales",null, (s,e) => OpenEditSalesForm());
+            //SalesDropdown.Items.Add("Edit Sales",null, (s,e) => OpenEditSalesForm());
             SalesDropdown.Items.Add("Sales Ledger",null, (s,e) => OpenSalesLedgerForm());
+            SalesDropdown.Items.Add("Edit Batch",null, (s,e) => OpenBatchEditForm());
+
 
             PurchaseDropdown= new ContextMenuStrip();  
             PurchaseDropdown.Items.Add("Add Purchase",null, (s,e) => OpenAddPurchaseForm());
@@ -92,6 +94,7 @@ namespace Vape_Store
             ReportsDropdown.Items.Add("Profit And Loss Report", null, (s, e) => OpenProfitAndLossForm());
             ReportsDropdown.Items.Add("Daily Report", null, (s, e) => OpenDailyReportForm());
             ReportsDropdown.Items.Add("Daily Sale Report", null, (s, e) => OpenDailySaleReportForm());
+            ReportsDropdown.Items.Add("Date Range Report", null, (s, e) => OpenDateRangeReportForm());
             
             ReportsDropdown.Items.Add("-"); // Separator
             ReportsDropdown.Items.Add("Database Statistics", null, (s, e) => OpenDatabaseStatisticsForm());
@@ -101,6 +104,7 @@ namespace Vape_Store
             UtilitiesDropdown = new ContextMenuStrip();
             UtilitiesDropdown.Items.Add("Thermal Invoice", null, (s, e) => OpenThermalInvoiceForm());
             UtilitiesDropdown.Items.Add("DataBase Backup", null, (s, e) => OpenDataBaseBackupForm());
+            //UtilitiesDropdown.Items.Add("Store Settings", null, (s, e) => OpenStoreSettingsForm());    
 
             UsersDropdown = new ContextMenuStrip();
             UsersDropdown.Items.Add("User Management", null, (s, e) => OpenUserManagementForm());
@@ -110,7 +114,7 @@ namespace Vape_Store
         private void OpenNewSaleForm() //method for opening the product form 
         {
             if (!RequirePermission("sales")) return;
-            NewSale newsale = new NewSale();
+            SalesForm newsale = new SalesForm();
             newsale.FormClosed += (s, e) => RefreshDashboardData();
             newsale.Show();
         }
@@ -376,6 +380,13 @@ namespace Vape_Store
             dailySaleReport.Show();
         }
 
+        private void OpenDateRangeReportForm()
+        {
+            if (!RequirePermission("reports")) return;
+            DateRangeReportForm dateRangeReport = new DateRangeReportForm();
+            dateRangeReport.Show();
+        }
+
         private void OpenSupplierDueReportForm()
         {
             if (!RequirePermission("reports") && !RequirePermission("people")) return;
@@ -441,9 +452,38 @@ namespace Vape_Store
         }
 
 
+        private void OpenStoreSettingsForm()
+        {
+            if (!RequirePermission("utilities")) return;
+            var form = new SettingsForm();
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                ApplyDynamicBranding();
+            }
+        }
+
+
+
+        private void OpenBatchEditForm()
+        {
+            try
+            {
+                if (!RequirePermission("sales")) return;
+                var OpenBatchEditForm = new EditBatch();
+                OpenBatchEditForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening sales ledger: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
+
         public Dashboard()
         {
             InitializeComponent();
+            
             connectionString = ConfigurationManager.ConnectionStrings["dbs"].ConnectionString;
             recentActivities = new List<RecentActivity>();
             currentStats = new DashboardStats();
@@ -476,15 +516,14 @@ namespace Vape_Store
         {
             // Theme switching functionality temporarily disabled
             // Will be re-enabled when properly configured
-            
-            // Subscribe to theme changes
-            ThemeManager.OnThemeChanged += () => ThemeManager.ApplyTheme(this);
-        }
 
+            // Subscribe to theme changes
+            ThemeManager.OnThemeChanged += () => { };
+        }
         private void ToggleTheme()
         {
             ThemeManager.ToggleTheme();
-            ThemeManager.ApplyTheme(this);
+            
         }
 
         private void InitializeDashboard()
@@ -503,11 +542,51 @@ namespace Vape_Store
             // Initialize breadcrumb navigation
             InitializeBreadcrumb();
             
-            // Initialize recent forms panel
-            InitializeRecentFormsPanel();
-            
             // Initialize date range controls - attach event handlers
             InitializeDateRangeControls();
+        }
+
+        private void Dashboard_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                ApplyDynamicBranding();
+                UpdateGreeting();
+                ApplyRolePermissions();
+                LoadDashboardData();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading dashboard: " + ex.Message);
+            }
+        }
+
+        private void ApplyDynamicBranding()
+        {
+            var config = ConfigurationService.Instance;
+            config.RefreshSettings();
+            
+            lblLogo.Text = config.ApplicationName.ToUpper();
+            this.Text = "Dashboard - " + config.ApplicationName;
+            label18.Text = $"{DateTime.Now.Year} {config.ApplicationName} | Developed By: DevFleet Technologies | +923225347757";
+        }
+
+        private void UpdateGreeting()
+        {
+            try
+            {
+                string userName = UserSession.CurrentUser?.Username ?? "Administrator";
+                greetingLabel.Text = $"Welcome, {userName}";
+
+                int hour = DateTime.Now.Hour;
+                string timeGreeting;
+                if (hour < 12) timeGreeting = "Good morning!";
+                else if (hour < 17) timeGreeting = "Good afternoon!";
+                else timeGreeting = "Good evening!";
+
+                userInfoLabel.Text = $"{timeGreeting} Today is {DateTime.Now:dddd, MMMM dd, yyyy}";
+            }
+            catch { }
         }
         
         private void InitializeDateRangeControls()
@@ -520,38 +599,6 @@ namespace Vape_Store
             // Attach event handlers
             btnApplyDateRange.Click += BtnApplyDateRange_Click;
             btnResetDateRange.Click += BtnResetDateRange_Click;
-            
-            // Handle form resize to keep controls on right
-            this.Resize += Dashboard_Resize;
-        }
-        
-        private void Dashboard_Resize(object sender, EventArgs e)
-        {
-            if (dtpFromDate != null && dtpToDate != null && btnApplyDateRange != null && btnResetDateRange != null && lblDateRange != null)
-            {
-                int formWidth = this.ClientSize.Width;
-                int rightMargin = 20;
-                int controlSpacing = 8;
-                int viewingStatsLabelWidth = 250;
-                
-                // Update row 2 positions
-                int newResetBtnX = formWidth - rightMargin - 70;
-                int newApplyBtnX = newResetBtnX - controlSpacing - 70;
-                int newToDateX = newApplyBtnX - controlSpacing - 130;
-                int newToLabelX = newToDateX - controlSpacing - 25;
-                int newFromDateX = newToLabelX - controlSpacing - 130;
-                
-                // Update row 1 position
-                int newViewingStatsX = formWidth - rightMargin - viewingStatsLabelWidth;
-                
-                // Apply new positions
-                lblDateRange.Location = new Point(newViewingStatsX, lblDateRange.Location.Y);
-                dtpFromDate.Location = new Point(newFromDateX, dtpFromDate.Location.Y);
-                lblTo.Location = new Point(newToLabelX, lblTo.Location.Y);
-                dtpToDate.Location = new Point(newToDateX, dtpToDate.Location.Y);
-                btnApplyDateRange.Location = new Point(newApplyBtnX, btnApplyDateRange.Location.Y);
-                btnResetDateRange.Location = new Point(newResetBtnX, btnResetDateRange.Location.Y);
-            }
         }
         
         private void BtnApplyDateRange_Click(object sender, EventArgs e)
@@ -848,58 +895,37 @@ namespace Vape_Store
 
         private void usersBtn_Click(object sender, EventArgs e)
         {
-            if (UsersDropdown.Visible)
-                UsersDropdown.Hide();
-            else
-                UsersDropdown.Show(usersBtn, new Point(0, usersBtn.Height));
+            UsersDropdown.Show(usersBtn, new Point(0, usersBtn.Height));
         }
 
         private void purchaseBtn_Click(object sender, EventArgs e)
         {
-            if (PurchaseDropdown.Visible)
-                PurchaseDropdown.Hide();
-            else
-                PurchaseDropdown.Show(purchaseBtn, new Point(0, purchaseBtn.Height));
+            PurchaseDropdown.Show(purchaseBtn, new Point(0, purchaseBtn.Height));
         }
 
         private void inventoryBtn_Click(object sender, EventArgs e)
         {
-            if (InventoryDropdown.Visible)
-                InventoryDropdown.Hide();
-            else
-                InventoryDropdown.Show(inventoryBtn, new Point(0, inventoryBtn.Height));
+            InventoryDropdown.Show(inventoryBtn, new Point(0, inventoryBtn.Height));
         }
 
         private void peopleBtn_Click(object sender, EventArgs e)
         {
-            if (PeopleDropdown.Visible)
-                PeopleDropdown.Hide();
-            else
-                PeopleDropdown.Show(peopleBtn, new Point(0, peopleBtn.Height));
+            PeopleDropdown.Show(peopleBtn, new Point(0, peopleBtn.Height));
         }
 
         private void accountsBtn_Click(object sender, EventArgs e)
         {
-            if (AccountsDropdown.Visible)
-                AccountsDropdown.Hide();
-            else
-                AccountsDropdown.Show(accountsBtn, new Point(0, accountsBtn.Height));
+            AccountsDropdown.Show(accountsBtn, new Point(0, accountsBtn.Height));
         }
 
         private void reportsBtn_Click(object sender, EventArgs e)
         {
-            if (ReportsDropdown.Visible)
-                ReportsDropdown.Hide();
-            else
-                ReportsDropdown.Show(reportsBtn, new Point(0, reportsBtn.Height));
+            ReportsDropdown.Show(reportsBtn, new Point(0, reportsBtn.Height));
         }
 
         private void utilitiesBtn_Click(object sender, EventArgs e)
         {
-            if (UtilitiesDropdown.Visible)
-                UtilitiesDropdown.Hide();
-            else
-                UtilitiesDropdown.Show(utilitiesBtn, new Point(0, utilitiesBtn.Height));
+            UtilitiesDropdown.Show(utilitiesBtn, new Point(0, utilitiesBtn.Height));
         }
 
 
@@ -1029,12 +1055,6 @@ namespace Vape_Store
         
 
 
-        private void Dashboard_Load(object sender, EventArgs e)
-        {
-            LoadDashboardData();
-            ApplyRolePermissions();
-        }
-
         private bool RequirePermission(string permission)
         {
             try
@@ -1052,17 +1072,14 @@ namespace Vape_Store
             {
                 // Sales menu: visible to sales/manager/admin/superadmin
                 BtnSales.Enabled = UserSession.HasPermission("sales");
-
-                // Match actual field names from Designer
                 purchaseBtn.Enabled = UserSession.HasPermission("purchases");
                 inventoryBtn.Enabled = UserSession.HasPermission("inventory");
-                // People button should only be enabled if user has "people" permission
-                // Users button handles "users" permission separately
                 peopleBtn.Enabled = UserSession.HasPermission("people");
                 accountsBtn.Enabled = UserSession.HasPermission("accounts");
                 reportsBtn.Enabled = UserSession.HasPermission("reports") || UserSession.HasPermission("basic_reports");
                 utilitiesBtn.Enabled = UserSession.HasPermission("utilities") || UserSession.HasPermission("backup");
                 usersBtn.Enabled = UserSession.HasPermission("users");
+                backupBtn.Enabled = UserSession.HasPermission("backup");
             }
             catch { }
         }
@@ -1079,10 +1096,7 @@ namespace Vape_Store
 
         private void BtnSales_Click(object sender, EventArgs e)
         {
-            if (SalesDropdown.Visible)
-                SalesDropdown.Hide();
-            else
-                SalesDropdown.Show(BtnSales, new Point(0, BtnSales.Height));
+            SalesDropdown.Show(BtnSales, new Point(0, BtnSales.Height));
         }
 
         private void lblDateRange_Click(object sender, EventArgs e)

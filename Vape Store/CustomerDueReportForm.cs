@@ -31,6 +31,7 @@ namespace Vape_Store
         public CustomerDueReportForm()
         {
             InitializeComponent();
+            
             _customerRepository = new CustomerRepository();
             _saleRepository = new SaleRepository();
             _customerPaymentRepository = new CustomerPaymentRepository();
@@ -466,7 +467,8 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("MADNI MOBILE AND PHOTOSTATE - CUSTOMER DUE REPORT", titleFont);
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                Paragraph title = new Paragraph($"{storeName} - CUSTOMER DUE REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);
@@ -567,7 +569,8 @@ namespace Vape_Store
                 html.AppendLine("</style>");
                 html.AppendLine("</head><body>");
                 
-                html.AppendLine("<h1>MADNI MOBILE AND PHOTOSTATE - CUSTOMER DUE REPORT</h1>");
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                html.AppendLine($"<h1>{storeName} - CUSTOMER DUE REPORT</h1>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 
                 // Summary

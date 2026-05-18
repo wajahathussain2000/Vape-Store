@@ -30,6 +30,7 @@ namespace Vape_Store
             Width = 900;
             Height = 600;
             StartPosition = FormStartPosition.CenterParent;
+            
 
             _roleRepo = new RoleRepository();
             _userRepo = new UserRepository();

@@ -70,6 +70,7 @@ namespace Vape_Store
         public RecentFormsPanel()
         {
             InitializeComponent();
+            
             LoadRecentForms();
             RecentFormsManager.OnRecentFormsChanged += LoadRecentForms;
         }
@@ -185,7 +186,7 @@ namespace Vape_Store
                         form = new Customers();
                         break;
                     case "new sale":
-                        form = new NewSale();
+                        form = new SalesForm();
                         break;
                     case "new purchase":
                         form = new NewPurchase();

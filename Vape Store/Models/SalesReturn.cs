@@ -38,6 +38,7 @@ namespace Vape_Store.Models
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal SubTotal { get; set; }
+        public bool IsResellable { get; set; } = true;
         
         // Navigation properties
         public string ProductName { get; set; }

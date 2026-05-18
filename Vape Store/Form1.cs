@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
@@ -25,12 +25,13 @@ namespace Vape_Store
         public Form1()
         {
             InitializeComponent();
+            
             _authService = new AuthenticationService();
-        }
-
-        private void panelHeader_Paint(object sender, PaintEventArgs e)
-        {
-
+            guna2ShadowForm1.SetShadowForm(this);
+            
+            // Set dynamic branding
+            lblBrandTitle.Text = ConfigurationService.Instance.ApplicationName;
+            this.Text = "Login - " + ConfigurationService.Instance.ApplicationName;
         }
 
         private void btnLogin_Click(object sender, EventArgs e)

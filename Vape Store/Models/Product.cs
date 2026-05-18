@@ -25,5 +25,10 @@ namespace Vape_Store.Models
         // Navigation properties
         public string CategoryName { get; set; }
         public string BrandName { get; set; }
+
+        public override string ToString()
+        {
+            return ProductName;
+        }
     }
 }

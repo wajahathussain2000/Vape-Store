@@ -25,6 +25,7 @@ namespace Vape_Store
         public PurchaseReceiptPreviewForm(Purchase purchase, List<PurchaseItem> purchaseItems)
         {
             InitializeComponent();
+            
             _purchase = purchase;
             _purchaseItems = purchaseItems ?? new List<PurchaseItem>();
             _receiptService = new ThermalReceiptService();
@@ -184,7 +185,8 @@ namespace Vape_Store
             using (var blackBrush = new SolidBrush(Color.Black))
             {
                 // Column 1: Company Information (Left)
-                g.DrawString("MADNI MOBILE AND PHOTOSTATE", headerFont, blackBrush, col1X, yPosition);
+                string storeName = ConfigurationService.Instance.ApplicationName;
+                g.DrawString(storeName, headerFont, blackBrush, col1X, yPosition);
                 yPosition += headerFont.Height + 5f;
                 g.DrawString("Ph: 0345:5518744", valueFont, blackBrush, col1X, yPosition);
                 yPosition += valueFont.Height + 3f;
@@ -440,7 +442,7 @@ namespace Vape_Store
             using (var whiteBrush = new SolidBrush(Color.White))
             {
                 DrawFont devFont = new DrawFont("Arial", 9, FontStyle.Italic);
-                string devText = "Developed By: DevFleet Technologies";
+                string devText = "Developed By: DevFleet Technologies | +923225347757";
                 SizeF devSize = g.MeasureString(devText, devFont);
                 float centerX = (leftMargin + rightMargin) / 2f;
                 g.DrawString(devText, devFont, whiteBrush, centerX - (devSize.Width / 2), yPosition + 8f);
@@ -524,7 +526,8 @@ namespace Vape_Store
                 PdfFont italicFont = new PdfFont(baseFont, 9, PdfFont.ITALIC);
 
                 // Header - Company Info
-                Paragraph companyName = new Paragraph("MADNI MOBILE AND PHOTOSTATE", titleFont);
+                string storeName = ConfigurationService.Instance.ApplicationName;
+                Paragraph companyName = new Paragraph(storeName, titleFont);
                 companyName.Alignment = Element.ALIGN_CENTER;
                 companyName.SpacingAfter = 8f;
                 document.Add(companyName);
@@ -678,7 +681,7 @@ namespace Vape_Store
                 receiptInfo.SpacingAfter = 10f;
                 document.Add(receiptInfo);
 
-                Paragraph developer = new Paragraph("Developed By: DevFleet Technologies", italicFont);
+                Paragraph developer = new Paragraph("Developed By: DevFleet Technologies | +923225347757", italicFont);
                 developer.Alignment = Element.ALIGN_CENTER;
                 document.Add(developer);
 

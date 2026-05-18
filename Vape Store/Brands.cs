@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -22,6 +22,7 @@ namespace Vape_Store
         public Brands()
         {
             InitializeComponent();
+            
             _brandRepository = new BrandRepository();
             InitializeDataGridView();
             SetupEventHandlers();

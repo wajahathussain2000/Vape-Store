@@ -768,11 +768,35 @@ namespace Vape_Store.Repositories
                                             stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
                                             stockCommand.ExecuteNonQuery();
                                     }
-                                    
-                                    System.Diagnostics.Debug.WriteLine($"Item {itemIndex} inserted successfully");
+
+                                
+                                string updatePriceQuery = @"  UPDATE Products SET PurchasePrice = @PurchasePrice, CostPrice = @CostPrice, RetailPrice = CASE 
+                                             WHEN @SellingPrice > 0 THEN @SellingPrice 
+                                       ELSE RetailPrice 
+                                          END
+                                         WHERE ProductID = @ProductID";
+
+                                using (var priceCommand = new SqlCommand(updatePriceQuery, connection, transaction))
+                                {
+                                    priceCommand.Parameters.AddWithValue("@PurchasePrice", item.UnitPrice);
+                                    priceCommand.Parameters.AddWithValue("@CostPrice", item.UnitPrice);
+                                    priceCommand.Parameters.AddWithValue("@SellingPrice", item.SellingPrice);
+                                    priceCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+
+                                    priceCommand.ExecuteNonQuery();
+                                }
+
+
+
+                                System.Diagnostics.Debug.WriteLine($"Item {itemIndex} inserted successfully");
                                 }
                                 
                                 System.Diagnostics.Debug.WriteLine($"All {purchaseItems.Count} purchase items inserted successfully");
+                                
+                                if (purchase.SupplierID > 0)
+                                {
+                                    InsertSupplierLedgerEntries(purchase, purchaseId, connection, transaction);
+                                }
 
                             // Commit transaction after all operations succeed
                                     transaction.Commit();

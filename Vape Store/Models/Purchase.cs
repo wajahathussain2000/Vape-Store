@@ -27,7 +27,9 @@ namespace Vape_Store.Models
         public decimal FreightCharges { get; set; }
         public decimal OtherCharges { get; set; }
         public decimal DiscountAmount { get; set; }
+        public decimal DiscountPercent { get; set; }
         public string Notes { get; set; }
+        public string BarcodeData { get; set; }
         
         // Navigation properties
         public string SupplierName { get; set; }

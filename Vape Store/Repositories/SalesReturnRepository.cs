@@ -14,6 +14,103 @@ namespace Vape_Store.Repositories
         {
         }
 
+        private class SoldBatchInfo
+        {
+            public int SaleItemID { get; set; }
+            public int PurchaseItemID { get; set; }
+            public int Quantity { get; set; }
+        }
+
+        private void AdjustPurchaseBatches(int saleId, int productId, int quantityToAdjust, bool isAddition, SqlConnection connection, SqlTransaction transaction)
+        {
+            if (quantityToAdjust <= 0) return;
+
+            // Get all original sold batches for this sale and product (ordered by SaleItemID DESC for LIFO)
+            var soldBatches = new List<SoldBatchInfo>();
+            string query = @"
+                SELECT SaleItemID, PurchaseItemID, Quantity 
+                FROM SaleItems 
+                WHERE SaleID = @SaleID AND ProductID = @ProductID AND PurchaseItemID IS NOT NULL
+                ORDER BY SaleItemID DESC";
+                
+            using (var cmd = new SqlCommand(query, connection, transaction))
+            {
+                cmd.Parameters.AddWithValue("@SaleID", saleId);
+                cmd.Parameters.AddWithValue("@ProductID", productId);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        soldBatches.Add(new SoldBatchInfo {
+                            SaleItemID = Convert.ToInt32(reader["SaleItemID"]),
+                            PurchaseItemID = Convert.ToInt32(reader["PurchaseItemID"]),
+                            Quantity = Convert.ToInt32(reader["Quantity"])
+                        });
+                    }
+                }
+            }
+
+            if (soldBatches.Count == 0) return;
+
+            // Get total already returned resellable quantity in the database for this sale/product
+            int currentDbReturned = 0;
+            string returnedQuery = @"
+                SELECT ISNULL(SUM(sri.Quantity), 0) 
+                FROM SalesReturnItems sri
+                JOIN SalesReturns sr ON sri.ReturnID = sr.ReturnID
+                WHERE sr.SaleID = @SaleID AND sri.ProductID = @ProductID AND sri.IsResellable = 1";
+                
+            using (var cmd = new SqlCommand(returnedQuery, connection, transaction))
+            {
+                cmd.Parameters.AddWithValue("@SaleID", saleId);
+                cmd.Parameters.AddWithValue("@ProductID", productId);
+                var res = cmd.ExecuteScalar();
+                currentDbReturned = res != DBNull.Value ? Convert.ToInt32(res) : 0;
+            }
+
+            int startOffset = isAddition ? currentDbReturned : (currentDbReturned - quantityToAdjust);
+            if (startOffset < 0) startOffset = 0;
+
+            int remainingToAdjust = quantityToAdjust;
+            int currentOffset = 0;
+
+            foreach (var batch in soldBatches)
+            {
+                if (remainingToAdjust <= 0) break;
+
+                int batchSoldQty = batch.Quantity;
+                int batchPurchaseItemID = batch.PurchaseItemID;
+
+                // Determine how much of this batch's sold quantity has already been returned/processed
+                int skipAmount = Math.Max(0, Math.Min(batchSoldQty, startOffset - currentOffset));
+                
+                // The remaining quantity in this batch that can be adjusted/returned
+                int availableInBatch = batchSoldQty - skipAmount;
+
+                if (availableInBatch > 0)
+                {
+                    int adjustAmount = Math.Min(remainingToAdjust, availableInBatch);
+                    
+                    // Perform the update on PurchaseItems
+                    string updateQuery = isAddition 
+                        ? "UPDATE PurchaseItems SET RemainingQuantity = RemainingQuantity + @Amount WHERE PurchaseItemID = @BatchID"
+                        : "UPDATE PurchaseItems SET RemainingQuantity = RemainingQuantity - @Amount WHERE PurchaseItemID = @BatchID";
+                
+                    using (var updateCmd = new SqlCommand(updateQuery, connection, transaction))
+                    {
+                        updateCmd.Parameters.AddWithValue("@Amount", adjustAmount);
+                        updateCmd.Parameters.AddWithValue("@BatchID", batchPurchaseItemID);
+                        updateCmd.ExecuteNonQuery();
+                    }
+
+                    remainingToAdjust -= adjustAmount;
+                    startOffset += adjustAmount; // advance offset
+                }
+
+                currentOffset += batchSoldQty;
+            }
+        }
+
         public List<SalesReturn> GetAllSalesReturns()
         {
             var salesReturns = new List<SalesReturn>();
@@ -149,6 +246,7 @@ namespace Vape_Store.Repositories
                                     Quantity = Convert.ToInt32(reader["Quantity"]),
                                     UnitPrice = Convert.ToDecimal(reader["UnitPrice"]),
                                     SubTotal = Convert.ToDecimal(reader["SubTotal"]),
+                                    IsResellable = reader["IsResellable"] == DBNull.Value ? true : Convert.ToBoolean(reader["IsResellable"]),
                                     ProductName = reader["ProductName"]?.ToString(),
                                     ProductCode = reader["ProductCode"]?.ToString()
                                 });
@@ -206,8 +304,8 @@ namespace Vape_Store.Repositories
                                 {
                                     // Insert return item
                                     var itemQuery = @"
-                                        INSERT INTO SalesReturnItems (ReturnID, ProductID, Quantity, UnitPrice, SubTotal)
-                                        VALUES (@ReturnID, @ProductID, @Quantity, @UnitPrice, @SubTotal)";
+                                        INSERT INTO SalesReturnItems (ReturnID, ProductID, Quantity, UnitPrice, SubTotal, IsResellable)
+                                        VALUES (@ReturnID, @ProductID, @Quantity, @UnitPrice, @SubTotal, @IsResellable)";
 
                                     using (var itemCommand = new SqlCommand(itemQuery, connection, transaction))
                                     {
@@ -216,21 +314,27 @@ namespace Vape_Store.Repositories
                                         itemCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
                                         itemCommand.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
                                         itemCommand.Parameters.AddWithValue("@SubTotal", item.SubTotal);
+                                        itemCommand.Parameters.AddWithValue("@IsResellable", item.IsResellable);
 
                                         itemCommand.ExecuteNonQuery();
                                     }
 
-                                    // Update stock - ADD back to inventory (return increases stock)
-                                    var stockUpdateQuery = @"
-                                        UPDATE Products 
-                                        SET StockQuantity = StockQuantity + @Quantity
-                                        WHERE ProductID = @ProductID";
-
-                                    using (var stockCommand = new SqlCommand(stockUpdateQuery, connection, transaction))
+                                    // Update stock - ADD back to inventory (only if resellable)
+                                    if (item.IsResellable)
                                     {
-                                        stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
-                                        stockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
-                                        stockCommand.ExecuteNonQuery();
+                                        AdjustPurchaseBatches(salesReturn.SaleID, item.ProductID, item.Quantity, true, connection, transaction);
+
+                                        var stockUpdateQuery = @"
+                                            UPDATE Products 
+                                            SET StockQuantity = StockQuantity + @Quantity
+                                            WHERE ProductID = @ProductID";
+
+                                        using (var stockCommand = new SqlCommand(stockUpdateQuery, connection, transaction))
+                                        {
+                                            stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                            stockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
+                                            stockCommand.ExecuteNonQuery();
+                                        }
                                     }
                                 }
 
@@ -265,10 +369,10 @@ namespace Vape_Store.Repositories
                         {
                             // Get old return items to reverse stock changes
                             var oldItemsQuery = @"
-                                SELECT ProductID, Quantity FROM SalesReturnItems 
+                                SELECT ProductID, Quantity, IsResellable FROM SalesReturnItems 
                                 WHERE ReturnID = @ReturnID";
                             
-                            var oldItems = new List<(int ProductID, int Quantity)>();
+                            var oldItems = new List<(int ProductID, int Quantity, bool IsResellable)>();
                             using (var oldItemsCommand = new SqlCommand(oldItemsQuery, connection, transaction))
                             {
                                 oldItemsCommand.Parameters.AddWithValue("@ReturnID", salesReturn.ReturnID);
@@ -276,7 +380,11 @@ namespace Vape_Store.Repositories
                                 {
                                     while (reader.Read())
                                     {
-                                        oldItems.Add((Convert.ToInt32(reader["ProductID"]), Convert.ToInt32(reader["Quantity"])));
+                                        oldItems.Add((
+                                            Convert.ToInt32(reader["ProductID"]), 
+                                            Convert.ToInt32(reader["Quantity"]),
+                                            reader["IsResellable"] == DBNull.Value ? true : Convert.ToBoolean(reader["IsResellable"])
+                                        ));
                                     }
                                 }
                             }
@@ -284,16 +392,21 @@ namespace Vape_Store.Repositories
                             // Reverse old stock changes (subtract what was previously added)
                             foreach (var oldItem in oldItems)
                             {
-                                var reverseStockQuery = @"
-                                    UPDATE Products 
-                                    SET StockQuantity = StockQuantity - @Quantity
-                                    WHERE ProductID = @ProductID";
-
-                                using (var reverseStockCommand = new SqlCommand(reverseStockQuery, connection, transaction))
+                                if (oldItem.IsResellable)
                                 {
-                                    reverseStockCommand.Parameters.AddWithValue("@ProductID", oldItem.ProductID);
-                                    reverseStockCommand.Parameters.AddWithValue("@Quantity", oldItem.Quantity);
-                                    reverseStockCommand.ExecuteNonQuery();
+                                    AdjustPurchaseBatches(salesReturn.SaleID, oldItem.ProductID, oldItem.Quantity, false, connection, transaction);
+
+                                    var reverseStockQuery = @"
+                                        UPDATE Products 
+                                        SET StockQuantity = StockQuantity - @Quantity
+                                        WHERE ProductID = @ProductID";
+
+                                    using (var reverseStockCommand = new SqlCommand(reverseStockQuery, connection, transaction))
+                                    {
+                                        reverseStockCommand.Parameters.AddWithValue("@ProductID", oldItem.ProductID);
+                                        reverseStockCommand.Parameters.AddWithValue("@Quantity", oldItem.Quantity);
+                                        reverseStockCommand.ExecuteNonQuery();
+                                    }
                                 }
                             }
 
@@ -333,8 +446,8 @@ namespace Vape_Store.Repositories
                             {
                                 // Insert return item
                                 var itemQuery = @"
-                                    INSERT INTO SalesReturnItems (ReturnID, ProductID, Quantity, UnitPrice, SubTotal)
-                                    VALUES (@ReturnID, @ProductID, @Quantity, @UnitPrice, @SubTotal)";
+                                    INSERT INTO SalesReturnItems (ReturnID, ProductID, Quantity, UnitPrice, SubTotal, IsResellable)
+                                    VALUES (@ReturnID, @ProductID, @Quantity, @UnitPrice, @SubTotal, @IsResellable)";
 
                                 using (var itemCommand = new SqlCommand(itemQuery, connection, transaction))
                                 {
@@ -343,21 +456,27 @@ namespace Vape_Store.Repositories
                                     itemCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
                                     itemCommand.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
                                     itemCommand.Parameters.AddWithValue("@SubTotal", item.SubTotal);
+                                    itemCommand.Parameters.AddWithValue("@IsResellable", item.IsResellable);
 
                                     itemCommand.ExecuteNonQuery();
                                 }
 
-                                // Update stock - ADD back to inventory (return increases stock)
-                                var stockUpdateQuery = @"
-                                    UPDATE Products 
-                                    SET StockQuantity = StockQuantity + @Quantity
+                                // Update stock - ADD back to inventory (only if resellable)
+                                if (item.IsResellable)
+                                {
+                                    AdjustPurchaseBatches(salesReturn.SaleID, item.ProductID, item.Quantity, true, connection, transaction);
+
+                                    var stockUpdateQuery = @"
+                                        UPDATE Products 
+                                        SET StockQuantity = StockQuantity + @Quantity
                                         WHERE ProductID = @ProductID";
 
-                                using (var stockCommand = new SqlCommand(stockUpdateQuery, connection, transaction))
-                                {
-                                    stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
-                                    stockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
-                                    stockCommand.ExecuteNonQuery();
+                                    using (var stockCommand = new SqlCommand(stockUpdateQuery, connection, transaction))
+                                    {
+                                        stockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                        stockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
+                                        stockCommand.ExecuteNonQuery();
+                                    }
                                 }
                             }
 
@@ -391,10 +510,10 @@ namespace Vape_Store.Repositories
                         {
                             // Get return items to reverse stock changes
                             var getItemsQuery = @"
-                                SELECT ProductID, Quantity FROM SalesReturnItems 
+                                SELECT ProductID, Quantity, IsResellable FROM SalesReturnItems 
                                 WHERE ReturnID = @ReturnID";
                             
-                            var returnItems = new List<(int ProductID, int Quantity)>();
+                            var returnItems = new List<(int ProductID, int Quantity, bool IsResellable)>();
                             using (var getItemsCommand = new SqlCommand(getItemsQuery, connection, transaction))
                             {
                                 getItemsCommand.Parameters.AddWithValue("@ReturnID", returnId);
@@ -402,24 +521,41 @@ namespace Vape_Store.Repositories
                                 {
                                     while (reader.Read())
                                     {
-                                        returnItems.Add((Convert.ToInt32(reader["ProductID"]), Convert.ToInt32(reader["Quantity"])));
+                                        returnItems.Add((
+                                            Convert.ToInt32(reader["ProductID"]), 
+                                            Convert.ToInt32(reader["Quantity"]),
+                                            reader["IsResellable"] == DBNull.Value ? true : Convert.ToBoolean(reader["IsResellable"])
+                                        ));
                                     }
                                 }
+                            }
+
+                            int saleId = 0;
+                            var getSaleIdQuery = "SELECT SaleID FROM SalesReturns WHERE ReturnID = @ReturnID";
+                            using (var getSaleIdCmd = new SqlCommand(getSaleIdQuery, connection, transaction))
+                            {
+                                getSaleIdCmd.Parameters.AddWithValue("@ReturnID", returnId);
+                                saleId = Convert.ToInt32(getSaleIdCmd.ExecuteScalar());
                             }
 
                             // Reverse stock changes (subtract what was previously added)
                             foreach (var item in returnItems)
                             {
-                                var reverseStockQuery = @"
-                                    UPDATE Products 
-                                    SET StockQuantity = StockQuantity - @Quantity
-                                    WHERE ProductID = @ProductID";
-
-                                using (var reverseStockCommand = new SqlCommand(reverseStockQuery, connection, transaction))
+                                if (item.IsResellable)
                                 {
-                                    reverseStockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
-                                    reverseStockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
-                                    reverseStockCommand.ExecuteNonQuery();
+                                    AdjustPurchaseBatches(saleId, item.ProductID, item.Quantity, false, connection, transaction);
+
+                                    var reverseStockQuery = @"
+                                        UPDATE Products 
+                                        SET StockQuantity = StockQuantity - @Quantity
+                                        WHERE ProductID = @ProductID";
+
+                                    using (var reverseStockCommand = new SqlCommand(reverseStockQuery, connection, transaction))
+                                    {
+                                        reverseStockCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
+                                        reverseStockCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
+                                        reverseStockCommand.ExecuteNonQuery();
+                                    }
                                 }
                             }
 

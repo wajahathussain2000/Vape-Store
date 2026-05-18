@@ -28,139 +28,166 @@ namespace Vape_Store
         /// </summary>
         private void InitializeComponent()
         {
-            this.btnLoadSale = new System.Windows.Forms.Button();
+            this.pnlButtonContainer = new System.Windows.Forms.Panel();
+            this.btnDownloadPDF = new System.Windows.Forms.Button();
             this.btnPrintInvoice = new System.Windows.Forms.Button();
             this.btnPreviewInvoice = new System.Windows.Forms.Button();
             this.btnClose = new System.Windows.Forms.Button();
+            this.pnlSelection = new System.Windows.Forms.Panel();
+            this.btnLoadSale = new System.Windows.Forms.Button();
             this.cmbInvoiceNumber = new System.Windows.Forms.ComboBox();
             this.lblSaleInfo = new System.Windows.Forms.Label();
-            this.lblInvoiceNumber = new System.Windows.Forms.Label();
-            this.lblDate = new System.Windows.Forms.Label();
-            this.lblSupplier = new System.Windows.Forms.Label();
-            this.lblTotal = new System.Windows.Forms.Label();
+            this.pnlReceiptContainer = new System.Windows.Forms.Panel();
+            this.pnlButtonContainer.SuspendLayout();
+            this.pnlSelection.SuspendLayout();
             this.SuspendLayout();
             // 
-            // btnLoadSale
+            // pnlButtonContainer
             // 
-            this.btnLoadSale.Location = new System.Drawing.Point(12, 12);
-            this.btnLoadSale.Name = "btnLoadSale";
-            this.btnLoadSale.Size = new System.Drawing.Size(100, 30);
-            this.btnLoadSale.TabIndex = 0;
-            this.btnLoadSale.Text = "Load Sale";
-            this.btnLoadSale.UseVisualStyleBackColor = true;
+            this.pnlButtonContainer.BackColor = System.Drawing.Color.WhiteSmoke;
+            this.pnlButtonContainer.Controls.Add(this.btnDownloadPDF);
+            this.pnlButtonContainer.Controls.Add(this.btnPrintInvoice);
+            this.pnlButtonContainer.Controls.Add(this.btnPreviewInvoice);
+            this.pnlButtonContainer.Controls.Add(this.btnClose);
+            this.pnlButtonContainer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlButtonContainer.Location = new System.Drawing.Point(0, 0);
+            this.pnlButtonContainer.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.pnlButtonContainer.Name = "pnlButtonContainer";
+            this.pnlButtonContainer.Size = new System.Drawing.Size(867, 74);
+            this.pnlButtonContainer.TabIndex = 0;
+            // 
+            // btnDownloadPDF
+            // 
+            this.btnDownloadPDF.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDownloadPDF.Location = new System.Drawing.Point(459, 15);
+            this.btnDownloadPDF.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.btnDownloadPDF.Name = "btnDownloadPDF";
+            this.btnDownloadPDF.Size = new System.Drawing.Size(160, 43);
+            this.btnDownloadPDF.TabIndex = 3;
+            this.btnDownloadPDF.Text = "Download PDF";
+            this.btnDownloadPDF.UseVisualStyleBackColor = true;
             // 
             // btnPrintInvoice
             // 
-            this.btnPrintInvoice.Location = new System.Drawing.Point(118, 12);
+            this.btnPrintInvoice.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPrintInvoice.Location = new System.Drawing.Point(16, 15);
+            this.btnPrintInvoice.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.btnPrintInvoice.Name = "btnPrintInvoice";
-            this.btnPrintInvoice.Size = new System.Drawing.Size(100, 30);
-            this.btnPrintInvoice.TabIndex = 1;
-            this.btnPrintInvoice.Text = "Print Invoice";
+            this.btnPrintInvoice.Size = new System.Drawing.Size(133, 43);
+            this.btnPrintInvoice.TabIndex = 0;
+            this.btnPrintInvoice.Text = "Print";
             this.btnPrintInvoice.UseVisualStyleBackColor = true;
             // 
             // btnPreviewInvoice
             // 
-            this.btnPreviewInvoice.Location = new System.Drawing.Point(224, 12);
+            this.btnPreviewInvoice.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPreviewInvoice.Location = new System.Drawing.Point(157, 15);
+            this.btnPreviewInvoice.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.btnPreviewInvoice.Name = "btnPreviewInvoice";
-            this.btnPreviewInvoice.Size = new System.Drawing.Size(100, 30);
-            this.btnPreviewInvoice.TabIndex = 2;
-            this.btnPreviewInvoice.Text = "Preview Invoice";
+            this.btnPreviewInvoice.Size = new System.Drawing.Size(133, 43);
+            this.btnPreviewInvoice.TabIndex = 1;
+            this.btnPreviewInvoice.Text = "Full A4 Preview";
             this.btnPreviewInvoice.UseVisualStyleBackColor = true;
             // 
             // btnClose
             // 
-            this.btnClose.Location = new System.Drawing.Point(330, 12);
+            this.btnClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnClose.Location = new System.Drawing.Point(717, 15);
+            this.btnClose.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.btnClose.Name = "btnClose";
-            this.btnClose.Size = new System.Drawing.Size(100, 30);
-            this.btnClose.TabIndex = 3;
+            this.btnClose.Size = new System.Drawing.Size(133, 43);
+            this.btnClose.TabIndex = 4;
             this.btnClose.Text = "Close";
             this.btnClose.UseVisualStyleBackColor = true;
             // 
+            // pnlSelection
+            // 
+            this.pnlSelection.Controls.Add(this.btnLoadSale);
+            this.pnlSelection.Controls.Add(this.cmbInvoiceNumber);
+            this.pnlSelection.Controls.Add(this.lblSaleInfo);
+            this.pnlSelection.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlSelection.Location = new System.Drawing.Point(0, 74);
+            this.pnlSelection.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.pnlSelection.Name = "pnlSelection";
+            this.pnlSelection.Size = new System.Drawing.Size(867, 98);
+            this.pnlSelection.TabIndex = 1;
+            // 
+            // btnLoadSale
+            // 
+            this.btnLoadSale.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnLoadSale.Location = new System.Drawing.Point(291, 16);
+            this.btnLoadSale.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.btnLoadSale.Name = "btnLoadSale";
+            this.btnLoadSale.Size = new System.Drawing.Size(133, 31);
+            this.btnLoadSale.TabIndex = 1;
+            this.btnLoadSale.Text = "Load";
+            this.btnLoadSale.UseVisualStyleBackColor = true;
+            this.btnLoadSale.Click += new System.EventHandler(this.btnLoadSale_Click_1);
+            // 
             // cmbInvoiceNumber
             // 
-            this.cmbInvoiceNumber.Location = new System.Drawing.Point(12, 60);
+            this.cmbInvoiceNumber.FormattingEnabled = true;
+            this.cmbInvoiceNumber.Location = new System.Drawing.Point(16, 18);
+            this.cmbInvoiceNumber.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.cmbInvoiceNumber.Name = "cmbInvoiceNumber";
-            this.cmbInvoiceNumber.Size = new System.Drawing.Size(200, 21);
-            this.cmbInvoiceNumber.TabIndex = 4;
-            this.cmbInvoiceNumber.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.cmbInvoiceNumber.Size = new System.Drawing.Size(265, 24);
+            this.cmbInvoiceNumber.TabIndex = 0;
             // 
             // lblSaleInfo
             // 
             this.lblSaleInfo.AutoSize = true;
-            this.lblSaleInfo.Location = new System.Drawing.Point(12, 100);
+            this.lblSaleInfo.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this.lblSaleInfo.ForeColor = System.Drawing.Color.DimGray;
+            this.lblSaleInfo.Location = new System.Drawing.Point(16, 55);
+            this.lblSaleInfo.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblSaleInfo.Name = "lblSaleInfo";
-            this.lblSaleInfo.Size = new System.Drawing.Size(50, 13);
-            this.lblSaleInfo.TabIndex = 5;
-            this.lblSaleInfo.Text = "Sale Info:";
+            this.lblSaleInfo.Size = new System.Drawing.Size(228, 20);
+            this.lblSaleInfo.TabIndex = 2;
+            this.lblSaleInfo.Text = "Enter Invoice Number to Load Sale";
             // 
-            // lblInvoiceNumber
+            // pnlReceiptContainer
             // 
-            this.lblInvoiceNumber.AutoSize = true;
-            this.lblInvoiceNumber.Location = new System.Drawing.Point(12, 120);
-            this.lblInvoiceNumber.Name = "lblInvoiceNumber";
-            this.lblInvoiceNumber.Size = new System.Drawing.Size(85, 13);
-            this.lblInvoiceNumber.TabIndex = 6;
-            this.lblInvoiceNumber.Text = "Invoice Number:";
-            // 
-            // lblDate
-            // 
-            this.lblDate.AutoSize = true;
-            this.lblDate.Location = new System.Drawing.Point(12, 140);
-            this.lblDate.Name = "lblDate";
-            this.lblDate.Size = new System.Drawing.Size(33, 13);
-            this.lblDate.TabIndex = 7;
-            this.lblDate.Text = "Date:";
-            // 
-            // lblSupplier
-            // 
-            this.lblSupplier.AutoSize = true;
-            this.lblSupplier.Location = new System.Drawing.Point(12, 160);
-            this.lblSupplier.Name = "lblSupplier";
-            this.lblSupplier.Size = new System.Drawing.Size(48, 13);
-            this.lblSupplier.TabIndex = 8;
-            this.lblSupplier.Text = "Customer:";
-            // 
-            // lblTotal
-            // 
-            this.lblTotal.AutoSize = true;
-            this.lblTotal.Location = new System.Drawing.Point(12, 180);
-            this.lblTotal.Name = "lblTotal";
-            this.lblTotal.Size = new System.Drawing.Size(34, 13);
-            this.lblTotal.TabIndex = 9;
-            this.lblTotal.Text = "Total:";
+            this.pnlReceiptContainer.BackColor = System.Drawing.Color.DarkGray;
+            this.pnlReceiptContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlReceiptContainer.Location = new System.Drawing.Point(0, 172);
+            this.pnlReceiptContainer.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.pnlReceiptContainer.Name = "pnlReceiptContainer";
+            this.pnlReceiptContainer.Padding = new System.Windows.Forms.Padding(67, 25, 67, 25);
+            this.pnlReceiptContainer.Size = new System.Drawing.Size(867, 690);
+            this.pnlReceiptContainer.TabIndex = 2;
             // 
             // ThermalInvoiceForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(500, 300);
-            this.Controls.Add(this.lblTotal);
-            this.Controls.Add(this.lblSupplier);
-            this.Controls.Add(this.lblDate);
-            this.Controls.Add(this.lblInvoiceNumber);
-            this.Controls.Add(this.lblSaleInfo);
-            this.Controls.Add(this.cmbInvoiceNumber);
-            this.Controls.Add(this.btnClose);
-            this.Controls.Add(this.btnPreviewInvoice);
-            this.Controls.Add(this.btnPrintInvoice);
-            this.Controls.Add(this.btnLoadSale);
+            this.BackColor = System.Drawing.Color.White;
+            this.ClientSize = new System.Drawing.Size(867, 862);
+            this.Controls.Add(this.pnlReceiptContainer);
+            this.Controls.Add(this.pnlSelection);
+            this.Controls.Add(this.pnlButtonContainer);
+            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.MinimumSize = new System.Drawing.Size(794, 851);
             this.Name = "ThermalInvoiceForm";
-            this.Text = "Thermal Invoice";
+            this.Text = "Thermal Receipt Viewer";
+            this.pnlButtonContainer.ResumeLayout(false);
+            this.pnlSelection.ResumeLayout(false);
+            this.pnlSelection.PerformLayout();
             this.ResumeLayout(false);
-            this.PerformLayout();
+
         }
 
         #endregion
 
-        private System.Windows.Forms.Button btnLoadSale;
+        private System.Windows.Forms.Panel pnlButtonContainer;
         private System.Windows.Forms.Button btnPrintInvoice;
         private System.Windows.Forms.Button btnPreviewInvoice;
         private System.Windows.Forms.Button btnClose;
+        private System.Windows.Forms.Button btnDownloadPDF;
+        private System.Windows.Forms.Panel pnlSelection;
+        private System.Windows.Forms.Button btnLoadSale;
         private System.Windows.Forms.ComboBox cmbInvoiceNumber;
         private System.Windows.Forms.Label lblSaleInfo;
-        private System.Windows.Forms.Label lblInvoiceNumber;
-        private System.Windows.Forms.Label lblDate;
-        private System.Windows.Forms.Label lblSupplier;
-        private System.Windows.Forms.Label lblTotal;
+        private System.Windows.Forms.Panel pnlReceiptContainer;
     }
 }

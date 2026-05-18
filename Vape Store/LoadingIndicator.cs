@@ -17,6 +17,7 @@ namespace Vape_Store
         {
             baseMessage = message;
             InitializeComponent();
+            
             lblMessage.Text = message;
             StartAnimation();
         }

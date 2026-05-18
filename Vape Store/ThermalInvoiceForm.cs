@@ -25,33 +25,64 @@ namespace Vape_Store
         private Font _headerFont;
         private Font _bodyFont;
         private Font _footerFont;
-        private int _paperWidth = 300; // 3 inch thermal printer width
-        private int _paperHeight = 600;
-        private int _currentY = 0;
-        private int _lineHeight = 20;
         private const int _printLeftMargin = 24;
         private const int _printRightMargin = 26;
         private const int _printTopMargin = 10;
         private const int _printBottomMargin = 20;
         private Panel _thermalReceiptPanel;
-        private Label _lblEnterInvoice;
 
         public ThermalInvoiceForm()
         {
             InitializeComponent();
+            
             _saleRepository = new SaleRepository();
             _saleItems = new List<SaleItem>();
             
             // Set up fonts for thermal printing
-            _headerFont = new Font("Courier New", 10f, FontStyle.Bold);
-            _bodyFont = new Font("Courier New", 8f, FontStyle.Regular);
-            _footerFont = new Font("Courier New", 8.5f, FontStyle.Bold);
-            _lineHeight = (int)Math.Ceiling(_bodyFont.GetHeight()) + 6;
+            _headerFont = new Font("Arial", 10f, FontStyle.Bold);
+            _bodyFont = new Font("Arial", 8f, FontStyle.Regular);
+            _footerFont = new Font("Arial", 8f, FontStyle.Italic);
             
             SetupThermalReceiptPanel();
             SetupEventHandlers();
             LoadInvoiceNumbers();
+            
+            // Apply theme
+            ThemeManager.ApplyTheme(this);
+            pnlButtonContainer.BackColor = Color.FromArgb(240, 240, 240);
+            pnlReceiptContainer.BackColor = Color.FromArgb(100, 100, 100);
+            
             SetInitialState();
+        }
+
+        public ThermalInvoiceForm(Purchase purchase, List<PurchaseItem> purchaseItems) : this()
+        {
+            _currentPurchase = purchase;
+            _purchaseItems = purchaseItems;
+            
+            // Hide selection controls since we are in direct preview mode
+            pnlSelection.Visible = false;
+            
+            UpdateThermalReceipt();
+            
+            btnPrintInvoice.Enabled = true;
+            btnPreviewInvoice.Enabled = true;
+            btnDownloadPDF.Enabled = true;
+        }
+
+        public ThermalInvoiceForm(Sale sale) : this()
+        {
+            _currentSale = sale;
+            _saleItems = sale.SaleItems ?? new List<SaleItem>();
+            
+            // Hide selection controls since we are in direct preview mode
+            pnlSelection.Visible = false;
+            
+            UpdateThermalReceipt();
+            
+            btnPrintInvoice.Enabled = true;
+            btnPreviewInvoice.Enabled = true;
+            btnDownloadPDF.Enabled = true;
         }
 
         private void SetupEventHandlers()
@@ -59,6 +90,7 @@ namespace Vape_Store
             btnLoadSale.Click += BtnLoadSale_Click;
             btnPrintInvoice.Click += BtnPrintInvoice_Click;
             btnPreviewInvoice.Click += BtnPreviewInvoice_Click;
+            btnDownloadPDF.Click += BtnDownloadPDF_Click;
             btnClose.Click += BtnClose_Click;
             cmbInvoiceNumber.SelectedIndexChanged += CmbInvoiceNumber_SelectedIndexChanged;
             cmbInvoiceNumber.TextChanged += CmbInvoiceNumber_TextChanged;
@@ -81,22 +113,12 @@ namespace Vape_Store
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading invoice numbers: {ex.Message}");
-                ShowMessage($"Error loading invoice numbers: {ex.Message}", "Error", MessageBoxIcon.Warning);
             }
         }
 
         private void CmbInvoiceNumber_TextChanged(object sender, EventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(cmbInvoiceNumber.Text))
-            {
-                btnLoadSale.Enabled = true;
-            }
-            else
-            {
-                btnLoadSale.Enabled = false;
-                btnPrintInvoice.Enabled = false;
-                btnPreviewInvoice.Enabled = false;
-            }
+            btnLoadSale.Enabled = !string.IsNullOrWhiteSpace(cmbInvoiceNumber.Text);
         }
 
         private void CmbInvoiceNumber_SelectedIndexChanged(object sender, EventArgs e)
@@ -121,11 +143,10 @@ namespace Vape_Store
         {
             cmbInvoiceNumber.Text = "";
             cmbInvoiceNumber.SelectedIndex = -1;
-            lblSaleInfo.Text = "Enter Invoice Number to Load Sale";
+            lblSaleInfo.Text = "Select an Invoice Number to Load";
             btnLoadSale.Enabled = false;
             btnPrintInvoice.Enabled = false;
             btnPreviewInvoice.Enabled = false;
-            ClearSaleDisplay();
             ClearThermalReceipt();
         }
 
@@ -134,18 +155,12 @@ namespace Vape_Store
             try
             {
                 string invoiceNumber = cmbInvoiceNumber.Text.Trim();
-                if (string.IsNullOrWhiteSpace(invoiceNumber))
-                {
-                    ShowMessage("Please enter an invoice number.", "Validation Error", MessageBoxIcon.Warning);
-                    return;
-                }
+                if (string.IsNullOrWhiteSpace(invoiceNumber)) return;
 
                 _currentSale = _saleRepository.GetSaleByInvoiceNumber(invoiceNumber);
                 if (_currentSale == null)
                 {
-                    ShowMessage("Sale not found with the given invoice number.", "Not Found", MessageBoxIcon.Warning);
                     lblSaleInfo.Text = "Sale not found";
-                    ClearSaleDisplay();
                     ClearThermalReceipt();
                     btnPrintInvoice.Enabled = false;
                     btnPreviewInvoice.Enabled = false;
@@ -155,290 +170,231 @@ namespace Vape_Store
                 _saleItems = _saleRepository.GetSaleItems(_currentSale.SaleID);
                 _currentSale.SaleItems = _saleItems ?? new List<SaleItem>();
 
-                // Validate that we have items
-                if (_saleItems == null || _saleItems.Count == 0)
-                {
-                    ShowMessage("Warning: No items found for this sale.", "No Items", MessageBoxIcon.Warning);
-                    _saleItems = new List<SaleItem>();
-                    _currentSale.SaleItems = _saleItems;
-                }
-
-                // Update display labels
-                UpdateSaleDisplay();
-
                 // Update thermal receipt display
                 UpdateThermalReceipt();
 
                 // Update info label
-                lblSaleInfo.Text = $"Sale Found: {_currentSale.InvoiceNumber} - {_currentSale.SaleDate:MM/dd/yyyy HH:mm} - {_currentSale.TotalAmount:F2}";
+                lblSaleInfo.Text = $"Sale Found: {_currentSale.InvoiceNumber} - {_currentSale.SaleDate:MM/dd/yyyy}";
                 
                 // Enable buttons only if we have valid sale data AND items
                 bool hasValidData = _currentSale != null && _saleItems != null && _saleItems.Count > 0;
                 btnPrintInvoice.Enabled = hasValidData;
                 btnPreviewInvoice.Enabled = hasValidData;
-                
-                // Debug output
-                System.Diagnostics.Debug.WriteLine($"[ThermalInvoice] Sale loaded: {_currentSale.InvoiceNumber}, Items count: {(_saleItems?.Count ?? 0)}");
+                btnDownloadPDF.Enabled = hasValidData;
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error loading sale: {ex.Message}", "Error", MessageBoxIcon.Error);
-                ClearSaleDisplay();
+                MessageBox.Show($"Error loading sale: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 ClearThermalReceipt();
                 btnPrintInvoice.Enabled = false;
                 btnPreviewInvoice.Enabled = false;
-                _currentSale = null;
-                _saleItems = null;
             }
-        }
-
-        private void UpdateSaleDisplay()
-        {
-            if (_currentSale == null)
-            {
-                ClearSaleDisplay();
-                return;
-            }
-
-            // Update labels with sale information
-            lblInvoiceNumber.Text = $"Invoice Number: {_currentSale.InvoiceNumber}";
-            lblDate.Text = $"Date: {_currentSale.SaleDate:MM/dd/yyyy HH:mm}";
-            
-            // Change "Supplier" to "Customer" for sales
-            lblSupplier.Text = $"Customer: {(_currentSale.CustomerID > 0 ? (_currentSale.CustomerName ?? "N/A") : "Walk-in Customer")}";
-            
-            // Show total with currency formatting
-            lblTotal.Text = $"Total: {_currentSale.TotalAmount:F2}";
-        }
-
-        private void ClearSaleDisplay()
-        {
-            lblInvoiceNumber.Text = "Invoice Number:";
-            lblDate.Text = "Date:";
-            lblSupplier.Text = "Customer:";
-            lblTotal.Text = "Total:";
         }
 
         private void SetupThermalReceiptPanel()
         {
-            // Create thermal receipt panel
+            // Create thermal receipt panel to look like paper
             _thermalReceiptPanel = new Panel();
-            _thermalReceiptPanel.Location = new Point(230, 60);
-            _thermalReceiptPanel.Size = new Size(350, 600);
+            _thermalReceiptPanel.Size = new Size(320, 1000); // 80mm width roughly
             _thermalReceiptPanel.BackColor = Color.White;
-            _thermalReceiptPanel.BorderStyle = BorderStyle.FixedSingle;
-            _thermalReceiptPanel.AutoScroll = true;
+            _thermalReceiptPanel.BorderStyle = BorderStyle.None;
             _thermalReceiptPanel.Paint += ThermalReceiptPanel_Paint;
             
-            // Add label for instruction
-            _lblEnterInvoice = new Label();
-            _lblEnterInvoice.Location = new Point(12, 90);
-            _lblEnterInvoice.Size = new Size(200, 13);
-            _lblEnterInvoice.Text = "Enter Invoice Number to Load Sale";
-            _lblEnterInvoice.ForeColor = Color.Gray;
+            // Center the paper in its container
+            _thermalReceiptPanel.Location = new Point((pnlReceiptContainer.Width - _thermalReceiptPanel.Width) / 2, 20);
             
-            // Update form size to accommodate thermal receipt
-            this.Size = new Size(600, 700);
-            this.MinimumSize = new Size(600, 700);
+            pnlReceiptContainer.AutoScroll = true;
+            pnlReceiptContainer.Controls.Add(_thermalReceiptPanel);
             
-            // Add controls to form
-            this.Controls.Add(_thermalReceiptPanel);
-            this.Controls.Add(_lblEnterInvoice);
-            
-            // Bring thermal receipt panel to front
-            _thermalReceiptPanel.BringToFront();
+            pnlReceiptContainer.SizeChanged += (s, e) => {
+                _thermalReceiptPanel.Left = Math.Max(20, (pnlReceiptContainer.Width - _thermalReceiptPanel.Width - 20) / 2);
+            };
         }
 
         private void ThermalReceiptPanel_Paint(object sender, PaintEventArgs e)
         {
-            if (_currentSale == null)
+            if (_currentSale == null && _currentPurchase == null)
             {
-                // Draw placeholder message
                 StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                e.Graphics.DrawString("Enter Invoice Number\nto Load Sale", 
-                    new Font("Courier New", 12, FontStyle.Regular), 
-                    Brushes.Gray, 
-                    new Rectangle(0, 0, _thermalReceiptPanel.Width, _thermalReceiptPanel.Height), 
+                e.Graphics.DrawString("Please load a transaction\nto preview the receipt.", 
+                    new Font("Segoe UI", 10, FontStyle.Italic), 
+                    Brushes.LightGray, 
+                    new Rectangle(0, 0, _thermalReceiptPanel.Width, 300), 
                     centerFormat);
                 return;
             }
 
-            // Use _currentSale.SaleItems if _saleItems is null or empty
-            if ((_saleItems == null || _saleItems.Count == 0) && 
-                (_currentSale.SaleItems != null && _currentSale.SaleItems.Count > 0))
-            {
-                _saleItems = _currentSale.SaleItems;
-            }
-
-            DrawThermalReceipt(e.Graphics);
+            DrawThermalInvoice(e.Graphics, _thermalReceiptPanel.Width);
         }
 
-        private void DrawThermalReceipt(Graphics g)
+        private void DrawThermalInvoice(Graphics g, int width)
         {
-            int paperWidth = _thermalReceiptPanel.Width - 20;
-            int currentY = 10;
-            int lineHeight = 18;
-            int leftMargin = 20;
-            int rightMargin = paperWidth - 10;
+            g.Clear(Color.White);
+            float y = 15;
+            float margin = 15;
+            float printableWidth = width - (margin * 2);
+            float centerX = width / 2f;
 
-            // Use monospace font for thermal receipt look
-            Font headerFont = new Font("Courier New", 10f, FontStyle.Bold);
-            Font bodyFont = new Font("Courier New", 8f, FontStyle.Regular);
-            Font footerFont = new Font("Courier New", 8.5f, FontStyle.Bold);
-            StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
+            var titleFont = new Font("Arial", 10, FontStyle.Bold);
+            var headerFont = new Font("Arial", 9, FontStyle.Bold);
+            var bodyFont = new Font("Arial", 8, FontStyle.Regular);
+            var footerFont = new Font("Arial", 7, FontStyle.Regular);
+            
+            var centerFormat = new StringFormat { Alignment = StringAlignment.Center };
+            var rightFormat = new StringFormat { Alignment = StringAlignment.Far };
+            var leftFormat = new StringFormat { Alignment = StringAlignment.Near };
 
-            // Header - Store Info
-            g.DrawString("MADNI MOBILE AND PHOTOSTATE", headerFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight;
+            // 1. Store Header
+            string storeName = (ConfigurationService.Instance.ApplicationName ?? "VAPE STORE").ToUpper();
+            g.DrawString(storeName, titleFont, Brushes.Black, new RectangleF(margin, y, printableWidth, 25), centerFormat);
+            y += 22;
 
-            g.DrawString("Ph: 0345:5518744", headerFont, Brushes.Black,
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight;
+            g.DrawString("Contact: " + ConfigurationService.Instance.StoreContact, bodyFont, Brushes.Black, new RectangleF(margin, y, printableWidth, 18), centerFormat);
+            y += 16;
 
-            g.DrawString("Shop#3, opp Save Mart,", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight;
+            string address = ConfigurationService.Instance.StoreAddress ?? "";
+            var addressRect = new RectangleF(margin, y, printableWidth, 40);
+            g.DrawString(address, bodyFont, Brushes.Black, addressRect, centerFormat);
+            y += g.MeasureString(address, bodyFont, (int)printableWidth).Height + 5;
 
-            g.DrawString("main Tulsa road, lalazar,Rwp", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight * 2;
+            // Separator
+            g.DrawLine(Pens.Black, margin, y, width - margin, y);
+            y += 8;
 
-            // Separator line
-            g.DrawLine(Pens.Black, leftMargin, currentY, rightMargin, currentY);
-            currentY += lineHeight;
+            // 2. Transaction Info
+            string invNo = _currentSale?.InvoiceNumber ?? _currentPurchase?.InvoiceNumber ?? "N/A";
+            DateTime date = _currentSale?.SaleDate ?? _currentPurchase?.PurchaseDate ?? DateTime.Now;
+            string user = (_currentSale?.UserName ?? _currentPurchase?.UserName) ?? "Admin";
 
-            // Invoice Info
-            g.DrawString($"Invoice: {_currentSale.InvoiceNumber}", bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
+            g.DrawString("INVOICE: " + invNo, headerFont, Brushes.Black, margin, y);
+            y += 18;
+            g.DrawString("DATE: " + date.ToString("MM/dd/yyyy HH:mm"), bodyFont, Brushes.Black, margin, y);
+            y += 16;
+            g.DrawString("CASHIER: " + user, bodyFont, Brushes.Black, margin, y);
+            y += 20;
 
-            g.DrawString($"Date: {_currentSale.SaleDate:MM/dd/yyyy HH:mm}", bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
+            string partyType = _currentSale != null ? "CUSTOMER: " : "SUPPLIER: ";
+            string partyName = (_currentSale != null ? (_currentSale.CustomerName ?? "Walk-in") : (_currentPurchase?.SupplierName ?? "N/A")).ToUpper();
+            g.DrawString(partyType + partyName, bodyFont, Brushes.Black, margin, y);
+            y += 25;
 
-            g.DrawString($"Cashier: {_currentSale.UserName ?? "System"}", bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight * 2;
+            // 3. Items Table Header
+            g.DrawLine(new Pen(Color.Black, 1f), margin, y, width - margin, y);
+            y += 5;
 
-            // Separator line
-            g.DrawLine(Pens.Black, leftMargin, currentY, rightMargin, currentY);
-            currentY += lineHeight;
+            float colQty = 40;
+            float colTotal = 80;
+            float colProduct = printableWidth - colQty - colTotal;
 
-            // Customer Info
-            string customerName = _currentSale.CustomerID > 0 
-                ? (_currentSale.CustomerName ?? "Walk-in Customer") 
-                : "Walk-in Customer";
-            g.DrawString($"Customer: {customerName}", bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight * 2;
+            g.DrawString("ITEM", headerFont, Brushes.Black, margin, y);
+            g.DrawString("QTY", headerFont, Brushes.Black, margin + colProduct, y);
+            g.DrawString("TOTAL", headerFont, Brushes.Black, margin + colProduct + colQty, y);
+            y += 18;
+            g.DrawLine(Pens.Black, margin, y, width - margin, y);
+            y += 8;
 
-            // Items Header
-            g.DrawString("Items:", bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
-
-            g.DrawString(new string('-', 40), bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
-
-            // Items - use _currentSale.SaleItems if _saleItems is null or empty
-            var itemsToDisplay = (_saleItems != null && _saleItems.Count > 0) ? _saleItems : 
-                                 (_currentSale.SaleItems != null && _currentSale.SaleItems.Count > 0) ? _currentSale.SaleItems : 
-                                 new List<SaleItem>();
-
-            if (itemsToDisplay.Count == 0)
+            // 4. Item Rows
+            if (_currentSale != null)
             {
-                g.DrawString("No items found", bodyFont, Brushes.Red, leftMargin, currentY);
-                currentY += lineHeight;
-            }
-            else
-            {
-                foreach (var item in itemsToDisplay)
+                foreach (var item in _saleItems)
                 {
-                    // Product name (truncate if too long)
-                    string productName = item.ProductName ?? "Unknown Product";
-                    if (productName.Length > 30)
-                    {
-                        productName = productName.Substring(0, 27) + "...";
-                    }
-                    g.DrawString(productName, bodyFont, Brushes.Black, leftMargin, currentY);
-                    currentY += lineHeight;
-
-                    // Quantity and price
-                    string itemLine = $"  Qty: {item.Quantity} x {item.UnitPrice:F2} = {item.SubTotal:F2}";
-                    g.DrawString(itemLine, bodyFont, Brushes.Black, leftMargin, currentY);
-                    currentY += lineHeight;
+                    string name = item.ProductName;
+                    var nameSize = g.MeasureString(name, bodyFont, (int)colProduct);
+                    g.DrawString(name, bodyFont, Brushes.Black, new RectangleF(margin, y, colProduct, nameSize.Height), leftFormat);
+                    
+                    g.DrawString(item.Quantity.ToString(), bodyFont, Brushes.Black, margin + colProduct, y);
+                    g.DrawString(item.SubTotal.ToString("N2"), bodyFont, Brushes.Black, new RectangleF(margin + colProduct + colQty, y, colTotal, 20), rightFormat);
+                    
+                    y += Math.Max(20, nameSize.Height + 5);
+                }
+            }
+            else if (_currentPurchase != null)
+            {
+                foreach (var item in _purchaseItems)
+                {
+                    string name = item.ProductName;
+                    var nameSize = g.MeasureString(name, bodyFont, (int)colProduct);
+                    g.DrawString(name, bodyFont, Brushes.Black, new RectangleF(margin, y, colProduct, nameSize.Height), leftFormat);
+                    
+                    g.DrawString(item.Quantity.ToString(), bodyFont, Brushes.Black, margin + colProduct, y);
+                    g.DrawString(item.SubTotal.ToString("N2"), bodyFont, Brushes.Black, new RectangleF(margin + colProduct + colQty, y, colTotal, 20), rightFormat);
+                    
+                    y += Math.Max(20, nameSize.Height + 5);
                 }
             }
 
-            g.DrawString(new string('-', 40), bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
+            // 5. Totals Section
+            y += 5;
+            g.DrawLine(Pens.Black, margin, y, width - margin, y);
+            y += 10;
 
-            // Totals
-            g.DrawString($"Subtotal: {_currentSale.SubTotal:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
+            decimal subTotal = _currentSale?.SubTotal ?? _currentPurchase?.SubTotal ?? 0;
+            decimal total = _currentSale?.TotalAmount ?? _currentPurchase?.TotalAmount ?? 0;
+            decimal paid = _currentSale?.PaidAmount ?? _currentPurchase?.PaidAmount ?? 0;
+            decimal change = _currentSale != null ? _currentSale.ChangeAmount : 0;
 
-            // Discount
-            if (_currentSale.DiscountAmount > 0)
+            DrawTotalRow(g, "SUBTOTAL:", subTotal, bodyFont, margin, y, printableWidth);
+            y += 18;
+
+            if ((_currentSale?.DiscountAmount ?? 0) > 0)
             {
-                string discountText = _currentSale.DiscountPercent > 0 
-                    ? $"Discount ({_currentSale.DiscountPercent:F1}%): {_currentSale.DiscountAmount:F2}"
-                    : $"Discount: {_currentSale.DiscountAmount:F2}";
-                g.DrawString(discountText, bodyFont, Brushes.Black, leftMargin, currentY);
-                currentY += lineHeight;
+                DrawTotalRow(g, $"DISCOUNT ({_currentSale.DiscountPercent}%):", _currentSale.DiscountAmount, bodyFont, margin, y, printableWidth);
+                y += 18;
             }
 
-            // Tax
-            if (_currentSale.TaxAmount > 0)
+            if ((_currentSale?.TaxAmount ?? 0) > 0)
             {
-                g.DrawString($"Tax ({_currentSale.TaxPercent:F1}%): {_currentSale.TaxAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
-                currentY += lineHeight;
+                DrawTotalRow(g, $"TAX ({_currentSale.TaxPercent}%):", _currentSale.TaxAmount, bodyFont, margin, y, printableWidth);
+                y += 18;
             }
 
-            // Total
-            g.DrawString($"TOTAL: {_currentSale.TotalAmount:F2}", footerFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight * 2;
+            y += 5;
+            g.DrawString("GRAND TOTAL:", headerFont, Brushes.Black, margin, y);
+            g.DrawString(total.ToString("N2"), headerFont, Brushes.Black, new RectangleF(margin, y, printableWidth, 20), rightFormat);
+            y += 22;
+            g.DrawLine(new Pen(Color.Black, 1.5f), margin, y, width - margin, y);
+            y += 8;
 
-            // Payment Info
-            g.DrawString($"Payment Method: {_currentSale.PaymentMethod}", bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
+            DrawTotalRow(g, "CASH PAID:", paid, bodyFont, margin, y, printableWidth);
+            y += 16;
+            DrawTotalRow(g, "CHANGE:", change, bodyFont, margin, y, printableWidth);
+            y += 25;
 
-            g.DrawString($"Amount Paid: {_currentSale.PaidAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
-
-            if (_currentSale.ChangeAmount > 0)
+            // 6. Barcode
+            string bc = _currentSale?.BarcodeData ?? _currentPurchase?.BarcodeData;
+            if (!string.IsNullOrEmpty(bc))
             {
-                g.DrawString($"Change: {_currentSale.ChangeAmount:F2}", bodyFont, Brushes.Black, leftMargin, currentY);
-                currentY += lineHeight;
+                try {
+                    var bs = new BarcodeService();
+                    var img = bs.GenerateBarcodeImageObject(bc, (int)printableWidth, 40);
+                    if (img != null) {
+                        g.DrawImage(img, margin, y, printableWidth, 40);
+                        y += 45;
+                        g.DrawString(bc, footerFont, Brushes.Black, new RectangleF(margin, y, printableWidth, 15), centerFormat);
+                        y += 20;
+                    }
+                } catch { }
             }
 
-            currentY += lineHeight;
-            g.DrawString(new string('-', 40), bodyFont, Brushes.Black, leftMargin, currentY);
-            currentY += lineHeight;
+            // 7. Footer
+            string footerText = ConfigurationService.Instance.ReceiptFooter ?? "Thank you for your business!";
+            var footerSize = g.MeasureString(footerText, footerFont, (int)printableWidth);
+            var footerRect = new RectangleF(margin, y, printableWidth, footerSize.Height + 5);
+            g.DrawString(footerText, footerFont, Brushes.Black, footerRect, centerFormat);
+            y += footerSize.Height + 10;
 
-            // Footer
-            g.DrawString("Note:", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight;
+            g.DrawString("Powered By: DevFleet Technologies | +923225347757", footerFont, Brushes.DimGray, new RectangleF(margin, y, printableWidth, 15), centerFormat);
 
-            g.DrawString("1. Goods once sold are only exchangeable within 3 days", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight;
+            // Update Panel height based on content
+            if (y + 50 > _thermalReceiptPanel.Height) {
+                _thermalReceiptPanel.Height = (int)y + 100;
+            }
+        }
 
-            g.DrawString("2. No return policy", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight;
-
-            g.DrawString("3. MADNI MOBILE AND PHOTOSTATE is not responsible", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight;
-
-            g.DrawString("   for any warranty claims", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-            currentY += lineHeight * 2;
-
-            g.DrawString("Developed By: DevFleet Technologies | +923225347757", bodyFont, Brushes.Black, 
-                new Rectangle(leftMargin, currentY, paperWidth - leftMargin * 2, lineHeight), centerFormat);
-
-            // Clean up fonts
-            headerFont.Dispose();
-            bodyFont.Dispose();
-            footerFont.Dispose();
+        private void DrawTotalRow(Graphics g, string label, decimal val, Font font, float margin, float y, float width)
+        {
+            g.DrawString(label, font, Brushes.Black, margin, y);
+            g.DrawString(val.ToString("N2"), font, Brushes.Black, new RectangleF(margin, y, width, 20), new StringFormat { Alignment = StringAlignment.Far });
         }
 
         private void UpdateThermalReceipt()
@@ -446,765 +402,230 @@ namespace Vape_Store
             if (_thermalReceiptPanel != null)
             {
                 _thermalReceiptPanel.Invalidate();
-                _thermalReceiptPanel.Update();
             }
         }
 
         private void ClearThermalReceipt()
         {
-            if (_thermalReceiptPanel != null)
-            {
-                _thermalReceiptPanel.Invalidate();
-                _thermalReceiptPanel.Update();
-            }
+            _currentSale = null;
+            _currentPurchase = null;
+            UpdateThermalReceipt();
         }
 
         private void BtnPreviewInvoice_Click(object sender, EventArgs e)
         {
             if (_currentSale == null)
             {
-                ShowMessage("Please load a sale first.", "No Sale", MessageBoxIcon.Warning);
+                MessageBox.Show("Please load a sale first.", "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             try
             {
-                // Create preview form
-                InvoicePreviewForm previewForm = new InvoicePreviewForm(_currentSale);
-                previewForm.ShowDialog();
+                // The current form already provides a high-quality thermal preview.
+                // If they want the A4 Full Preview, we can redirect to the new SaleReceiptPreviewForm.
+                var a4Preview = new SaleReceiptPreviewForm(_currentSale, _saleItems);
+                a4Preview.ShowDialog();
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error showing preview: {ex.Message}", "Error", MessageBoxIcon.Error);
+                MessageBox.Show($"Error showing A4 preview: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void BtnPrintInvoice_Click(object sender, EventArgs e)
         {
-            // Check if we have purchase data or sale data
             if (_currentPurchase == null && _currentSale == null)
             {
-                ShowMessage("Please load data first.", "No Data", MessageBoxIcon.Warning);
+                MessageBox.Show("Please load data first.", "No Data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
-            }
-
-            // Ensure we have items for sale
-            if (_currentSale != null)
-            {
-                // Ensure items are loaded
-                if (_saleItems == null || _saleItems.Count == 0)
-                {
-                    if (_currentSale.SaleItems != null && _currentSale.SaleItems.Count > 0)
-                    {
-                        _saleItems = _currentSale.SaleItems;
-                    }
-                    else
-                    {
-                        // Try to reload items
-                        try
-                        {
-                            _saleItems = _saleRepository.GetSaleItems(_currentSale.SaleID);
-                            _currentSale.SaleItems = _saleItems;
-                        }
-                        catch (Exception ex)
-                        {
-                            ShowMessage($"Error loading items: {ex.Message}", "Error", MessageBoxIcon.Error);
-                            return;
-                        }
-                    }
-                }
-
-                if (_saleItems == null || _saleItems.Count == 0)
-                {
-                    ShowMessage("No items found for this sale. Cannot print.", "No Items", MessageBoxIcon.Warning);
-                    return;
-                }
             }
 
             try
             {
                 PrintDocument printDoc = new PrintDocument();
-                printDoc.PrintPage += PrintInvoicePage;
+                
+                // Get default printer from settings
+                var settingsRepo = new Repositories.StoreSettingsRepository();
+                var settings = settingsRepo.GetSettings();
+                if (settings != null && !string.IsNullOrEmpty(settings.ThermalPrinterName) && settings.ThermalPrinterName != "System Default")
+                {
+                    printDoc.PrinterSettings.PrinterName = settings.ThermalPrinterName;
+                }
 
-                int dynamicHeight = CalculateReceiptHeight();
-                _paperHeight = Math.Max(dynamicHeight, 600);
-                var paperSize = new PaperSize("ThermalDynamic", _paperWidth, _paperHeight);
-                paperSize.RawKind = (int)PaperKind.Custom;
+                printDoc.PrintPage += (s, ppe) => {
+                    // Use the same professional drawing logic for the physical printer
+                    DrawThermalInvoice(ppe.Graphics, (int)ppe.PageSettings.PrintableArea.Width);
+                };
+
+                // Dynamic height calculation
+                int dynamicHeight = EstimateContentHeight();
+                var paperSize = new PaperSize("Thermal80", 300, Math.Max(dynamicHeight, 600));
                 printDoc.DefaultPageSettings.PaperSize = paperSize;
-                printDoc.DefaultPageSettings.Margins = new Margins(_printLeftMargin, _printRightMargin, _printTopMargin, _printBottomMargin);
+                printDoc.DefaultPageSettings.Margins = new Margins(10, 10, 10, 10);
 
                 PrintDialog printDialog = new PrintDialog();
                 printDialog.Document = printDoc;
-                printDialog.AllowSomePages = true;
-                printDialog.AllowSelection = false;
-                printDialog.AllowCurrentPage = false;
-                printDialog.AllowPrintToFile = false;
 
                 if (printDialog.ShowDialog() == DialogResult.OK)
                 {
                     printDoc.Print();
-                    // Success message removed to avoid annoying popups
                 }
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error printing invoice: {ex.Message}", "Print Error", MessageBoxIcon.Error);
+                MessageBox.Show($"Error printing: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void PrintInvoicePage(object sender, PrintPageEventArgs e)
+        private int EstimateContentHeight()
         {
+            // Simple estimation for paper height
+            int itemCount = (_currentSale?.SaleItems?.Count ?? _purchaseItems?.Count ?? 0);
+            return 350 + (itemCount * 25);
+        }
+
+        private void BtnDownloadPDF_Click(object sender, EventArgs e)
+        {
+            if (_currentSale == null && _currentPurchase == null) return;
+
             try
             {
-                Graphics g = e.Graphics;
-                _currentY = _printTopMargin;
+                SaveFileDialog saveDialog = new SaveFileDialog
+                {
+                    Filter = "PDF Files (*.pdf)|*.pdf",
+                    FileName = $"Thermal_Receipt_{(_currentSale?.InvoiceNumber ?? _currentPurchase?.InvoiceNumber)}.pdf",
+                    Title = "Export Professional Thermal Receipt"
+                };
 
-                // Print header
-                PrintHeader(g);
-                
-                // Print business info
-                PrintBusinessInfo(g);
-                
-                // Print customer info
-                PrintCustomerInfo(g);
-                
-                // Print items
-                PrintItems(g);
-                
-                // Print totals
-                PrintTotals(g);
-                
-                // Print footer
-                PrintFooter(g);
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    ExportToProfessionalPDF(saveDialog.FileName);
+                    MessageBox.Show("Professional Receipt exported successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
-                ShowMessage($"Error printing: {ex.Message}", "Print Error", MessageBoxIcon.Error);
+                MessageBox.Show($"Error exporting PDF: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void PrintHeader(Graphics g)
+        private void ExportToProfessionalPDF(string filePath)
         {
-            int leftMargin = _printLeftMargin;
-            int rightMargin = _paperWidth - _printRightMargin;
-            int printableWidth = rightMargin - leftMargin;
-            string headerLine1 = "MADNI MOBILE AND PHOTOSTATE";
-            string headerLine2 = "Ph: 0345:5518744";
-            string addressLine1 = "Shop#3, opp Save Mart,";
-            string addressLine2 = "main Tulsa road, lalazar,Rwp";
-
-            // Center align header
-            StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
+            // Set 80mm width in points
+            float widthPoints = 226f; 
+            float heightPoints = EstimateContentHeight() * 0.75f; 
             
-            g.DrawString(headerLine1, _headerFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
+            iTextSharp.text.Document doc = new iTextSharp.text.Document(new iTextSharp.text.Rectangle(widthPoints, Math.Max(450, heightPoints)), 15, 15, 15, 15);
             
-            g.DrawString(headerLine2, _headerFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
-            g.DrawString(addressLine1, _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
-            g.DrawString(addressLine2, _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight * 2;
-
-            // Draw line
-            g.DrawLine(Pens.Black, leftMargin, _currentY, rightMargin, _currentY);
-            _currentY += _lineHeight;
-        }
-
-        private void PrintBusinessInfo(Graphics g)
-        {
-            int leftMargin = _printLeftMargin;
-            int rightMargin = _paperWidth - _printRightMargin;
-            int printableWidth = rightMargin - leftMargin;
-            string invoiceNumber, date, cashier;
-            
-            if (_currentPurchase != null)
+            using (var stream = new System.IO.FileStream(filePath, System.IO.FileMode.Create))
             {
-                // Purchase invoice
-                invoiceNumber = $"Purchase Invoice: {_currentPurchase.InvoiceNumber}";
-                date = $"Date: {_currentPurchase.PurchaseDate:MM/dd/yyyy HH:mm}";
-                cashier = $"Entered By: {_currentPurchase.UserName ?? "System"}";
-            }
-            else
-            {
-                // Sale invoice
-                invoiceNumber = $"Invoice: {_currentSale.InvoiceNumber}";
-                date = $"Date: {_currentSale.SaleDate:MM/dd/yyyy HH:mm}";
-                cashier = $"Cashier: {_currentSale.UserName ?? "System"}";
-            }
+                iTextSharp.text.pdf.PdfWriter.GetInstance(doc, stream);
+                doc.Open();
 
-            g.DrawString(invoiceNumber, _bodyFont, Brushes.Black, leftMargin, _currentY);
-            _currentY += _lineHeight;
-            
-            g.DrawString(date, _bodyFont, Brushes.Black, leftMargin, _currentY);
-            _currentY += _lineHeight;
-            
-            g.DrawString(cashier, _bodyFont, Brushes.Black, leftMargin, _currentY);
-            _currentY += _lineHeight * 2;
+                var baseFont = iTextSharp.text.pdf.BaseFont.CreateFont(iTextSharp.text.pdf.BaseFont.HELVETICA, iTextSharp.text.pdf.BaseFont.CP1252, iTextSharp.text.pdf.BaseFont.NOT_EMBEDDED);
+                var boldFont = new iTextSharp.text.Font(baseFont, 10, iTextSharp.text.Font.BOLD);
+                var normalFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
+                var titleFont = new iTextSharp.text.Font(baseFont, 12, iTextSharp.text.Font.BOLD);
 
-            // Draw line
-            g.DrawLine(Pens.Black, leftMargin, _currentY, rightMargin, _currentY);
-            _currentY += _lineHeight;
-        }
+                // Store Info
+                var pTitle = new iTextSharp.text.Paragraph((ConfigurationService.Instance.ApplicationName ?? "VAPE STORE").ToUpper(), titleFont);
+                pTitle.Alignment = iTextSharp.text.Element.ALIGN_CENTER;
+                doc.Add(pTitle);
 
-        private void PrintCustomerInfo(Graphics g)
-        {
-            int leftMargin = 20;
-            if (_currentPurchase != null)
-            {
-                // Purchase invoice - show supplier info
-                string supplierName = $"Supplier: {_currentPurchase.SupplierName ?? "N/A"}";
-                g.DrawString(supplierName, _bodyFont, Brushes.Black, leftMargin, _currentY);
-                _currentY += _lineHeight;
-            }
-            else if (_currentSale != null)
-            {
-                // Sale invoice - show customer info
-                if (_currentSale.CustomerID > 0)
-                {
-                    string customerName = $"Customer: {_currentSale.CustomerName ?? "Walk-in Customer"}";
-                    g.DrawString(customerName, _bodyFont, Brushes.Black, leftMargin, _currentY);
-                    _currentY += _lineHeight;
-                }
-                else
-                {
-                    g.DrawString("Customer: Walk-in Customer", _bodyFont, Brushes.Black, leftMargin, _currentY);
-                    _currentY += _lineHeight;
-                }
-            }
-            
-            _currentY += _lineHeight;
-        }
+                var pAddr = new iTextSharp.text.Paragraph(ConfigurationService.Instance.StoreAddress, normalFont);
+                pAddr.Alignment = iTextSharp.text.Element.ALIGN_CENTER;
+                doc.Add(pAddr);
+                
+                doc.Add(new iTextSharp.text.Paragraph(" ", normalFont));
+                doc.Add(new iTextSharp.text.Paragraph($"INV: {(_currentSale?.InvoiceNumber ?? _currentPurchase?.InvoiceNumber)}", boldFont));
+                doc.Add(new iTextSharp.text.Paragraph($"DATE: {DateTime.Now:MM/dd/yyyy HH:mm}", normalFont));
+                
+                doc.Add(new iTextSharp.text.Paragraph("--------------------------------------------------", normalFont));
 
-        private void PrintItems(Graphics g)
-        {
-            int leftMargin = _printLeftMargin;
-            int rightMargin = _paperWidth - _printRightMargin;
-            int contentWidth = rightMargin - leftMargin;
-            int itemWidth = (int)(contentWidth * 0.46);
-            int qtyWidth = (int)(contentWidth * 0.115);
-            int priceWidth = (int)(contentWidth * 0.215);
-            int totalWidth = contentWidth - itemWidth - qtyWidth - priceWidth;
-            int rowHeight = _lineHeight;
+                // Items Table
+                iTextSharp.text.pdf.PdfPTable table = new iTextSharp.text.pdf.PdfPTable(3);
+                table.WidthPercentage = 100;
+                table.SetWidths(new float[] { 3f, 1f, 1.5f });
 
-            StringFormat leftFormat = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
-            StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
-            StringFormat rightFormat = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+                table.AddCell(new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("ITEM", boldFont)) { Border = 0 });
+                table.AddCell(new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("QTY", boldFont)) { Border = 0 });
+                table.AddCell(new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("TOTAL", boldFont)) { Border = 0, HorizontalAlignment = iTextSharp.text.Element.ALIGN_RIGHT });
 
-            // Header
-            Rectangle itemRect = new Rectangle(leftMargin, _currentY, itemWidth, rowHeight);
-            Rectangle qtyRect = new Rectangle(itemRect.Right, _currentY, qtyWidth, rowHeight);
-            Rectangle priceRect = new Rectangle(qtyRect.Right, _currentY, priceWidth, rowHeight);
-            Rectangle totalRect = new Rectangle(priceRect.Right, _currentY, totalWidth, rowHeight);
-
-            g.DrawString("ITEM", _bodyFont, Brushes.Black, itemRect, leftFormat);
-            // Nudge QTY heading left by 3px for header row only
-            var qtyHeaderRect = new Rectangle(qtyRect.Left - 3, _currentY, qtyWidth, rowHeight);
-            g.DrawString("QTY", _bodyFont, Brushes.Black, qtyHeaderRect, centerFormat);
-            g.DrawString("PRICE", _bodyFont, Brushes.Black, priceRect, rightFormat);
-            g.DrawString("TOTAL", _bodyFont, Brushes.Black, totalRect, rightFormat);
-            _currentY += rowHeight;
-
-            g.DrawLine(Pens.Black, leftMargin, _currentY, rightMargin, _currentY);
-            _currentY += Math.Max(2, rowHeight / 5);
-
-            // Items - handle both sales and purchases
-            if (_currentPurchase != null && _purchaseItems != null && _purchaseItems.Count > 0)
-            {
-                // Purchase items
-                foreach (var item in _purchaseItems)
-                {
-                    // Product name (truncate if too long)
-                    string productName = item.ProductName ?? "Unknown";
-                    productName = FitTextToWidth(g, productName, _bodyFont, itemWidth);
-                    g.DrawString(productName, _bodyFont, Brushes.Black, new Rectangle(itemRect.Left, _currentY, itemWidth, rowHeight), leftFormat);
-
-                    // Quantity and price
-                    g.DrawString(item.Quantity.ToString(), _bodyFont, Brushes.Black, new Rectangle(qtyRect.Left, _currentY, qtyWidth, rowHeight), centerFormat);
-                    g.DrawString($"{item.UnitPrice:F2}", _bodyFont, Brushes.Black, new Rectangle(priceRect.Left, _currentY, priceWidth, rowHeight), rightFormat);
-                    g.DrawString($"{item.SubTotal:F2}", _bodyFont, Brushes.Black, new Rectangle(totalRect.Left, _currentY, totalWidth, rowHeight), rightFormat);
-                    _currentY += rowHeight;
-                }
-            }
-            else if (_currentSale != null)
-            {
-                // Use _currentSale.SaleItems if _saleItems is null or empty
-                var itemsToPrint = (_saleItems != null && _saleItems.Count > 0) ? _saleItems : 
-                                  (_currentSale.SaleItems != null && _currentSale.SaleItems.Count > 0) ? _currentSale.SaleItems : 
-                                  new List<SaleItem>();
-
-                if (itemsToPrint.Count == 0)
-                {
-                    g.DrawString("No items found", _bodyFont, Brushes.Red, new Rectangle(itemRect.Left, _currentY, contentWidth, rowHeight), leftFormat);
-                    _currentY += rowHeight;
-                }
-                else
-                {
-                    // Sale items
-                    foreach (var item in itemsToPrint)
-                    {
-                        // Product name (truncate if too long)
-                        string productName = item.ProductName ?? "Unknown Product";
-                        productName = FitTextToWidth(g, productName, _bodyFont, itemWidth);
-                        g.DrawString(productName, _bodyFont, Brushes.Black, new Rectangle(itemRect.Left, _currentY, itemWidth, rowHeight), leftFormat);
-
-                        // Quantity and price
-                        g.DrawString(item.Quantity.ToString(), _bodyFont, Brushes.Black, new Rectangle(qtyRect.Left, _currentY, qtyWidth, rowHeight), centerFormat);
-                        g.DrawString($"{item.UnitPrice:F2}", _bodyFont, Brushes.Black, new Rectangle(priceRect.Left, _currentY, priceWidth, rowHeight), rightFormat);
-                        g.DrawString($"{item.SubTotal:F2}", _bodyFont, Brushes.Black, new Rectangle(totalRect.Left, _currentY, totalWidth, rowHeight), rightFormat);
-                        _currentY += rowHeight;
+                if (_currentSale != null) {
+                    foreach (var item in _saleItems) {
+                        table.AddCell(new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase(item.ProductName, normalFont)) { Border = 0 });
+                        table.AddCell(new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase(item.Quantity.ToString(), normalFont)) { Border = 0 });
+                        table.AddCell(new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase(item.SubTotal.ToString("N2"), normalFont)) { Border = 0, HorizontalAlignment = iTextSharp.text.Element.ALIGN_RIGHT });
                     }
                 }
-            }
 
-            g.DrawLine(Pens.Black, leftMargin, _currentY, rightMargin, _currentY);
-            _currentY += Math.Max(2, rowHeight / 2);
-        }
+                doc.Add(table);
+                doc.Add(new iTextSharp.text.Paragraph("--------------------------------------------------", normalFont));
 
-        private void PrintTotals(Graphics g)
-        {
-            int leftMargin = _printLeftMargin;
-            int rightMargin = _paperWidth - _printRightMargin;
-            int contentWidth = rightMargin - leftMargin;
-            int labelWidth = (int)(contentWidth * 0.55);
-            int amountWidth = contentWidth - labelWidth;
-            StringFormat leftFormat = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
-            StringFormat rightFormat = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+                // Totals
+                decimal subTotal  = _currentSale?.SubTotal  ?? _currentPurchase?.SubTotal  ?? 0;
+                decimal total     = _currentSale?.TotalAmount ?? _currentPurchase?.TotalAmount ?? 0;
+                decimal paid      = _currentSale?.PaidAmount  ?? _currentPurchase?.PaidAmount  ?? 0;
+                decimal change    = _currentSale != null ? _currentSale.ChangeAmount : 0;
 
-            if (_currentPurchase != null)
-            {
-                // Purchase totals
-                DrawTotalLine(g, "Subtotal:", _currentPurchase.SubTotal, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
+                var pSubTotal = new iTextSharp.text.Paragraph($"SUBTOTAL: {subTotal:N2}", normalFont);
+                pSubTotal.Alignment = iTextSharp.text.Element.ALIGN_RIGHT;
+                doc.Add(pSubTotal);
 
-                // Discount
-                if (_currentPurchase.DiscountAmount > 0)
+                if ((_currentSale?.DiscountAmount ?? 0) > 0)
                 {
-                    DrawTotalLine(g, "Discount:", _currentPurchase.DiscountAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
+                    var pDiscount = new iTextSharp.text.Paragraph($"DISCOUNT ({_currentSale.DiscountPercent}%): -{_currentSale.DiscountAmount:N2}", normalFont);
+                    pDiscount.Alignment = iTextSharp.text.Element.ALIGN_RIGHT;
+                    doc.Add(pDiscount);
                 }
 
-                // Tax
-                if (_currentPurchase.TaxAmount > 0)
+                if ((_currentSale?.TaxAmount ?? 0) > 0)
                 {
-                    string taxLabel = $"Tax ({_currentPurchase.TaxPercent:F1}%):";
-                    DrawTotalLine(g, taxLabel, _currentPurchase.TaxAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
+                    var pTax = new iTextSharp.text.Paragraph($"TAX ({_currentSale.TaxPercent}%): +{_currentSale.TaxAmount:N2}", normalFont);
+                    pTax.Alignment = iTextSharp.text.Element.ALIGN_RIGHT;
+                    doc.Add(pTax);
                 }
 
-                // Total
-                DrawTotalLine(g, "TOTAL:", _currentPurchase.TotalAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat, _footerFont);
-                _currentY += _lineHeight;
+                doc.Add(new iTextSharp.text.Paragraph("--------------------------------------------------", normalFont));
+                var pTotal = new iTextSharp.text.Paragraph($"GRAND TOTAL: {total:N2}", boldFont);
+                pTotal.Alignment = iTextSharp.text.Element.ALIGN_RIGHT;
+                doc.Add(pTotal);
 
-                // Payment info
-                DrawPaymentInfo(g, $"Payment Method: {_currentPurchase.PaymentMethod}", leftMargin, contentWidth);
-                DrawPaymentInfo(g, $"Amount Paid: {_currentPurchase.PaidAmount:F2}", leftMargin, contentWidth);
-                
-                // Calculate balance amount (Total - Paid)
-                decimal balanceAmount = _currentPurchase.TotalAmount - _currentPurchase.PaidAmount;
-                if (balanceAmount > 0)
-                {
-                    DrawPaymentInfo(g, $"Balance: {balanceAmount:F2}", leftMargin, contentWidth);
-                }
-            }
-            else if (_currentSale != null)
-            {
-                // Sale totals
-                DrawTotalLine(g, "Subtotal:", _currentSale.SubTotal, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
+                var pPaid = new iTextSharp.text.Paragraph($"CASH PAID: {paid:N2}", normalFont);
+                pPaid.Alignment = iTextSharp.text.Element.ALIGN_RIGHT;
+                doc.Add(pPaid);
 
-                // Discount
-                if (_currentSale.DiscountAmount > 0)
-                {
-                    string discountText = _currentSale.DiscountPercent > 0 
-                        ? $"Discount ({_currentSale.DiscountPercent:F1}%):"
-                        : "Discount:";
-                    DrawTotalLine(g, discountText, _currentSale.DiscountAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
-                }
+                var pChange = new iTextSharp.text.Paragraph($"CHANGE: {change:N2}", normalFont);
+                pChange.Alignment = iTextSharp.text.Element.ALIGN_RIGHT;
+                doc.Add(pChange);
 
-                // Tax
-                if (_currentSale.TaxAmount > 0)
-                {
-                    string taxLabel = $"Tax ({_currentSale.TaxPercent:F1}%):";
-                    DrawTotalLine(g, taxLabel, _currentSale.TaxAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat);
-                }
+                doc.Add(new iTextSharp.text.Paragraph(" ", normalFont));
+                var pFooter = new iTextSharp.text.Paragraph(ConfigurationService.Instance.ReceiptFooter, normalFont);
+                pFooter.Alignment = iTextSharp.text.Element.ALIGN_CENTER;
+                doc.Add(pFooter);
 
-                // Total
-                DrawTotalLine(g, "TOTAL:", _currentSale.TotalAmount, leftMargin, labelWidth, amountWidth, leftFormat, rightFormat, _footerFont);
-                _currentY += _lineHeight;
-
-                // Payment info
-                DrawPaymentInfo(g, $"Payment Method: {_currentSale.PaymentMethod}", leftMargin, contentWidth);
-                DrawPaymentInfo(g, $"Amount Paid: {_currentSale.PaidAmount:F2}", leftMargin, contentWidth);
-                
-                if (_currentSale.ChangeAmount > 0)
-                {
-                    DrawPaymentInfo(g, $"Change: {_currentSale.ChangeAmount:F2}", leftMargin, contentWidth);
-                }
+                doc.Close();
             }
         }
-
-        private void PrintFooter(Graphics g)
-        {
-            int leftMargin = _printLeftMargin;
-            int printableWidth = (_paperWidth - _printRightMargin) - leftMargin;
-            _currentY += _lineHeight;
-            
-            g.DrawString(new string('-', Math.Max(20, printableWidth / 6)), _bodyFont, Brushes.Black, leftMargin, _currentY);
-            _currentY += _lineHeight;
-            
-            StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
-            
-            g.DrawString("Note:", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
-            g.DrawString("1. Goods once sold are only exchangeable within 3 days", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
-            g.DrawString("2. No return policy", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
-            g.DrawString("3. madni mobile Mobiles Rwp is not responsible", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
-            g.DrawString("   for any warranty claims", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-            
-            g.DrawString("Developed By: DevFleet Technologies", _bodyFont, Brushes.Black, new Rectangle(leftMargin, _currentY, printableWidth, _lineHeight), centerFormat);
-            _currentY += _lineHeight;
-        }
-
-        private string FitTextToWidth(Graphics g, string text, Font font, int targetWidth)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return string.Empty;
-            }
-
-            if (g.MeasureString(text, font).Width <= targetWidth)
-            {
-                return text;
-            }
-
-            string working = text.Trim();
-            while (working.Length > 0)
-            {
-                working = working.Substring(0, working.Length - 1);
-                string candidate = working.TrimEnd() + "...";
-                if (g.MeasureString(candidate, font).Width <= targetWidth)
-                {
-                    return candidate;
-                }
-            }
-
-            return "...";
-        }
-
-        private void DrawTotalLine(Graphics g, string label, decimal amount, int leftMargin, int labelWidth, int amountWidth, StringFormat leftFormat, StringFormat rightFormat, Font overrideFont = null)
-        {
-            Font fontToUse = overrideFont ?? _bodyFont;
-            Rectangle labelRect = new Rectangle(leftMargin, _currentY, labelWidth, _lineHeight);
-            Rectangle amountRect = new Rectangle(labelRect.Right, _currentY, amountWidth, _lineHeight);
-
-            g.DrawString(label, fontToUse, Brushes.Black, labelRect, leftFormat);
-            g.DrawString($"{amount:F2}", fontToUse, Brushes.Black, amountRect, rightFormat);
-            _currentY += _lineHeight;
-        }
-
-        private void DrawPaymentInfo(Graphics g, string text, int leftMargin, int contentWidth)
-        {
-            Rectangle rect = new Rectangle(leftMargin, _currentY, contentWidth, _lineHeight);
-            StringFormat leftFormat = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
-            g.DrawString(text, _bodyFont, Brushes.Black, rect, leftFormat);
-            _currentY += _lineHeight;
-        }
-
-        private int CalculateReceiptHeight()
-        {
-            int height = _printTopMargin;
-            height += GetHeaderHeight();
-            height += GetBusinessInfoHeight();
-            height += GetCustomerInfoHeight();
-            height += GetItemsHeight();
-            height += GetTotalsHeight();
-            height += GetFooterHeight();
-            height += _printBottomMargin;
-            return height;
-        }
-
-        private int GetHeaderHeight() => _lineHeight * 6;
-
-        private int GetBusinessInfoHeight() => _lineHeight * 6;
-
-        private int GetCustomerInfoHeight()
-        {
-            if (_currentPurchase != null || _currentSale != null)
-            {
-                return _lineHeight * 2;
-            }
-            return _lineHeight;
-        }
-
-        private int GetItemsHeight()
-        {
-            int headerAndLine = _lineHeight * 2;
-            int rowHeight = _lineHeight;
-            int itemCount = (_currentPurchase != null ? _purchaseItems?.Count : (_saleItems?.Count ?? _currentSale?.SaleItems?.Count ?? 0)) ?? 0;
-            if (itemCount == 0)
-            {
-                return headerAndLine + rowHeight * 2;
-            }
-
-            return headerAndLine + (itemCount * rowHeight) + _lineHeight;
-        }
-
-        private int GetTotalsHeight()
-        {
-            int lines = 0;
-            if (_currentPurchase != null)
-            {
-                lines++; // subtotal
-                if (_currentPurchase.DiscountAmount > 0) lines++;
-                if (_currentPurchase.TaxAmount > 0) lines++;
-                lines++; // total
-                lines += 2; // payment method, amount paid
-                if (_currentPurchase.TotalAmount - _currentPurchase.PaidAmount > 0) lines++;
-            }
-            else if (_currentSale != null)
-            {
-                lines++; // subtotal
-                if (_currentSale.DiscountAmount > 0) lines++;
-                if (_currentSale.TaxAmount > 0) lines++;
-                lines++; // total
-                lines += 2; // payment method, amount paid
-                if (_currentSale.ChangeAmount > 0) lines++;
-            }
-
-            if (lines == 0)
-            {
-                return _lineHeight * 2;
-            }
-
-            return (lines * _lineHeight) + _lineHeight; // extra spacing after totals
-        }
-
-        private int GetFooterHeight() => _lineHeight * 8;
 
         private void BtnClose_Click(object sender, EventArgs e)
         {
             this.Close();
         }
 
-        private void ShowMessage(string message, string title, MessageBoxIcon icon)
-        {
-            MessageBox.Show(message, title, MessageBoxButtons.OK, icon);
-        }
-
         public void SetPurchaseData(Purchase purchase, List<PurchaseItem> purchaseItems)
         {
-            try
-            {
-                _currentPurchase = purchase;
-                _purchaseItems = purchaseItems;
-                
-                // Update form title
-                this.Text = $"Purchase Invoice - {purchase.InvoiceNumber}";
-                
-                // Update invoice number field
-                cmbInvoiceNumber.Text = purchase.InvoiceNumber;
-                
-                // Load purchase data
-                LoadPurchaseData();
-                
-                // Don't show the form here - let the caller decide when to show it
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error setting purchase data: {ex.Message}", "Error", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            _currentPurchase = purchase;
+            _purchaseItems = purchaseItems;
+            pnlSelection.Visible = false;
+            UpdateThermalReceipt();
         }
 
-        private void LoadPurchaseData()
+        private void btnLoadSale_Click_1(object sender, EventArgs e)
         {
-            try
-            {
-                if (_currentPurchase == null || _purchaseItems == null)
-                    return;
-                
-                // Update form fields with purchase data (matching format of UpdateSaleDisplay)
-                lblInvoiceNumber.Text = $"Invoice Number: {_currentPurchase.InvoiceNumber}";
-                lblDate.Text = $"Date: {_currentPurchase.PurchaseDate:MM/dd/yyyy HH:mm}";
-                lblSupplier.Text = $"Supplier: {_currentPurchase.SupplierName ?? "N/A"}";
-            lblTotal.Text = $"Total: {_currentPurchase.TotalAmount:F2}";
-                
-                // Enable print and preview buttons
-                btnPrintInvoice.Enabled = true;
-                btnPreviewInvoice.Enabled = true;
-                
-                // Update info label
-                lblSaleInfo.Text = $"Purchase Found: {_currentPurchase.InvoiceNumber} - {_currentPurchase.PurchaseDate:MM/dd/yyyy HH:mm} - {_currentPurchase.TotalAmount:F2}";
-                
-                // Update thermal receipt for purchase
-                UpdateThermalReceipt();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading purchase data: {ex.Message}", "Error", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+
         }
-    }
-
-    // Preview form for thermal invoice
-    public partial class InvoicePreviewForm : Form
-    {
-        private Sale _sale;
-        private List<SaleItem> _saleItems;
-
-        public InvoicePreviewForm(Sale sale)
-        {
-            _sale = sale;
-            _saleItems = sale?.SaleItems ?? new List<SaleItem>();
-            
-            SetupPreview();
-        }
-
-        private void SetupPreview()
-        {
-            this.Text = $"Invoice Preview - {_sale.InvoiceNumber}";
-            this.Size = new Size(400, 600);
-            this.StartPosition = FormStartPosition.CenterParent;
-            
-            // Create preview panel
-            Panel previewPanel = new Panel();
-            previewPanel.Dock = DockStyle.Fill;
-            previewPanel.AutoScroll = true;
-            previewPanel.BackColor = Color.White;
-            previewPanel.Paint += PreviewPanel_Paint;
-            
-            this.Controls.Add(previewPanel);
-        }
-
-        private void PreviewPanel_Paint(object sender, PaintEventArgs e)
-        {
-            Graphics g = e.Graphics;
-            int currentY = 10;
-            int lineHeight = 20;
-            int paperWidth = 350;
-
-            // Header
-            StringFormat centerFormat = new StringFormat { Alignment = StringAlignment.Center };
-            Font headerFont = new Font("Courier New", 10.5f, FontStyle.Bold);
-            Font bodyFont = new Font("Courier New", 8.25f, FontStyle.Regular);
-            Font footerFont = new Font("Courier New", 9f, FontStyle.Bold);
-
-            g.DrawString("madni mobile Mobiles Rwp", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            g.DrawString("Address : V5 G Mall Ground Floor", headerFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            
-            g.DrawString("Shop no 5 madni mobile Mobiles Rwp", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            
-            g.DrawString("Bahria Phase7 Food Street", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight * 2;
-
-            g.DrawLine(Pens.Black, 0, currentY, paperWidth, currentY);
-            currentY += lineHeight;
-
-            // Invoice info
-            g.DrawString($"Invoice: {_sale.InvoiceNumber}", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-            
-            g.DrawString($"Date: {_sale.SaleDate:MM/dd/yyyy HH:mm}", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-            
-            g.DrawString($"Cashier: {_sale.UserName ?? "System"}", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight * 2;
-
-            g.DrawLine(Pens.Black, 0, currentY, paperWidth, currentY);
-            currentY += lineHeight;
-
-            // Customer
-            g.DrawString($"Customer: {_sale.CustomerName ?? "Walk-in Customer"}", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight * 2;
-
-            // Items
-            g.DrawString("Items:", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-            
-            g.DrawString("----------------------------------------", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-
-            foreach (var item in _saleItems)
-            {
-                string productName = item.ProductName.Length > 25 ? item.ProductName.Substring(0, 22) + "..." : item.ProductName;
-                g.DrawString(productName, bodyFont, Brushes.Black, 0, currentY);
-                currentY += lineHeight;
-
-                string itemLine = $"Qty: {item.Quantity} x {item.UnitPrice:F2} = {item.SubTotal:F2}";
-                g.DrawString(itemLine, bodyFont, Brushes.Black, 0, currentY);
-                currentY += lineHeight;
-            }
-
-            g.DrawString("----------------------------------------", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-
-            // Totals
-            g.DrawString($"Subtotal: {_sale.SubTotal:F2}", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-
-            // Discount
-            if (_sale.DiscountAmount > 0)
-            {
-                string discountText = _sale.DiscountPercent > 0 
-                    ? $"Discount ({_sale.DiscountPercent:F1}%): {_sale.DiscountAmount:F2}"
-                    : $"Discount: {_sale.DiscountAmount:F2}";
-                g.DrawString(discountText, bodyFont, Brushes.Black, 0, currentY);
-                currentY += lineHeight;
-            }
-
-            if (_sale.TaxAmount > 0)
-            {
-                g.DrawString($"Tax ({_sale.TaxPercent:F1}%): {_sale.TaxAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
-                currentY += lineHeight;
-            }
-
-            g.DrawString($"TOTAL: {_sale.TotalAmount:F2}", footerFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight * 2;
-
-            g.DrawString($"Payment Method: {_sale.PaymentMethod}", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-            
-            g.DrawString($"Amount Paid: {_sale.PaidAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-            
-            if (_sale.ChangeAmount > 0)
-            {
-                g.DrawString($"Change: {_sale.ChangeAmount:F2}", bodyFont, Brushes.Black, 0, currentY);
-                currentY += lineHeight;
-            }
-
-            currentY += lineHeight;
-            g.DrawString("----------------------------------------", bodyFont, Brushes.Black, 0, currentY);
-            currentY += lineHeight;
-            
-            g.DrawString("Note:", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            
-            g.DrawString("1. Goods once sold are only exchangeable within 3 days", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            
-            g.DrawString("2. No return policy", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            
-            g.DrawString("3. madni mobile Mobiles Rwp is not responsible", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight;
-            g.DrawString("   for any warranty claims", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-            currentY += lineHeight * 2;
-            
-            g.DrawString("Developed By: DevFleet Technologies", bodyFont, Brushes.Black, new Rectangle(0, currentY, paperWidth, lineHeight), centerFormat);
-        }
-
     }
 }
 

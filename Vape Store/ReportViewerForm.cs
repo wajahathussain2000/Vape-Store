@@ -22,6 +22,7 @@ namespace Vape_Store
         public ReportViewerForm()
         {
             InitializeComponent();
+            
         }
 
         private void InitializeComponent()
@@ -187,7 +188,8 @@ namespace Vape_Store
             html.AppendLine("</head>");
             html.AppendLine("<body>");
             
-            html.AppendLine("<h1>madni mobile Mobiles Rwp - Sales Report</h1>");
+            string storeName = Vape_Store.Services.ConfigurationService.Instance.ApplicationName.ToUpper();
+            html.AppendLine($"<h1>{storeName} - Sales Report</h1>");
             html.AppendLine($"<h2>Report Period: {fromDate:dd/MM/yyyy} to {toDate:dd/MM/yyyy}</h2>");
             html.AppendLine($"<p>Generated on: {DateTime.Now:dd/MM/yyyy HH:mm}</p>");
             

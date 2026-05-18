@@ -1,4 +1,4 @@
-﻿namespace Vape_Store
+namespace Vape_Store
 {
     partial class PurchaseReturnForm
     {
@@ -52,7 +52,7 @@
             this.txtdescription = new System.Windows.Forms.TextBox();
             this.Total = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.cmbreturnreason = new System.Windows.Forms.ComboBox();
-            this.Select = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colSelect = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.label1 = new System.Windows.Forms.Label();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.txtOriginalInvoiceDate = new System.Windows.Forms.TextBox();
@@ -80,6 +80,7 @@
             this.lblInvoiceNumber = new System.Windows.Forms.Label();
             this.cmbInvoiceNumber = new System.Windows.Forms.ComboBox();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.panel3 = new System.Windows.Forms.Panel();
             this.panel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.pnlOriginalInvoiceDetails.SuspendLayout();
@@ -87,6 +88,7 @@
             this.pnlReturnInfo.SuspendLayout();
             this.pnlInvoiceSelection.SuspendLayout();
             this.panel1.SuspendLayout();
+            this.panel3.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnsave
@@ -95,22 +97,23 @@
             this.btnsave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnsave.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnsave.ForeColor = System.Drawing.Color.White;
-            this.btnsave.Location = new System.Drawing.Point(953, 431);
+            this.btnsave.Location = new System.Drawing.Point(1170, 284);
+            this.btnsave.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.btnsave.Name = "btnsave";
-            this.btnsave.Size = new System.Drawing.Size(129, 40);
+            this.btnsave.Size = new System.Drawing.Size(172, 49);
             this.btnsave.TabIndex = 49;
-            this.btnsave.Text = "Sales Return";
+            this.btnsave.Text = "Save Return";
             this.btnsave.UseVisualStyleBackColor = false;
+            this.btnsave.Click += new System.EventHandler(this.Btnsave_Click);
             // 
             // lblOriginalInvoiceTitle
             // 
             this.lblOriginalInvoiceTitle.AutoSize = true;
             this.lblOriginalInvoiceTitle.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.lblOriginalInvoiceTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(120)))), ((int)(((byte)(215)))));
-            this.lblOriginalInvoiceTitle.Location = new System.Drawing.Point(7, 6);
-            this.lblOriginalInvoiceTitle.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblOriginalInvoiceTitle.Location = new System.Drawing.Point(9, 7);
             this.lblOriginalInvoiceTitle.Name = "lblOriginalInvoiceTitle";
-            this.lblOriginalInvoiceTitle.Size = new System.Drawing.Size(164, 19);
+            this.lblOriginalInvoiceTitle.Size = new System.Drawing.Size(196, 23);
             this.lblOriginalInvoiceTitle.TabIndex = 0;
             this.lblOriginalInvoiceTitle.Text = "Original Invoice Details";
             // 
@@ -118,31 +121,29 @@
             // 
             this.lblOriginalInvoiceNumber.AutoSize = true;
             this.lblOriginalInvoiceNumber.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblOriginalInvoiceNumber.Location = new System.Drawing.Point(7, 38);
-            this.lblOriginalInvoiceNumber.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblOriginalInvoiceNumber.Location = new System.Drawing.Point(9, 47);
             this.lblOriginalInvoiceNumber.Name = "lblOriginalInvoiceNumber";
-            this.lblOriginalInvoiceNumber.Size = new System.Drawing.Size(61, 15);
+            this.lblOriginalInvoiceNumber.Size = new System.Drawing.Size(76, 20);
             this.lblOriginalInvoiceNumber.TabIndex = 1;
             this.lblOriginalInvoiceNumber.Text = "Invoice #:";
             // 
             // txtOriginalInvoiceNumber
             // 
             this.txtOriginalInvoiceNumber.BackColor = System.Drawing.Color.White;
-            this.txtOriginalInvoiceNumber.Location = new System.Drawing.Point(76, 38);
-            this.txtOriginalInvoiceNumber.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtOriginalInvoiceNumber.Location = new System.Drawing.Point(101, 47);
+            this.txtOriginalInvoiceNumber.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtOriginalInvoiceNumber.Name = "txtOriginalInvoiceNumber";
             this.txtOriginalInvoiceNumber.ReadOnly = true;
-            this.txtOriginalInvoiceNumber.Size = new System.Drawing.Size(81, 20);
+            this.txtOriginalInvoiceNumber.Size = new System.Drawing.Size(107, 22);
             this.txtOriginalInvoiceNumber.TabIndex = 2;
             // 
             // lblOriginalInvoiceDate
             // 
             this.lblOriginalInvoiceDate.AutoSize = true;
             this.lblOriginalInvoiceDate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblOriginalInvoiceDate.Location = new System.Drawing.Point(160, 38);
-            this.lblOriginalInvoiceDate.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblOriginalInvoiceDate.Location = new System.Drawing.Point(213, 47);
             this.lblOriginalInvoiceDate.Name = "lblOriginalInvoiceDate";
-            this.lblOriginalInvoiceDate.Size = new System.Drawing.Size(37, 15);
+            this.lblOriginalInvoiceDate.Size = new System.Drawing.Size(46, 20);
             this.lblOriginalInvoiceDate.TabIndex = 3;
             this.lblOriginalInvoiceDate.Text = "Date:";
             // 
@@ -188,10 +189,10 @@
             this.panel2.Controls.Add(this.label13);
             this.panel2.Controls.Add(this.label14);
             this.panel2.Controls.Add(this.cmbTax);
-            this.panel2.Location = new System.Drawing.Point(971, 247);
-            this.panel2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.panel2.Location = new System.Drawing.Point(1194, 58);
+            this.panel2.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(229, 170);
+            this.panel2.Size = new System.Drawing.Size(305, 209);
             this.panel2.TabIndex = 48;
             this.panel2.Paint += new System.Windows.Forms.PaintEventHandler(this.panel2_Paint);
             // 
@@ -199,62 +200,70 @@
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(7, 20);
+            this.label3.Location = new System.Drawing.Point(9, 25);
+            this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(75, 19);
+            this.label3.Size = new System.Drawing.Size(90, 23);
             this.label3.TabIndex = 26;
             this.label3.Text = "Sub Total:";
             // 
             // txtsubTotal
             // 
             this.txtsubTotal.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtsubTotal.Location = new System.Drawing.Point(92, 18);
+            this.txtsubTotal.Location = new System.Drawing.Point(123, 22);
+            this.txtsubTotal.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.txtsubTotal.Name = "txtsubTotal";
-            this.txtsubTotal.Size = new System.Drawing.Size(129, 25);
+            this.txtsubTotal.Size = new System.Drawing.Size(171, 30);
             this.txtsubTotal.TabIndex = 25;
             // 
             // label10
             // 
             this.label10.AutoSize = true;
             this.label10.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label10.Location = new System.Drawing.Point(7, 51);
+            this.label10.Location = new System.Drawing.Point(9, 63);
+            this.label10.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(70, 19);
+            this.label10.Size = new System.Drawing.Size(85, 23);
             this.label10.TabIndex = 28;
             this.label10.Text = "Discount:";
             // 
             // txtTaxPercent
             // 
             this.txtTaxPercent.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtTaxPercent.Location = new System.Drawing.Point(92, 50);
+            this.txtTaxPercent.Location = new System.Drawing.Point(123, 62);
+            this.txtTaxPercent.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.txtTaxPercent.Name = "txtTaxPercent";
-            this.txtTaxPercent.Size = new System.Drawing.Size(66, 25);
+            this.txtTaxPercent.Size = new System.Drawing.Size(87, 30);
             this.txtTaxPercent.TabIndex = 27;
+            this.txtTaxPercent.TextChanged += new System.EventHandler(this.TxtTaxPercent_TextChanged);
             // 
             // txtTax
             // 
             this.txtTax.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtTax.Location = new System.Drawing.Point(162, 50);
+            this.txtTax.Location = new System.Drawing.Point(216, 62);
+            this.txtTax.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.txtTax.Name = "txtTax";
-            this.txtTax.Size = new System.Drawing.Size(59, 25);
+            this.txtTax.Size = new System.Drawing.Size(77, 30);
             this.txtTax.TabIndex = 29;
             // 
             // txtTotal
             // 
             this.txtTotal.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtTotal.Location = new System.Drawing.Point(92, 123);
+            this.txtTotal.Location = new System.Drawing.Point(123, 151);
+            this.txtTotal.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.txtTotal.Name = "txtTotal";
             this.txtTotal.ReadOnly = true;
-            this.txtTotal.Size = new System.Drawing.Size(129, 25);
+            this.txtTotal.Size = new System.Drawing.Size(171, 30);
             this.txtTotal.TabIndex = 32;
             // 
             // label13
             // 
             this.label13.AutoSize = true;
             this.label13.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label13.Location = new System.Drawing.Point(7, 87);
+            this.label13.Location = new System.Drawing.Point(9, 107);
+            this.label13.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(36, 19);
+            this.label13.Size = new System.Drawing.Size(42, 23);
             this.label13.TabIndex = 30;
             this.label13.Text = "Tax:";
             // 
@@ -262,9 +271,10 @@
             // 
             this.label14.AutoSize = true;
             this.label14.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label14.Location = new System.Drawing.Point(7, 120);
+            this.label14.Location = new System.Drawing.Point(9, 148);
+            this.label14.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label14.Name = "label14";
-            this.label14.Size = new System.Drawing.Size(46, 19);
+            this.label14.Size = new System.Drawing.Size(54, 23);
             this.label14.TabIndex = 33;
             this.label14.Text = "Total:";
             // 
@@ -273,31 +283,32 @@
             this.cmbTax.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbTax.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cmbTax.FormattingEnabled = true;
-            this.cmbTax.Location = new System.Drawing.Point(92, 87);
+            this.cmbTax.Location = new System.Drawing.Point(123, 107);
+            this.cmbTax.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.cmbTax.Name = "cmbTax";
-            this.cmbTax.Size = new System.Drawing.Size(133, 25);
+            this.cmbTax.Size = new System.Drawing.Size(176, 31);
             this.cmbTax.TabIndex = 31;
+            this.cmbTax.SelectedIndexChanged += new System.EventHandler(this.CmbTax_SelectedIndexChanged);
             // 
             // label2
             // 
             this.label2.AutoSize = true;
             this.label2.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label2.Location = new System.Drawing.Point(452, 694);
-            this.label2.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label2.Location = new System.Drawing.Point(672, 748);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(71, 13);
+            this.label2.Size = new System.Drawing.Size(90, 17);
             this.label2.TabIndex = 47;
             this.label2.Text = "Description";
             // 
             // txtdescription
             // 
             this.txtdescription.BackColor = System.Drawing.Color.White;
-            this.txtdescription.Location = new System.Drawing.Point(610, 688);
-            this.txtdescription.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtdescription.Location = new System.Drawing.Point(882, 741);
+            this.txtdescription.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtdescription.Multiline = true;
             this.txtdescription.Name = "txtdescription";
             this.txtdescription.ReadOnly = true;
-            this.txtdescription.Size = new System.Drawing.Size(243, 39);
+            this.txtdescription.Size = new System.Drawing.Size(323, 47);
             this.txtdescription.TabIndex = 39;
             // 
             // Total
@@ -311,26 +322,25 @@
             this.cmbreturnreason.BackColor = System.Drawing.Color.White;
             this.cmbreturnreason.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbreturnreason.FormattingEnabled = true;
-            this.cmbreturnreason.Location = new System.Drawing.Point(144, 686);
-            this.cmbreturnreason.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.cmbreturnreason.Location = new System.Drawing.Point(261, 738);
+            this.cmbreturnreason.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.cmbreturnreason.Name = "cmbreturnreason";
-            this.cmbreturnreason.Size = new System.Drawing.Size(181, 21);
+            this.cmbreturnreason.Size = new System.Drawing.Size(240, 24);
             this.cmbreturnreason.TabIndex = 46;
             // 
-            // Select
+            // colSelect
             // 
-            this.Select.HeaderText = "Select";
-            this.Select.MinimumWidth = 8;
-            this.Select.Name = "Select";
+            this.colSelect.HeaderText = "Select";
+            this.colSelect.MinimumWidth = 8;
+            this.colSelect.Name = "colSelect";
             // 
             // label1
             // 
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(-2, 688);
-            this.label1.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label1.Location = new System.Drawing.Point(66, 741);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(149, 13);
+            this.label1.Size = new System.Drawing.Size(190, 17);
             this.label1.TabIndex = 45;
             this.label1.Text = "Purchase Return Reason";
             // 
@@ -343,29 +353,31 @@
             this.dataGridView1.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView1.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.Select,
+            this.colSelect,
             this.ItemCode,
             this.ItemName,
             this.OrignalQty,
             this.ReturnQty,
             this.Price,
             this.Total});
-            this.dataGridView1.Location = new System.Drawing.Point(0, 246);
-            this.dataGridView1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.dataGridView1.Location = new System.Drawing.Point(7, 11);
+            this.dataGridView1.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.RowHeadersWidth = 25;
             this.dataGridView1.RowTemplate.Height = 28;
-            this.dataGridView1.Size = new System.Drawing.Size(947, 409);
+            this.dataGridView1.Size = new System.Drawing.Size(959, 333);
             this.dataGridView1.TabIndex = 44;
+            this.dataGridView1.CellEndEdit += new System.Windows.Forms.DataGridViewCellEventHandler(this.DataGridView1_CellEndEdit);
+            this.dataGridView1.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.DataGridView1_CellValueChanged);
             // 
             // txtOriginalInvoiceDate
             // 
             this.txtOriginalInvoiceDate.BackColor = System.Drawing.Color.White;
-            this.txtOriginalInvoiceDate.Location = new System.Drawing.Point(200, 38);
-            this.txtOriginalInvoiceDate.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtOriginalInvoiceDate.Location = new System.Drawing.Point(267, 47);
+            this.txtOriginalInvoiceDate.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtOriginalInvoiceDate.Name = "txtOriginalInvoiceDate";
             this.txtOriginalInvoiceDate.ReadOnly = true;
-            this.txtOriginalInvoiceDate.Size = new System.Drawing.Size(77, 20);
+            this.txtOriginalInvoiceDate.Size = new System.Drawing.Size(101, 22);
             this.txtOriginalInvoiceDate.TabIndex = 4;
             // 
             // CancelBtn
@@ -374,12 +386,14 @@
             this.CancelBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.CancelBtn.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.CancelBtn.ForeColor = System.Drawing.Color.White;
-            this.CancelBtn.Location = new System.Drawing.Point(1100, 431);
+            this.CancelBtn.Location = new System.Drawing.Point(1366, 284);
+            this.CancelBtn.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.CancelBtn.Name = "CancelBtn";
-            this.CancelBtn.Size = new System.Drawing.Size(125, 40);
+            this.CancelBtn.Size = new System.Drawing.Size(167, 49);
             this.CancelBtn.TabIndex = 50;
             this.CancelBtn.Text = "Cancel";
             this.CancelBtn.UseVisualStyleBackColor = false;
+            this.CancelBtn.Click += new System.EventHandler(this.CancelBtn_Click);
             // 
             // pnlOriginalInvoiceDetails
             // 
@@ -391,31 +405,30 @@
             this.pnlOriginalInvoiceDetails.Controls.Add(this.txtOriginalInvoiceDate);
             this.pnlOriginalInvoiceDetails.Controls.Add(this.lblOriginalInvoiceTotal);
             this.pnlOriginalInvoiceDetails.Controls.Add(this.txtOriginalInvoiceTotal);
-            this.pnlOriginalInvoiceDetails.Location = new System.Drawing.Point(669, 168);
-            this.pnlOriginalInvoiceDetails.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pnlOriginalInvoiceDetails.Location = new System.Drawing.Point(892, 207);
+            this.pnlOriginalInvoiceDetails.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.pnlOriginalInvoiceDetails.Name = "pnlOriginalInvoiceDetails";
-            this.pnlOriginalInvoiceDetails.Size = new System.Drawing.Size(404, 75);
+            this.pnlOriginalInvoiceDetails.Size = new System.Drawing.Size(538, 92);
             this.pnlOriginalInvoiceDetails.TabIndex = 43;
             // 
             // lblOriginalInvoiceTotal
             // 
             this.lblOriginalInvoiceTotal.AutoSize = true;
             this.lblOriginalInvoiceTotal.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblOriginalInvoiceTotal.Location = new System.Drawing.Point(280, 38);
-            this.lblOriginalInvoiceTotal.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblOriginalInvoiceTotal.Location = new System.Drawing.Point(373, 47);
             this.lblOriginalInvoiceTotal.Name = "lblOriginalInvoiceTotal";
-            this.lblOriginalInvoiceTotal.Size = new System.Drawing.Size(37, 15);
+            this.lblOriginalInvoiceTotal.Size = new System.Drawing.Size(48, 20);
             this.lblOriginalInvoiceTotal.TabIndex = 5;
             this.lblOriginalInvoiceTotal.Text = "Total:";
             // 
             // txtOriginalInvoiceTotal
             // 
             this.txtOriginalInvoiceTotal.BackColor = System.Drawing.Color.White;
-            this.txtOriginalInvoiceTotal.Location = new System.Drawing.Point(320, 38);
-            this.txtOriginalInvoiceTotal.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtOriginalInvoiceTotal.Location = new System.Drawing.Point(427, 47);
+            this.txtOriginalInvoiceTotal.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtOriginalInvoiceTotal.Name = "txtOriginalInvoiceTotal";
             this.txtOriginalInvoiceTotal.ReadOnly = true;
-            this.txtOriginalInvoiceTotal.Size = new System.Drawing.Size(68, 20);
+            this.txtOriginalInvoiceTotal.Size = new System.Drawing.Size(89, 22);
             this.txtOriginalInvoiceTotal.TabIndex = 6;
             // 
             // pnlCustomerInfo
@@ -429,83 +442,79 @@
             this.pnlCustomerInfo.Controls.Add(this.txtCustomerName);
             this.pnlCustomerInfo.Controls.Add(this.lblCustomer);
             this.pnlCustomerInfo.Controls.Add(this.cmbCustomer);
-            this.pnlCustomerInfo.Location = new System.Drawing.Point(669, 79);
-            this.pnlCustomerInfo.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pnlCustomerInfo.Location = new System.Drawing.Point(892, 97);
+            this.pnlCustomerInfo.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.pnlCustomerInfo.Name = "pnlCustomerInfo";
-            this.pnlCustomerInfo.Size = new System.Drawing.Size(391, 76);
+            this.pnlCustomerInfo.Size = new System.Drawing.Size(521, 93);
             this.pnlCustomerInfo.TabIndex = 42;
             // 
             // lblCustomerAddress
             // 
             this.lblCustomerAddress.AutoSize = true;
             this.lblCustomerAddress.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblCustomerAddress.Location = new System.Drawing.Point(159, 35);
-            this.lblCustomerAddress.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblCustomerAddress.Location = new System.Drawing.Point(212, 43);
             this.lblCustomerAddress.Name = "lblCustomerAddress";
-            this.lblCustomerAddress.Size = new System.Drawing.Size(56, 13);
+            this.lblCustomerAddress.Size = new System.Drawing.Size(72, 17);
             this.lblCustomerAddress.TabIndex = 6;
             this.lblCustomerAddress.Text = "Address:";
             // 
             // txtCustomerAddress
             // 
             this.txtCustomerAddress.BackColor = System.Drawing.Color.White;
-            this.txtCustomerAddress.Location = new System.Drawing.Point(222, 32);
-            this.txtCustomerAddress.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCustomerAddress.Location = new System.Drawing.Point(296, 39);
+            this.txtCustomerAddress.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtCustomerAddress.Name = "txtCustomerAddress";
             this.txtCustomerAddress.ReadOnly = true;
-            this.txtCustomerAddress.Size = new System.Drawing.Size(153, 20);
+            this.txtCustomerAddress.Size = new System.Drawing.Size(203, 22);
             this.txtCustomerAddress.TabIndex = 7;
             // 
             // lblCustomerPhone
             // 
             this.lblCustomerPhone.AutoSize = true;
             this.lblCustomerPhone.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblCustomerPhone.Location = new System.Drawing.Point(11, 36);
-            this.lblCustomerPhone.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblCustomerPhone.Location = new System.Drawing.Point(15, 44);
             this.lblCustomerPhone.Name = "lblCustomerPhone";
-            this.lblCustomerPhone.Size = new System.Drawing.Size(47, 13);
+            this.lblCustomerPhone.Size = new System.Drawing.Size(59, 17);
             this.lblCustomerPhone.TabIndex = 4;
             this.lblCustomerPhone.Text = "Phone:";
             // 
             // txtCustomerPhone
             // 
             this.txtCustomerPhone.BackColor = System.Drawing.Color.White;
-            this.txtCustomerPhone.Location = new System.Drawing.Point(58, 34);
-            this.txtCustomerPhone.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCustomerPhone.Location = new System.Drawing.Point(77, 42);
+            this.txtCustomerPhone.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtCustomerPhone.Name = "txtCustomerPhone";
             this.txtCustomerPhone.ReadOnly = true;
-            this.txtCustomerPhone.Size = new System.Drawing.Size(81, 20);
+            this.txtCustomerPhone.Size = new System.Drawing.Size(107, 22);
             this.txtCustomerPhone.TabIndex = 5;
             // 
             // lblCustomerName
             // 
             this.lblCustomerName.AutoSize = true;
             this.lblCustomerName.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblCustomerName.Location = new System.Drawing.Point(205, 10);
-            this.lblCustomerName.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblCustomerName.Location = new System.Drawing.Point(273, 12);
             this.lblCustomerName.Name = "lblCustomerName";
-            this.lblCustomerName.Size = new System.Drawing.Size(43, 13);
+            this.lblCustomerName.Size = new System.Drawing.Size(54, 17);
             this.lblCustomerName.TabIndex = 2;
             this.lblCustomerName.Text = "Name:";
             // 
             // txtCustomerName
             // 
             this.txtCustomerName.BackColor = System.Drawing.Color.White;
-            this.txtCustomerName.Location = new System.Drawing.Point(257, 10);
-            this.txtCustomerName.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCustomerName.Location = new System.Drawing.Point(343, 12);
+            this.txtCustomerName.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtCustomerName.Name = "txtCustomerName";
             this.txtCustomerName.ReadOnly = true;
-            this.txtCustomerName.Size = new System.Drawing.Size(119, 20);
+            this.txtCustomerName.Size = new System.Drawing.Size(157, 22);
             this.txtCustomerName.TabIndex = 3;
             // 
             // lblCustomer
             // 
             this.lblCustomer.AutoSize = true;
             this.lblCustomer.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblCustomer.Location = new System.Drawing.Point(7, 9);
-            this.lblCustomer.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblCustomer.Location = new System.Drawing.Point(9, 11);
             this.lblCustomer.Name = "lblCustomer";
-            this.lblCustomer.Size = new System.Drawing.Size(57, 13);
+            this.lblCustomer.Size = new System.Drawing.Size(73, 17);
             this.lblCustomer.TabIndex = 0;
             this.lblCustomer.Text = "Supplier:";
             // 
@@ -514,10 +523,10 @@
             this.cmbCustomer.BackColor = System.Drawing.Color.White;
             this.cmbCustomer.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbCustomer.FormattingEnabled = true;
-            this.cmbCustomer.Location = new System.Drawing.Point(68, 7);
-            this.cmbCustomer.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.cmbCustomer.Location = new System.Drawing.Point(91, 9);
+            this.cmbCustomer.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.cmbCustomer.Name = "cmbCustomer";
-            this.cmbCustomer.Size = new System.Drawing.Size(135, 21);
+            this.cmbCustomer.Size = new System.Drawing.Size(179, 24);
             this.cmbCustomer.TabIndex = 1;
             this.cmbCustomer.SelectedIndexChanged += new System.EventHandler(this.CmbCustomer_SelectedIndexChanged);
             // 
@@ -526,10 +535,9 @@
             this.lblTitle.AutoSize = true;
             this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
             this.lblTitle.ForeColor = System.Drawing.Color.White;
-            this.lblTitle.Location = new System.Drawing.Point(20, 18);
-            this.lblTitle.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblTitle.Location = new System.Drawing.Point(27, 22);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(246, 30);
+            this.lblTitle.Size = new System.Drawing.Size(302, 37);
             this.lblTitle.TabIndex = 1;
             this.lblTitle.Text = "Purchase Return - POS";
             // 
@@ -540,41 +548,39 @@
             this.pnlReturnInfo.Controls.Add(this.txtReturnNumber);
             this.pnlReturnInfo.Controls.Add(this.lblReturnDate);
             this.pnlReturnInfo.Controls.Add(this.dtpReturnDate);
-            this.pnlReturnInfo.Location = new System.Drawing.Point(8, 79);
-            this.pnlReturnInfo.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pnlReturnInfo.Location = new System.Drawing.Point(11, 97);
+            this.pnlReturnInfo.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.pnlReturnInfo.Name = "pnlReturnInfo";
-            this.pnlReturnInfo.Size = new System.Drawing.Size(637, 76);
+            this.pnlReturnInfo.Size = new System.Drawing.Size(849, 93);
             this.pnlReturnInfo.TabIndex = 40;
             // 
             // lblReturnNumber
             // 
             this.lblReturnNumber.AutoSize = true;
             this.lblReturnNumber.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblReturnNumber.Location = new System.Drawing.Point(2, 9);
-            this.lblReturnNumber.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblReturnNumber.Location = new System.Drawing.Point(3, 11);
             this.lblReturnNumber.Name = "lblReturnNumber";
-            this.lblReturnNumber.Size = new System.Drawing.Size(123, 17);
+            this.lblReturnNumber.Size = new System.Drawing.Size(142, 20);
             this.lblReturnNumber.TabIndex = 0;
             this.lblReturnNumber.Text = "Return Number:";
             // 
             // txtReturnNumber
             // 
             this.txtReturnNumber.BackColor = System.Drawing.Color.White;
-            this.txtReturnNumber.Location = new System.Drawing.Point(118, 10);
-            this.txtReturnNumber.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtReturnNumber.Location = new System.Drawing.Point(157, 12);
+            this.txtReturnNumber.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtReturnNumber.Name = "txtReturnNumber";
             this.txtReturnNumber.ReadOnly = true;
-            this.txtReturnNumber.Size = new System.Drawing.Size(131, 20);
+            this.txtReturnNumber.Size = new System.Drawing.Size(173, 22);
             this.txtReturnNumber.TabIndex = 1;
             // 
             // lblReturnDate
             // 
             this.lblReturnDate.AutoSize = true;
             this.lblReturnDate.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblReturnDate.Location = new System.Drawing.Point(7, 37);
-            this.lblReturnDate.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblReturnDate.Location = new System.Drawing.Point(9, 46);
             this.lblReturnDate.Name = "lblReturnDate";
-            this.lblReturnDate.Size = new System.Drawing.Size(101, 17);
+            this.lblReturnDate.Size = new System.Drawing.Size(117, 20);
             this.lblReturnDate.TabIndex = 2;
             this.lblReturnDate.Text = "Return Date:";
             // 
@@ -582,10 +588,10 @@
             // 
             this.dtpReturnDate.CustomFormat = "dddd, MMMM dd, yyyy";
             this.dtpReturnDate.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
-            this.dtpReturnDate.Location = new System.Drawing.Point(115, 36);
-            this.dtpReturnDate.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.dtpReturnDate.Location = new System.Drawing.Point(153, 44);
+            this.dtpReturnDate.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.dtpReturnDate.Name = "dtpReturnDate";
-            this.dtpReturnDate.Size = new System.Drawing.Size(135, 20);
+            this.dtpReturnDate.Size = new System.Drawing.Size(179, 22);
             this.dtpReturnDate.TabIndex = 3;
             // 
             // pnlInvoiceSelection
@@ -594,10 +600,10 @@
             this.pnlInvoiceSelection.Controls.Add(this.btnLoadInvoice);
             this.pnlInvoiceSelection.Controls.Add(this.lblInvoiceNumber);
             this.pnlInvoiceSelection.Controls.Add(this.cmbInvoiceNumber);
-            this.pnlInvoiceSelection.Location = new System.Drawing.Point(8, 168);
-            this.pnlInvoiceSelection.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.pnlInvoiceSelection.Location = new System.Drawing.Point(11, 207);
+            this.pnlInvoiceSelection.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.pnlInvoiceSelection.Name = "pnlInvoiceSelection";
-            this.pnlInvoiceSelection.Size = new System.Drawing.Size(637, 53);
+            this.pnlInvoiceSelection.Size = new System.Drawing.Size(849, 65);
             this.pnlInvoiceSelection.TabIndex = 41;
             // 
             // btnLoadInvoice
@@ -605,22 +611,22 @@
             this.btnLoadInvoice.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(120)))), ((int)(((byte)(215)))));
             this.btnLoadInvoice.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnLoadInvoice.ForeColor = System.Drawing.Color.White;
-            this.btnLoadInvoice.Location = new System.Drawing.Point(348, 13);
-            this.btnLoadInvoice.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.btnLoadInvoice.Location = new System.Drawing.Point(464, 16);
+            this.btnLoadInvoice.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnLoadInvoice.Name = "btnLoadInvoice";
-            this.btnLoadInvoice.Size = new System.Drawing.Size(75, 20);
+            this.btnLoadInvoice.Size = new System.Drawing.Size(100, 25);
             this.btnLoadInvoice.TabIndex = 2;
             this.btnLoadInvoice.Text = "Load";
             this.btnLoadInvoice.UseVisualStyleBackColor = false;
+            this.btnLoadInvoice.Click += new System.EventHandler(this.BtnLoadInvoice_Click);
             // 
             // lblInvoiceNumber
             // 
             this.lblInvoiceNumber.AutoSize = true;
             this.lblInvoiceNumber.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblInvoiceNumber.Location = new System.Drawing.Point(7, 13);
-            this.lblInvoiceNumber.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblInvoiceNumber.Location = new System.Drawing.Point(9, 16);
             this.lblInvoiceNumber.Name = "lblInvoiceNumber";
-            this.lblInvoiceNumber.Size = new System.Drawing.Size(61, 15);
+            this.lblInvoiceNumber.Size = new System.Drawing.Size(76, 20);
             this.lblInvoiceNumber.TabIndex = 1;
             this.lblInvoiceNumber.Text = "Invoice #:";
             // 
@@ -629,44 +635,52 @@
             this.cmbInvoiceNumber.BackColor = System.Drawing.Color.White;
             this.cmbInvoiceNumber.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbInvoiceNumber.FormattingEnabled = true;
-            this.cmbInvoiceNumber.Location = new System.Drawing.Point(93, 13);
-            this.cmbInvoiceNumber.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.cmbInvoiceNumber.Location = new System.Drawing.Point(124, 16);
+            this.cmbInvoiceNumber.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.cmbInvoiceNumber.Name = "cmbInvoiceNumber";
-            this.cmbInvoiceNumber.Size = new System.Drawing.Size(235, 21);
+            this.cmbInvoiceNumber.Size = new System.Drawing.Size(312, 24);
             this.cmbInvoiceNumber.TabIndex = 0;
             // 
             // panel1
             // 
-            this.panel1.BackColor = System.Drawing.Color.SeaGreen;
+            this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(181)))), ((int)(((byte)(246)))));
             this.panel1.Controls.Add(this.lblTitle);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.panel1.Location = new System.Drawing.Point(0, 0);
-            this.panel1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.panel1.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1324, 60);
+            this.panel1.Size = new System.Drawing.Size(1765, 74);
             this.panel1.TabIndex = 38;
+            // 
+            // panel3
+            // 
+            this.panel3.Controls.Add(this.dataGridView1);
+            this.panel3.Controls.Add(this.btnsave);
+            this.panel3.Controls.Add(this.panel2);
+            this.panel3.Controls.Add(this.CancelBtn);
+            this.panel3.Location = new System.Drawing.Point(9, 308);
+            this.panel3.Name = "panel3";
+            this.panel3.Size = new System.Drawing.Size(1554, 380);
+            this.panel3.TabIndex = 51;
             // 
             // PurchaseReturnForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1324, 749);
-            this.Controls.Add(this.btnsave);
-            this.Controls.Add(this.panel2);
+            this.ClientSize = new System.Drawing.Size(1765, 922);
+            this.Controls.Add(this.panel3);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.txtdescription);
             this.Controls.Add(this.cmbreturnreason);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.dataGridView1);
-            this.Controls.Add(this.CancelBtn);
             this.Controls.Add(this.pnlOriginalInvoiceDetails);
             this.Controls.Add(this.pnlCustomerInfo);
             this.Controls.Add(this.pnlReturnInfo);
             this.Controls.Add(this.pnlInvoiceSelection);
             this.Controls.Add(this.panel1);
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.Name = "PurchaseReturnForm";
-            this.Text = "madni mobile Mobiles Rwp - Purchase Return";
+            this.Text = "Vape Store - Purchase Return";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();
@@ -681,6 +695,7 @@
             this.pnlInvoiceSelection.PerformLayout();
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
+            this.panel3.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -712,7 +727,7 @@
         private System.Windows.Forms.TextBox txtdescription;
         private System.Windows.Forms.DataGridViewTextBoxColumn Total;
         private System.Windows.Forms.ComboBox cmbreturnreason;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Select;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colSelect;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.DataGridView dataGridView1;
         private System.Windows.Forms.TextBox txtOriginalInvoiceDate;
@@ -740,5 +755,6 @@
         private System.Windows.Forms.Label lblInvoiceNumber;
         private System.Windows.Forms.ComboBox cmbInvoiceNumber;
         private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Panel panel3;
     }
 }

@@ -29,6 +29,7 @@ namespace Vape_Store
         public CustomerReportForm()
         {
             InitializeComponent();
+            
             _customerRepository = new CustomerRepository();
             _saleRepository = new SaleRepository();
             _reportingService = new ReportingService();
@@ -398,7 +399,8 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("MADNI MOBILE AND PHOTOSTATE - CUSTOMER REPORT", titleFont);
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                Paragraph title = new Paragraph($"{storeName} - CUSTOMER REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);

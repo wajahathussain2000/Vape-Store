@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -21,26 +21,27 @@ namespace Vape_Store
         private CustomerRepository _customerRepository;
         private ProductRepository _productRepository;
         private InventoryService _inventoryService;
-        private BarcodeService _barcodeService;
+        // private BarcodeService _barcodeService;
         
         private List<Sale> _sales;
         private List<Customer> _customers;
-        private List<Product> _products;
+        // private List<Product> _products;
         private Sale _selectedSale;
         private List<SalesReturnItem> _returnItems;
         
-        private bool isEditMode = false;
-        private int selectedReturnId = -1;
+        // private bool isEditMode = false;
+        // private int selectedReturnId = -1;
         
         // Barcode scanner input field
         private TextBox txtBarcodeScanner;
         private Timer _barcodeTimer;
-        private PictureBox picBarcode;
+        // private PictureBox picBarcode;
         private bool _isShowingBarcodeError = false;
 
         public SalesReturnForm()
         {
             InitializeComponent();
+            
             _salesReturnService = new SalesReturnService();
             _salesReturnRepository = new SalesReturnRepository();
             _saleRepository = new SaleRepository();
@@ -78,6 +79,16 @@ namespace Vape_Store
             dataGridView1.Columns.Add("ItemName", "Item Name");
             dataGridView1.Columns.Add("OrignalQty", "Original Qty");
             dataGridView1.Columns.Add("ReturnQty", "Return Qty");
+            
+            var resellableCol = new DataGridViewCheckBoxColumn
+            {
+                Name = "IsResellable",
+                HeaderText = "Resellable",
+                Width = 90,
+                ReadOnly = false
+            };
+            dataGridView1.Columns.Add(resellableCol);
+            
             dataGridView1.Columns.Add("Price", "Price");
             dataGridView1.Columns.Add("Total", "Total");
             
@@ -96,9 +107,11 @@ namespace Vape_Store
             dataGridView1.Columns["Price"].DefaultCellStyle.Format = "F2";
             dataGridView1.Columns["Total"].DefaultCellStyle.Format = "F2";
             
-            // Make ReturnQty column editable
+            // Make ReturnQty and IsResellable columns editable
             dataGridView1.Columns["ReturnQty"].ReadOnly = false;
             dataGridView1.Columns["ReturnQty"].DefaultCellStyle.BackColor = Color.LightYellow;
+            dataGridView1.Columns["IsResellable"].ReadOnly = false;
+            dataGridView1.Columns["IsResellable"].DefaultCellStyle.BackColor = Color.LightGreen;
         }
 
         private void SetupEventHandlers()
@@ -607,6 +620,7 @@ namespace Vape_Store
                     var itemNameCell = dataGridView1.Rows[rowIndex].Cells["ItemName"];
                     var originalQtyCell = dataGridView1.Rows[rowIndex].Cells["OrignalQty"];
                     var returnQtyCell = dataGridView1.Rows[rowIndex].Cells["ReturnQty"];
+                    var resellableCell = dataGridView1.Rows[rowIndex].Cells["IsResellable"];
                     var priceCell = dataGridView1.Rows[rowIndex].Cells["Price"];
                     var totalCell = dataGridView1.Rows[rowIndex].Cells["Total"];
 
@@ -618,6 +632,8 @@ namespace Vape_Store
                         originalQtyCell.Value = saleItem.Quantity;
                     if (returnQtyCell != null)
                         returnQtyCell.Value = 0;
+                    if (resellableCell != null)
+                        resellableCell.Value = true; // Default to resellable
                     if (priceCell != null)
                         priceCell.Value = saleItem.UnitPrice;
                     if (totalCell != null)
@@ -660,6 +676,14 @@ namespace Vape_Store
                         }
                         
                         CalculateTotals();
+                    }
+                    else if (dataGridView1.Columns.Contains("IsResellable") && e.ColumnIndex == dataGridView1.Columns["IsResellable"].Index)
+                    {
+                        bool isResellable = Convert.ToBoolean(dataGridView1.Rows[e.RowIndex].Cells["IsResellable"].Value ?? true);
+                        if (e.RowIndex < _returnItems.Count)
+                        {
+                            _returnItems[e.RowIndex].IsResellable = isResellable;
+                        }
                     }
                 }
             }
@@ -1029,6 +1053,100 @@ namespace Vape_Store
                 return result;
             
             return 0;
+        }
+
+        private void panel2_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void txtdescription_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void cmbreturnreason_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (cmbreturnreason.SelectedItem == null) return;
+                
+                string reason = cmbreturnreason.SelectedItem.ToString();
+                bool isDefectiveReason = string.Equals(reason, "Defective Product", StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(reason, "Quality Issue", StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(reason, "Damaged in Transit", StringComparison.OrdinalIgnoreCase);
+                
+                // Toggle resellable checkbox for all items in the grid based on selection
+                for (int i = 0; i < dataGridView1.Rows.Count; i++)
+                {
+                    var cell = dataGridView1.Rows[i].Cells["IsResellable"];
+                    if (cell != null)
+                    {
+                        cell.Value = !isDefectiveReason;
+                    }
+                    
+                    if (i < _returnItems.Count)
+                    {
+                        _returnItems[i].IsResellable = !isDefectiveReason;
+                    }
+                }
+                
+                dataGridView1.Refresh();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating resellable status based on reason: {ex.Message}");
+            }
+        }
+
+        private void pnlReturnInfo_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void pnlInvoiceSelection_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void pnlCustomerInfo_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void lblOriginalInvoiceTitle_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void SalesReturnForm_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void NewItemBtn_Click_1(object sender, EventArgs e)
+        {
+
+        }
+
+        private void CancelBtn_Click_1(object sender, EventArgs e)
+        {
+
         }
     }
 }

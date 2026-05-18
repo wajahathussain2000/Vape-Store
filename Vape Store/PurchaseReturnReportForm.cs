@@ -33,6 +33,7 @@ namespace Vape_Store
         public PurchaseReturnReportForm()
         {
             InitializeComponent();
+            
             _purchaseReturnRepository = new PurchaseReturnRepository();
             _supplierRepository = new SupplierRepository();
             _productRepository = new ProductRepository();
@@ -588,7 +589,8 @@ namespace Vape_Store
                 html.AppendLine("<body>");
                 
                 // Header
-                html.AppendLine("<h1>PURCHASE RETURN REPORT</h1>");
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                html.AppendLine($"<h1>{storeName} - PURCHASE RETURN REPORT</h1>");
                 html.AppendLine($"<p><strong>Report Period:</strong> {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}</p>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 
@@ -663,7 +665,8 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("MADNI MOBILE AND PHOTOSTATE - PURCHASE RETURN REPORT", titleFont);
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                Paragraph title = new Paragraph($"{storeName} - PURCHASE RETURN REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);

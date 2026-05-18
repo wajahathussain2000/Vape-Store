@@ -1,4 +1,4 @@
-﻿namespace Vape_Store
+namespace Vape_Store
 {
     partial class Customers
     {
@@ -28,32 +28,33 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.btnSave = new System.Windows.Forms.Button();
-            this.btnUpdate = new System.Windows.Forms.Button();
-            this.btnDelete = new System.Windows.Forms.Button();
+            this.btnSave = new Guna.UI2.WinForms.Guna2Button();
+            this.btnUpdate = new Guna.UI2.WinForms.Guna2Button();
+            this.btnDelete = new Guna.UI2.WinForms.Guna2Button();
             this.panel3 = new System.Windows.Forms.Panel();
-            this.btnClear = new System.Windows.Forms.Button();
-            this.dgvCustomers = new System.Windows.Forms.DataGridView();
-            this.checkBox1 = new System.Windows.Forms.CheckBox();
+            this.btnClear = new Guna.UI2.WinForms.Guna2Button();
+            this.dgvCustomers = new Guna.UI2.WinForms.Guna2DataGridView();
+            this.checkBox1 = new Guna.UI2.WinForms.Guna2CheckBox();
             this.label2 = new System.Windows.Forms.Label();
             this.postalLabel = new System.Windows.Forms.Label();
-            this.txtPostalCode = new System.Windows.Forms.TextBox();
+            this.txtPostalCode = new Guna.UI2.WinForms.Guna2TextBox();
             this.cityLabel = new System.Windows.Forms.Label();
-            this.txtCity = new System.Windows.Forms.TextBox();
+            this.txtCity = new Guna.UI2.WinForms.Guna2TextBox();
             this.addressLabel = new System.Windows.Forms.Label();
-            this.txtAddress = new System.Windows.Forms.TextBox();
+            this.txtAddress = new Guna.UI2.WinForms.Guna2TextBox();
             this.emailLabel = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
-            this.txtSearch = new System.Windows.Forms.TextBox();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.txtEmail = new System.Windows.Forms.TextBox();
+            this.txtSearch = new Guna.UI2.WinForms.Guna2TextBox();
+            this.groupBox2 = new Guna.UI2.WinForms.Guna2GroupBox();
+            this.txtEmail = new Guna.UI2.WinForms.Guna2TextBox();
             this.phoneLabel = new System.Windows.Forms.Label();
-            this.txtPhone = new System.Windows.Forms.TextBox();
-            this.txtCustomerName = new System.Windows.Forms.TextBox();
+            this.txtPhone = new Guna.UI2.WinForms.Guna2TextBox();
+            this.txtCustomerName = new Guna.UI2.WinForms.Guna2TextBox();
             this.codeLabel = new System.Windows.Forms.Label();
-            this.txtCustomerCode = new System.Windows.Forms.TextBox();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.txtCustomerCode = new Guna.UI2.WinForms.Guna2TextBox();
+            this.groupBox1 = new Guna.UI2.WinForms.Guna2GroupBox();
             this.nameLabel = new System.Windows.Forms.Label();
+            this.panelMainContainer = new System.Windows.Forms.Panel();
             this.panel2 = new System.Windows.Forms.Panel();
             this.panel1 = new System.Windows.Forms.Panel();
             this.headerLabel = new System.Windows.Forms.Label();
@@ -67,48 +68,45 @@
             // 
             // btnSave
             // 
-            this.btnSave.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(46)))), ((int)(((byte)(204)))), ((int)(((byte)(113)))));
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSave.BorderRadius = 5;
+            this.btnSave.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(181)))), ((int)(((byte)(246)))));
             this.btnSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnSave.ForeColor = System.Drawing.Color.White;
             this.btnSave.Location = new System.Drawing.Point(14, 21);
-            this.btnSave.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.btnSave.Margin = new System.Windows.Forms.Padding(2);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(103, 30);
+            this.btnSave.Size = new System.Drawing.Size(103, 35);
             this.btnSave.TabIndex = 3;
             this.btnSave.Text = "Save";
-            this.btnSave.UseVisualStyleBackColor = false;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
             // 
             // btnUpdate
             // 
-            this.btnUpdate.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(152)))), ((int)(((byte)(219)))));
+            this.btnUpdate.BorderRadius = 5;
             this.btnUpdate.Enabled = false;
-            this.btnUpdate.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnUpdate.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(152)))), ((int)(((byte)(219)))));
             this.btnUpdate.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnUpdate.ForeColor = System.Drawing.Color.White;
             this.btnUpdate.Location = new System.Drawing.Point(133, 21);
-            this.btnUpdate.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.btnUpdate.Margin = new System.Windows.Forms.Padding(2);
             this.btnUpdate.Name = "btnUpdate";
-            this.btnUpdate.Size = new System.Drawing.Size(103, 30);
+            this.btnUpdate.Size = new System.Drawing.Size(103, 35);
             this.btnUpdate.TabIndex = 6;
             this.btnUpdate.Text = "Update";
-            this.btnUpdate.UseVisualStyleBackColor = false;
             this.btnUpdate.Click += new System.EventHandler(this.BtnUpdate_Click);
             // 
             // btnDelete
             // 
-            this.btnDelete.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(76)))), ((int)(((byte)(60)))));
-            this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDelete.BorderRadius = 5;
+            this.btnDelete.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(76)))), ((int)(((byte)(60)))));
             this.btnDelete.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnDelete.ForeColor = System.Drawing.Color.White;
             this.btnDelete.Location = new System.Drawing.Point(365, 21);
-            this.btnDelete.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.btnDelete.Margin = new System.Windows.Forms.Padding(2);
             this.btnDelete.Name = "btnDelete";
-            this.btnDelete.Size = new System.Drawing.Size(103, 30);
+            this.btnDelete.Size = new System.Drawing.Size(103, 35);
             this.btnDelete.TabIndex = 5;
             this.btnDelete.Text = "Delete";
-            this.btnDelete.UseVisualStyleBackColor = false;
             this.btnDelete.Click += new System.EventHandler(this.BtnDelete_Click);
             // 
             // panel3
@@ -125,50 +123,82 @@
             // 
             // btnClear
             // 
-            this.btnClear.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(241)))), ((int)(((byte)(196)))), ((int)(((byte)(15)))));
-            this.btnClear.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnClear.BorderRadius = 5;
+            this.btnClear.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(241)))), ((int)(((byte)(196)))), ((int)(((byte)(15)))));
             this.btnClear.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnClear.ForeColor = System.Drawing.Color.White;
             this.btnClear.Location = new System.Drawing.Point(248, 21);
-            this.btnClear.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.btnClear.Margin = new System.Windows.Forms.Padding(2);
             this.btnClear.Name = "btnClear";
-            this.btnClear.Size = new System.Drawing.Size(103, 30);
+            this.btnClear.Size = new System.Drawing.Size(103, 35);
             this.btnClear.TabIndex = 4;
             this.btnClear.Text = "Clear";
-            this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
             // 
             // dgvCustomers
             // 
             this.dgvCustomers.AllowUserToAddRows = false;
             this.dgvCustomers.AllowUserToDeleteRows = false;
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
+            this.dgvCustomers.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             this.dgvCustomers.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.dgvCustomers.BackgroundColor = System.Drawing.Color.White;
+            this.dgvCustomers.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.dgvCustomers.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.SingleHorizontal;
+            this.dgvCustomers.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(88)))), ((int)(((byte)(255)))));
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle2.ForeColor = System.Drawing.Color.White;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dgvCustomers.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             this.dgvCustomers.ColumnHeadersHeight = 30;
-            this.dgvCustomers.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            this.dgvCustomers.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(189)))), ((int)(((byte)(195)))), ((int)(((byte)(199)))));
-            this.dgvCustomers.Location = new System.Drawing.Point(22, 51);
-            this.dgvCustomers.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.Color.White;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("Segoe UI", 10.5F);
+            dataGridViewCellStyle3.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(69)))), ((int)(((byte)(94)))));
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(229)))), ((int)(((byte)(255)))));
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(69)))), ((int)(((byte)(94)))));
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.dgvCustomers.DefaultCellStyle = dataGridViewCellStyle3;
+            this.dgvCustomers.EnableHeadersVisualStyles = false;
+            this.dgvCustomers.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(229)))), ((int)(((byte)(255)))));
+            this.dgvCustomers.Location = new System.Drawing.Point(22, 60);
+            this.dgvCustomers.Margin = new System.Windows.Forms.Padding(2);
             this.dgvCustomers.MultiSelect = false;
             this.dgvCustomers.Name = "dgvCustomers";
             this.dgvCustomers.ReadOnly = true;
             this.dgvCustomers.RowHeadersVisible = false;
-            this.dgvCustomers.RowHeadersWidth = 62;
             this.dgvCustomers.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvCustomers.Size = new System.Drawing.Size(709, 281);
+            this.dgvCustomers.Size = new System.Drawing.Size(691, 272);
             this.dgvCustomers.TabIndex = 45;
+            this.dgvCustomers.Theme = Guna.UI2.WinForms.Enums.DataGridViewPresetThemes.Default;
+            this.dgvCustomers.ThemeStyle.AlternatingRowsStyle.BackColor = System.Drawing.Color.White;
+            this.dgvCustomers.ThemeStyle.BackColor = System.Drawing.Color.White;
+            this.dgvCustomers.ThemeStyle.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(229)))), ((int)(((byte)(255)))));
             // 
             // checkBox1
             // 
             this.checkBox1.AutoSize = true;
-            this.checkBox1.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.checkBox1.Location = new System.Drawing.Point(152, 262);
-            this.checkBox1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.checkBox1.CheckedState.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(94)))), ((int)(((byte)(148)))), ((int)(((byte)(255)))));
+            this.checkBox1.CheckedState.BorderRadius = 2;
+            this.checkBox1.CheckedState.BorderThickness = 0;
+            this.checkBox1.CheckedState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(94)))), ((int)(((byte)(148)))), ((int)(((byte)(255)))));
+            this.checkBox1.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.checkBox1.Location = new System.Drawing.Point(145, 262);
+            this.checkBox1.Margin = new System.Windows.Forms.Padding(2);
             this.checkBox1.Name = "checkBox1";
-            this.checkBox1.Size = new System.Drawing.Size(70, 23);
+            this.checkBox1.Size = new System.Drawing.Size(71, 23);
             this.checkBox1.TabIndex = 46;
             this.checkBox1.Text = "Active";
-            this.checkBox1.UseVisualStyleBackColor = true;
+            this.checkBox1.UncheckedState.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(125)))), ((int)(((byte)(137)))), ((int)(((byte)(149)))));
+            this.checkBox1.UncheckedState.BorderRadius = 2;
+            this.checkBox1.UncheckedState.BorderThickness = 0;
+            this.checkBox1.UncheckedState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(125)))), ((int)(((byte)(137)))), ((int)(((byte)(149)))));
             // 
             // label2
             // 
@@ -193,9 +223,13 @@
             // 
             // txtPostalCode
             // 
+            this.txtPostalCode.BorderRadius = 5;
+            this.txtPostalCode.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtPostalCode.DefaultText = "";
             this.txtPostalCode.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.txtPostalCode.Location = new System.Drawing.Point(145, 228);
-            this.txtPostalCode.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtPostalCode.ForeColor = System.Drawing.Color.Black;
+            this.txtPostalCode.Location = new System.Drawing.Point(145, 222);
+            this.txtPostalCode.Margin = new System.Windows.Forms.Padding(2);
             this.txtPostalCode.Name = "txtPostalCode";
             this.txtPostalCode.Size = new System.Drawing.Size(171, 23);
             this.txtPostalCode.TabIndex = 45;
@@ -213,9 +247,13 @@
             // 
             // txtCity
             // 
+            this.txtCity.BorderRadius = 5;
+            this.txtCity.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtCity.DefaultText = "";
             this.txtCity.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtCity.ForeColor = System.Drawing.Color.Black;
             this.txtCity.Location = new System.Drawing.Point(145, 194);
-            this.txtCity.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCity.Margin = new System.Windows.Forms.Padding(2);
             this.txtCity.Name = "txtCity";
             this.txtCity.Size = new System.Drawing.Size(171, 23);
             this.txtCity.TabIndex = 43;
@@ -233,12 +271,15 @@
             // 
             // txtAddress
             // 
+            this.txtAddress.BorderRadius = 5;
+            this.txtAddress.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtAddress.DefaultText = "";
             this.txtAddress.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtAddress.ForeColor = System.Drawing.Color.Black;
             this.txtAddress.Location = new System.Drawing.Point(145, 148);
-            this.txtAddress.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtAddress.Margin = new System.Windows.Forms.Padding(2);
             this.txtAddress.Multiline = true;
             this.txtAddress.Name = "txtAddress";
-            this.txtAddress.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.txtAddress.Size = new System.Drawing.Size(171, 40);
             this.txtAddress.TabIndex = 41;
             // 
@@ -265,33 +306,46 @@
             // 
             // txtSearch
             // 
+            this.txtSearch.BorderRadius = 5;
+            this.txtSearch.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtSearch.DefaultText = "";
             this.txtSearch.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtSearch.ForeColor = System.Drawing.Color.Black;
             this.txtSearch.Location = new System.Drawing.Point(68, 26);
-            this.txtSearch.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtSearch.Margin = new System.Windows.Forms.Padding(2);
             this.txtSearch.Name = "txtSearch";
             this.txtSearch.Size = new System.Drawing.Size(238, 23);
             this.txtSearch.TabIndex = 46;
+            this.txtSearch.PlaceholderText = "Search customers...";
             // 
             // groupBox2
             // 
+            this.groupBox2.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(213)))), ((int)(((byte)(218)))), ((int)(((byte)(223)))));
+            this.groupBox2.BorderRadius = 5;
             this.groupBox2.Controls.Add(this.label3);
             this.groupBox2.Controls.Add(this.txtSearch);
             this.groupBox2.Controls.Add(this.dgvCustomers);
-            this.groupBox2.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.groupBox2.CustomBorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(44)))), ((int)(((byte)(84)))));
+            this.groupBox2.FillColor = System.Drawing.Color.White;
+            this.groupBox2.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.groupBox2.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(125)))), ((int)(((byte)(137)))), ((int)(((byte)(149)))));
             this.groupBox2.Location = new System.Drawing.Point(362, 16);
-            this.groupBox2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox2.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.groupBox2.Size = new System.Drawing.Size(735, 348);
             this.groupBox2.TabIndex = 1;
-            this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Customer List";
+            this.groupBox2.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // txtEmail
             // 
+            this.txtEmail.BorderRadius = 5;
+            this.txtEmail.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtEmail.DefaultText = "";
             this.txtEmail.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtEmail.ForeColor = System.Drawing.Color.Black;
             this.txtEmail.Location = new System.Drawing.Point(145, 116);
-            this.txtEmail.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtEmail.Margin = new System.Windows.Forms.Padding(2);
             this.txtEmail.Name = "txtEmail";
             this.txtEmail.Size = new System.Drawing.Size(171, 23);
             this.txtEmail.TabIndex = 39;
@@ -309,18 +363,26 @@
             // 
             // txtPhone
             // 
+            this.txtPhone.BorderRadius = 5;
+            this.txtPhone.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtPhone.DefaultText = "";
             this.txtPhone.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtPhone.ForeColor = System.Drawing.Color.Black;
             this.txtPhone.Location = new System.Drawing.Point(144, 88);
-            this.txtPhone.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtPhone.Margin = new System.Windows.Forms.Padding(2);
             this.txtPhone.Name = "txtPhone";
             this.txtPhone.Size = new System.Drawing.Size(173, 23);
             this.txtPhone.TabIndex = 37;
             // 
             // txtCustomerName
             // 
+            this.txtCustomerName.BorderRadius = 5;
+            this.txtCustomerName.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtCustomerName.DefaultText = "";
             this.txtCustomerName.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtCustomerName.ForeColor = System.Drawing.Color.Black;
             this.txtCustomerName.Location = new System.Drawing.Point(145, 62);
-            this.txtCustomerName.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCustomerName.Margin = new System.Windows.Forms.Padding(2);
             this.txtCustomerName.Name = "txtCustomerName";
             this.txtCustomerName.Size = new System.Drawing.Size(171, 23);
             this.txtCustomerName.TabIndex = 35;
@@ -339,9 +401,13 @@
             // txtCustomerCode
             // 
             this.txtCustomerCode.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(236)))), ((int)(((byte)(240)))), ((int)(((byte)(241)))));
+            this.txtCustomerCode.BorderRadius = 5;
+            this.txtCustomerCode.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtCustomerCode.DefaultText = "";
             this.txtCustomerCode.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtCustomerCode.ForeColor = System.Drawing.Color.Black;
             this.txtCustomerCode.Location = new System.Drawing.Point(145, 36);
-            this.txtCustomerCode.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txtCustomerCode.Margin = new System.Windows.Forms.Padding(2);
             this.txtCustomerCode.Name = "txtCustomerCode";
             this.txtCustomerCode.ReadOnly = true;
             this.txtCustomerCode.Size = new System.Drawing.Size(171, 23);
@@ -349,6 +415,8 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(213)))), ((int)(((byte)(218)))), ((int)(((byte)(223)))));
+            this.groupBox1.BorderRadius = 5;
             this.groupBox1.Controls.Add(this.checkBox1);
             this.groupBox1.Controls.Add(this.label2);
             this.groupBox1.Controls.Add(this.postalLabel);
@@ -365,15 +433,17 @@
             this.groupBox1.Controls.Add(this.txtCustomerName);
             this.groupBox1.Controls.Add(this.codeLabel);
             this.groupBox1.Controls.Add(this.txtCustomerCode);
-            this.groupBox1.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.groupBox1.CustomBorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(44)))), ((int)(((byte)(84)))));
+            this.groupBox1.FillColor = System.Drawing.Color.White;
+            this.groupBox1.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.groupBox1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(125)))), ((int)(((byte)(137)))), ((int)(((byte)(149)))));
             this.groupBox1.Location = new System.Drawing.Point(14, 16);
-            this.groupBox1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.groupBox1.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Padding = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.groupBox1.Size = new System.Drawing.Size(338, 348);
             this.groupBox1.TabIndex = 0;
-            this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Customer Information";
+            this.groupBox1.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // nameLabel
             // 
@@ -386,27 +456,28 @@
             this.nameLabel.TabIndex = 34;
             this.nameLabel.Text = "Customer Name:";
             // 
-            // panel2
+            // panelMainContainer
             // 
-            this.panel2.BackColor = System.Drawing.Color.SeaGreen;
-            this.panel2.Controls.Add(this.panel3);
-            this.panel2.Controls.Add(this.groupBox2);
-            this.panel2.Controls.Add(this.groupBox1);
-            this.panel2.Location = new System.Drawing.Point(8, 93);
-            this.panel2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(1108, 455);
-            this.panel2.TabIndex = 3;
+            this.panelMainContainer.AutoScroll = true;
+            this.panelMainContainer.Controls.Add(this.panel3);
+            this.panelMainContainer.Controls.Add(this.groupBox2);
+            this.panelMainContainer.Controls.Add(this.groupBox1);
+            this.panelMainContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelMainContainer.Location = new System.Drawing.Point(0, 80);
+            this.panelMainContainer.Name = "panelMainContainer";
+            this.panelMainContainer.Padding = new System.Windows.Forms.Padding(20);
+            this.panelMainContainer.Size = new System.Drawing.Size(1116, 472);
+            this.panelMainContainer.TabIndex = 3;
             // 
             // panel1
             // 
-            this.panel1.BackColor = System.Drawing.Color.SeaGreen;
+            this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(181)))), ((int)(((byte)(246)))));
             this.panel1.Controls.Add(this.headerLabel);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.panel1.Location = new System.Drawing.Point(0, 0);
-            this.panel1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.panel1.Margin = new System.Windows.Forms.Padding(2);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1116, 88);
+            this.panel1.Size = new System.Drawing.Size(1116, 80);
             this.panel1.TabIndex = 2;
             // 
             // headerLabel
@@ -414,7 +485,7 @@
             this.headerLabel.AutoSize = true;
             this.headerLabel.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.headerLabel.ForeColor = System.Drawing.Color.White;
-            this.headerLabel.Location = new System.Drawing.Point(16, 28);
+            this.headerLabel.Location = new System.Drawing.Point(16, 20);
             this.headerLabel.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.headerLabel.Name = "headerLabel";
             this.headerLabel.Size = new System.Drawing.Size(238, 37);
@@ -425,12 +496,13 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(249)))), ((int)(((byte)(250)))));
             this.ClientSize = new System.Drawing.Size(1116, 552);
-            this.Controls.Add(this.panel2);
+            this.Controls.Add(this.panelMainContainer);
             this.Controls.Add(this.panel1);
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "Customers";
-            this.Text = "madni mobile Mobiles Rwp - Customers";
+            this.Text = "Vape Store - Customers Management";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Customers_Load);
             this.panel3.ResumeLayout(false);
@@ -439,7 +511,7 @@
             this.groupBox2.PerformLayout();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
-            this.panel2.ResumeLayout(false);
+            this.panelMainContainer.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
             this.ResumeLayout(false);
@@ -448,34 +520,35 @@
 
         #endregion
 
-        private System.Windows.Forms.Button btnSave;
-        private System.Windows.Forms.Button btnUpdate;
-        private System.Windows.Forms.Button btnDelete;
+        private Guna.UI2.WinForms.Guna2Button btnSave;
+        private Guna.UI2.WinForms.Guna2Button btnUpdate;
+        private Guna.UI2.WinForms.Guna2Button btnDelete;
         private System.Windows.Forms.Panel panel3;
-        private System.Windows.Forms.Button btnClear;
-        private System.Windows.Forms.DataGridView dgvCustomers;
-        private System.Windows.Forms.CheckBox checkBox1;
+        private Guna.UI2.WinForms.Guna2Button btnClear;
+        private Guna.UI2.WinForms.Guna2DataGridView dgvCustomers;
+        private Guna.UI2.WinForms.Guna2CheckBox checkBox1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label postalLabel;
-        private System.Windows.Forms.TextBox txtPostalCode;
+        private Guna.UI2.WinForms.Guna2TextBox txtPostalCode;
         private System.Windows.Forms.Label cityLabel;
-        private System.Windows.Forms.TextBox txtCity;
+        private Guna.UI2.WinForms.Guna2TextBox txtCity;
         private System.Windows.Forms.Label addressLabel;
-        private System.Windows.Forms.TextBox txtAddress;
+        private Guna.UI2.WinForms.Guna2TextBox txtAddress;
         private System.Windows.Forms.Label emailLabel;
         private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.TextBox txtSearch;
-        private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.TextBox txtEmail;
+        private Guna.UI2.WinForms.Guna2TextBox txtSearch;
+        private Guna.UI2.WinForms.Guna2GroupBox groupBox2;
+        private Guna.UI2.WinForms.Guna2TextBox txtEmail;
         private System.Windows.Forms.Label phoneLabel;
-        private System.Windows.Forms.TextBox txtPhone;
-        private System.Windows.Forms.TextBox txtCustomerName;
+        private Guna.UI2.WinForms.Guna2TextBox txtPhone;
+        private Guna.UI2.WinForms.Guna2TextBox txtCustomerName;
         private System.Windows.Forms.Label codeLabel;
-        private System.Windows.Forms.TextBox txtCustomerCode;
-        private System.Windows.Forms.GroupBox groupBox1;
+        private Guna.UI2.WinForms.Guna2TextBox txtCustomerCode;
+        private Guna.UI2.WinForms.Guna2GroupBox groupBox1;
         private System.Windows.Forms.Label nameLabel;
-        private System.Windows.Forms.Panel panel2;
+        private System.Windows.Forms.Panel panelMainContainer;
         private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Label headerLabel;
     }
 }

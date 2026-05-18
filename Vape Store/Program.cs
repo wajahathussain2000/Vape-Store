@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace Vape_Store
 {
     /// <summary>
-    /// Main entry point for the madni mobile Mobiles Rwp POS System
+    /// Main entry point for the Vape Store POS System
     /// Handles application startup, global exception handling, and initialization
     /// </summary>
     internal static class Program

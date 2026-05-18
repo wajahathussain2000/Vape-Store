@@ -31,6 +31,7 @@ namespace Vape_Store
         public LowStockReportForm()
         {
             InitializeComponent();
+            
             _productRepository = new ProductRepository();
             _categoryRepository = new CategoryRepository();
             _brandRepository = new BrandRepository();
@@ -557,7 +558,8 @@ namespace Vape_Store
                 html.AppendLine("</style>");
                 html.AppendLine("</head><body>");
                 
-                html.AppendLine("<h1>MADNI MOBILE AND PHOTOSTATE - LOW STOCK REPORT</h1>");
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                html.AppendLine($"<h1>{storeName} - LOW STOCK REPORT</h1>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 
                 // Summary
@@ -613,7 +615,8 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("MADNI MOBILE AND PHOTOSTATE - LOW STOCK REPORT", titleFont);
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                Paragraph title = new Paragraph($"{storeName} - LOW STOCK REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);

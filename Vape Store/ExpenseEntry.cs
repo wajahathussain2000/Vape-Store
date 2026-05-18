@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -29,6 +29,7 @@ namespace Vape_Store
         public ExpenseEntry()
         {
             InitializeComponent();
+            
             _expenseRepository = new ExpenseRepository();
             _expenseCategoryRepository = new ExpenseCategoryRepository();
             

@@ -119,7 +119,7 @@ namespace Vape_Store
             if (perm == "users") { permsToCheck.Add("Manage Users"); permsToCheck.Add("User Access"); }
             if (perm == "accounts") { permsToCheck.Add("Manage Accounts"); permsToCheck.Add("Manage Expenses"); permsToCheck.Add("Cash in Hand"); }
             if (perm == "reports") { permsToCheck.Add("View Reports"); permsToCheck.Add("Daily Report"); permsToCheck.Add("Stock Report"); }
-            if (perm == "settings") { permsToCheck.Add("Manage Settings"); }
+            if (perm == "settings" || perm == "utilities") { permsToCheck.Add("Manage Settings"); permsToCheck.Add("Store Settings"); permsToCheck.Add("Utilities"); }
             if (perm == "backup") { permsToCheck.Add("DataBase Backup"); }
 
             // PRIORITY 1: Cache check

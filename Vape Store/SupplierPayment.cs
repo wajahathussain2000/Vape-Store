@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -27,6 +27,7 @@ namespace Vape_Store
         public SupplierPaymentForm()
         {
             InitializeComponent();
+            
             _supplierPaymentRepository = new SupplierPaymentRepository();
             _supplierRepository = new SupplierRepository();
             

@@ -1,4 +1,4 @@
-﻿namespace Vape_Store
+namespace Vape_Store
 {
     partial class CustomerPaymentForm
     {
@@ -104,7 +104,7 @@
             // 
             // btnSave
             // 
-            this.btnSave.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(46)))), ((int)(((byte)(204)))), ((int)(((byte)(113)))));
+            this.btnSave.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(181)))), ((int)(((byte)(246)))));
             this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnSave.ForeColor = System.Drawing.Color.White;
@@ -346,7 +346,7 @@
             // 
             // headerPanel
             // 
-            this.headerPanel.BackColor = System.Drawing.Color.SeaGreen;
+            this.headerPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(181)))), ((int)(((byte)(246)))));
             this.headerPanel.Controls.Add(this.headerLabel);
             this.headerPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.headerPanel.Location = new System.Drawing.Point(0, 0);
@@ -403,7 +403,7 @@
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.Name = "CustomerPayment";
-            this.Text = "madni mobile Mobiles Rwp - Customer Payment";
+            this.Text = "Vape Store - Customer Payment";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.actionsGroup.ResumeLayout(false);
             this.contentPanel.ResumeLayout(false);

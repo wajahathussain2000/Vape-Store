@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -23,12 +23,12 @@ namespace Vape_Store
         
         private List<Purchase> _purchases;
         private List<Supplier> _suppliers;
-        private List<Product> _products;
+        // private List<Product> _products;
         private Purchase _selectedPurchase;
         private List<PurchaseReturnItem> _returnItems;
         
-        private bool isEditMode = false;
-        private int selectedReturnId = -1;
+        // private bool isEditMode = false;
+        // private int selectedReturnId = -1;
         
         // Barcode scanner input field
         private TextBox txtBarcodeScanner;
@@ -38,6 +38,7 @@ namespace Vape_Store
         public PurchaseReturnForm()
         {
             InitializeComponent();
+            
             _purchaseReturnRepository = new PurchaseReturnRepository();
             _purchaseRepository = new PurchaseRepository();
             _supplierRepository = new SupplierRepository();
@@ -61,7 +62,7 @@ namespace Vape_Store
             {
                 Name = "txtBarcodeScanner",
                 Text = "Scan or enter product barcode...",
-                Location = new Point(20, 100),
+                Location = new Point(450, 15),
                 Size = new Size(200, 25),
                 TabIndex = 0,
                 Font = new Font("Arial", 10),
@@ -624,6 +625,7 @@ namespace Vape_Store
                 ShowMessage($"Error validating return quantity: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
+
 
         private void CalculateTotals()
         {

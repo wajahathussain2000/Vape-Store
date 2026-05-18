@@ -182,7 +182,12 @@ namespace Vape_Store.Repositories
                 using (var connection = DatabaseConnection.GetConnection())
                 {
                     var query = @"
-                        SELECT si.*, p.ProductName, p.ProductCode
+                        SELECT si.SaleItemID, si.SaleID, si.ProductID, si.Quantity, si.UnitPrice,
+                               ISNULL(si.Discount, 0) AS Discount, ISNULL(si.DiscountPercent, 0) AS DiscountPercent,
+                               ISNULL(si.TaxPercent, 0) AS TaxPercent, ISNULL(si.TaxAmount, 0) AS TaxAmount,
+                               si.SubTotal,
+                               ISNULL(si.CostPrice, 0) AS CostPrice, si.PurchaseItemID,
+                               p.ProductName, p.ProductCode
                         FROM SaleItems si
                         LEFT JOIN Products p ON si.ProductID = p.ProductID
                         WHERE si.SaleID = @SaleID";
@@ -203,7 +208,13 @@ namespace Vape_Store.Repositories
                                     ProductID = Convert.ToInt32(reader["ProductID"]),
                                     Quantity = Convert.ToInt32(reader["Quantity"]),
                                     UnitPrice = Convert.ToDecimal(reader["UnitPrice"]),
+                                    Discount = Convert.ToDecimal(reader["Discount"]),
+                                    DiscountPercent = Convert.ToDecimal(reader["DiscountPercent"]),
+                                    TaxPercent = Convert.ToDecimal(reader["TaxPercent"]),
+                                    TaxAmount = Convert.ToDecimal(reader["TaxAmount"]),
                                     SubTotal = Convert.ToDecimal(reader["SubTotal"]),
+                                    CostPrice = Convert.ToDecimal(reader["CostPrice"]),
+                                    PurchaseItemID = reader["PurchaseItemID"] != DBNull.Value ? (int?)Convert.ToInt32(reader["PurchaseItemID"]) : null,
                                     ProductName = reader["ProductName"]?.ToString(),
                                     ProductCode = reader["ProductCode"]?.ToString()
                                 });
@@ -310,8 +321,8 @@ namespace Vape_Store.Repositories
                             foreach (var item in sale.SaleItems)
                             {
                                 var itemQuery = @"
-                                    INSERT INTO SaleItems (SaleID, ProductID, Quantity, UnitPrice, SubTotal)
-                                    VALUES (@SaleID, @ProductID, @Quantity, @UnitPrice, @SubTotal)";
+                                    INSERT INTO SaleItems (SaleID, ProductID, Quantity, UnitPrice, Discount, DiscountPercent, TaxPercent, TaxAmount, SubTotal, CostPrice, PurchaseItemID)
+                                    VALUES (@SaleID, @ProductID, @Quantity, @UnitPrice, @Discount, @DiscountPercent, @TaxPercent, @TaxAmount, @SubTotal, @CostPrice, @PurchaseItemID)";
 
                                 using (var itemCommand = new SqlCommand(itemQuery, connection, transaction))
                                 {
@@ -319,7 +330,13 @@ namespace Vape_Store.Repositories
                                     itemCommand.Parameters.AddWithValue("@ProductID", item.ProductID);
                                     itemCommand.Parameters.AddWithValue("@Quantity", item.Quantity);
                                     itemCommand.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
+                                    itemCommand.Parameters.AddWithValue("@Discount", item.Discount);
+                                    itemCommand.Parameters.AddWithValue("@DiscountPercent", item.DiscountPercent);
+                                    itemCommand.Parameters.AddWithValue("@TaxPercent", item.TaxPercent);
+                                    itemCommand.Parameters.AddWithValue("@TaxAmount", item.TaxAmount);
                                     itemCommand.Parameters.AddWithValue("@SubTotal", item.SubTotal);
+                                    itemCommand.Parameters.AddWithValue("@CostPrice", item.CostPrice);
+                                    itemCommand.Parameters.AddWithValue("@PurchaseItemID", (object)item.PurchaseItemID ?? DBNull.Value);
 
                                     itemCommand.ExecuteNonQuery();
                                 }

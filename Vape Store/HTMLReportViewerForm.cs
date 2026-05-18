@@ -18,6 +18,7 @@ namespace Vape_Store
         public HTMLReportViewerForm()
         {
             InitializeComponent();
+            
         }
 
         public void LoadReport(string htmlContent)
@@ -92,7 +93,8 @@ namespace Vape_Store
                 iTextSharp.text.Font normalFont = new iTextSharp.text.Font(baseFont, 10, iTextSharp.text.Font.NORMAL);
 
                 // Extract title from HTML
-                string title = "madni mobile Mobiles Rwp - SALES REPORT";
+                string storeName = Vape_Store.Services.ConfigurationService.Instance.ApplicationName.ToUpper();
+                string title = $"{storeName} - SALES REPORT";
                 Paragraph titleParagraph = new Paragraph(title, titleFont);
                 titleParagraph.Alignment = Element.ALIGN_CENTER;
                 titleParagraph.SpacingAfter = 20f;

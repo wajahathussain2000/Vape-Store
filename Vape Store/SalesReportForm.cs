@@ -29,12 +29,12 @@ namespace Vape_Store
         private List<SalesReportItem> _salesReportItems;
         private List<SalesReportItem> _originalSalesReportItems; // Store original unfiltered data
         private List<Customer> _customers;
-        private List<Product> _products;
         private bool _isItemWiseMode = false;
 
         public SalesReportForm()
         {
             InitializeComponent();
+            
             _saleRepository = new SaleRepository();
             _customerRepository = new CustomerRepository();
             _productRepository = new ProductRepository();
@@ -1191,7 +1191,8 @@ namespace Vape_Store
                 html.AppendLine("<body>");
                 
                 // Header
-                string reportTitle = _isItemWiseMode ? "MADNI MOBILE AND PHOTOSTATE - ITEM-WISE SALES REPORT" : "MADNI MOBILE AND PHOTOSTATE - SALES REPORT";
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                string reportTitle = _isItemWiseMode ? $"{storeName} - ITEM-WISE SALES REPORT" : $"{storeName} - SALES REPORT";
                 html.AppendLine($"<h1>{reportTitle}</h1>");
                 html.AppendLine($"<p><strong>Report Period:</strong> {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}</p>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
@@ -1471,9 +1472,10 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title - adjust for item-wise mode
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
                 string reportTitle = _isItemWiseMode 
-                    ? "MADNI MOBILE AND PHOTOSTATE - ITEM-WISE SALES REPORT" 
-                    : "MADNI MOBILE AND PHOTOSTATE - SALES REPORT";
+                    ? $"{storeName} - ITEM-WISE SALES REPORT" 
+                    : $"{storeName} - SALES REPORT";
                 Paragraph title = new Paragraph(reportTitle, titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;

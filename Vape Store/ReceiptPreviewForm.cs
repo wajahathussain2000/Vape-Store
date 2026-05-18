@@ -15,6 +15,7 @@ namespace Vape_Store
         public ReceiptPreviewForm(Sale sale)
         {
             InitializeComponent();
+            
             _sale = sale;
             _receiptService = new ThermalReceiptService();
             LoadReceiptPreview();
@@ -25,7 +26,7 @@ namespace Vape_Store
             this.SuspendLayout();
             
             // Form properties
-            this.Text = "Receipt Preview - MADNI MOBILE AND PHOTOSTATE";
+            this.Text = "Receipt Preview - " + ConfigurationService.Instance.ApplicationName;
             this.Size = new Size(450, 700);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -111,7 +112,8 @@ namespace Vape_Store
                 float centerX = 225;
 
                 // Store header with better formatting
-                yPosition = DrawCenteredText(g, "MADNI MOBILE AND PHOTOSTATE", new Font("Arial", 18, FontStyle.Bold), centerX, yPosition);
+                string appName = ConfigurationService.Instance.ApplicationName;
+                yPosition = DrawCenteredText(g, appName, new Font("Arial", 18, FontStyle.Bold), centerX, yPosition);
                 yPosition += 5;
                 yPosition = DrawCenteredText(g, "Ph: 0345:5518744", new Font("Arial", 9, FontStyle.Bold), centerX, yPosition);
                 yPosition = DrawCenteredText(g, "Shop#3, opp Save Mart,", new Font("Arial", 9), centerX, yPosition);
@@ -201,12 +203,11 @@ namespace Vape_Store
                     yPosition += new Font("Arial", 9).Height;
                 }
                 
-                // Discount (if applicable - you can add this to your Sale model)
-                decimal discountAmount = _sale.SubTotal + _sale.TaxAmount - _sale.TotalAmount;
-                if (discountAmount > 0)
+                // Discount (if applicable)
+                if (_sale.DiscountAmount > 0)
                 {
-                    DrawText(g, "DISCOUNT:", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
-                    DrawText(g, "-" + discountAmount.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
+                    DrawText(g, $"DISCOUNT ({_sale.DiscountPercent:F0}%):", new Font("Arial", 9, FontStyle.Bold), labelCol, yPosition);
+                    DrawText(g, "-" + _sale.DiscountAmount.ToString("F2"), new Font("Arial", 9), valueCol, yPosition);
                     yPosition += new Font("Arial", 9).Height;
                 }
                 
@@ -261,7 +262,7 @@ namespace Vape_Store
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         // If barcode display fails, just continue without it
                         yPosition = DrawCenteredText(g, "Barcode: " + _sale.BarcodeData, new Font("Arial", 8), centerX, yPosition);
@@ -278,11 +279,11 @@ namespace Vape_Store
                 yPosition = DrawCenteredText(g, "Note:", new Font("Arial", 9, FontStyle.Bold), centerX, yPosition);
                 yPosition = DrawCenteredText(g, "1. Goods once sold are only exchangeable within 3 days", new Font("Arial", 8), centerX, yPosition);
                 yPosition = DrawCenteredText(g, "2. No return policy", new Font("Arial", 8), centerX, yPosition);
-                yPosition = DrawCenteredText(g, "3. MADNI MOBILE AND PHOTOSTATE is not responsible for any warranty claims", new Font("Arial", 8), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "3. Vape Store is not responsible for any warranty claims", new Font("Arial", 8), centerX, yPosition);
                 yPosition += 10;
                 yPosition = DrawCenteredText(g, "---", new Font("Arial", 8), centerX, yPosition);
                 yPosition += 5;
-                yPosition = DrawCenteredText(g, "Developed By: DevFleet Technologies", new Font("Arial", 8), centerX, yPosition);
+                yPosition = DrawCenteredText(g, "Developed By: DevFleet Technologies | +923225347757", new Font("Arial", 8), centerX, yPosition);
             }
             catch (Exception ex)
             {

@@ -20,6 +20,7 @@ namespace Vape_Store
         {
             _backupService = new DatabaseBackupService();
             InitializeComponent();
+            
             LoadBackupFiles();
         }
 

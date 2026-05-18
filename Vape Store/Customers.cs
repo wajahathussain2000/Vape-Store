@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -23,6 +23,7 @@ namespace Vape_Store
         public Customers()
         {
             InitializeComponent();
+            
             _customerRepository = new CustomerRepository();
             
             InitializeDataGridView();

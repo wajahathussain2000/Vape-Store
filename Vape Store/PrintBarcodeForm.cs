@@ -36,6 +36,7 @@ namespace Vape_Store
         public PrintBarcodeForm()
         {
             InitializeComponent();
+            
             _barcodeService = new BarcodeService();
             _printDocument = new PrintDocument();
             _printDocument.PrintPage += PrintDocumentOnPrintPage;
@@ -110,24 +111,26 @@ namespace Vape_Store
         {
             try
             {
-                // Set Default Settings as per User Request (madni mobile)
-                txtLabel.Text = "MADNI MOBILE AND PHOTOSTATE";
+                var config = ConfigurationService.Instance;
+                
+                // Set Default Settings from configuration
+                txtLabel.Text = config.BarcodeDefaultLabel;
                 txtCode.Clear();
                 lblBarcodeValue.Text = "";
                 cmbProduct.SelectedIndex = -1;
                 pictureBox.Image = null;
 
-                // Apply Default Layout Settings
-                chkThermal.Checked = true;
-                numWidth.Value = 105;
-                numHeight.Value = 90;
-                numGap.Value = 3;
+                // Apply Default Layout Settings from configuration
+                chkThermal.Checked = config.BarcodeIsThermal;
+                numWidth.Value = config.BarcodeWidth;
+                numHeight.Value = config.BarcodeHeight;
+                numGap.Value = config.BarcodeGap;
                 
                 // Margins
-                numMarginLeft.Value = 0;
-                numMarginRight.Value = 12;
-                numMarginTop.Value = 4;
-                numMarginBottom.Value = 0;
+                numMarginLeft.Value = config.BarcodeMarginLeft;
+                numMarginRight.Value = config.BarcodeMarginRight;
+                numMarginTop.Value = config.BarcodeMarginTop;
+                numMarginBottom.Value = config.BarcodeMarginBottom;
             }
             catch { }
         }

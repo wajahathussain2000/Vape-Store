@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -36,15 +36,11 @@ namespace Vape_Store
         private Product _selectedProduct;
         
         private decimal _subtotal = 0;
-        private decimal _overallDiscount = 0;
-        private decimal _tax = 0;
-        private decimal _freightCharges = 0;
-        private decimal _otherCharges = 0;
         private decimal _grandTotal = 0;
         private decimal _paidAmount = 0;
         private decimal _balanceAmount = 0;
-        private string _invoiceNumber = "";
-        private int _currentUserID; // Will be set from UserSession
+        private string _invoiceNumber;
+        private int _currentUserID = 1; // Will be set from UserSession
         
         private bool _isCalculating = false;
         private bool _isFormDirty = false;
@@ -54,18 +50,11 @@ namespace Vape_Store
         private bool _isFilteringProductCombo = false;
         private bool _isFilteringVendorCombo = false;
         private object _filterLock = new object();
-        // Popup suggestions for product search (textbox-like behavior)
-        private ListBox _productSuggestList;
-        // Popup suggestions for vendor search
-        private ListBox _vendorSuggestList;
+        // Cache for product search strings (Name | Code)
+        private List<string> _allProductSearchStrings = new List<string>();
         // Barcode scanner input field
-        private TextBox txtBarcodeScanner;
-        private Timer _barcodeTimer;
-        private bool _isShowingBarcodeError = false;
-        // Barcode display and editing
-        private TextBox txtBarcode;
-        private Panel pnlBarcode;
-        private int _currentProductIdForBarcode = -1;
+        private object _barcodeSyncLock = new object(); // Placeholder if needed in future
+        private System.Windows.Forms.Timer _barcodeTimer;
         #endregion
 
         #region Constructor
@@ -119,8 +108,10 @@ namespace Vape_Store
                 // Set default values to current business date (not calendar date)
                 dtpInvoiceDate.Value = _businessDateService.GetCurrentBusinessDate();
                 
-                // Set default selections
-                cmbPaymentTerms.SelectedIndex = 0; // Cash
+                // Configure payment method
+                cmbPaymentMethod.Items.Clear();
+                cmbPaymentMethod.Items.AddRange(new object[] { "Cash", "Card", "Bank Transfer", "Credit" });
+                cmbPaymentMethod.SelectedIndex = 0; // Default to Cash
                 
                 // Set current user from UserSession
                 if (UserSession.CurrentUser != null)
@@ -141,33 +132,45 @@ namespace Vape_Store
                 // Set form state
                 _isFormDirty = false;
 
-                // Create suggestion list for product search
-                _productSuggestList = new ListBox
+                // Initialize barcode scanner field
+                if (txtBarcodeScanner != null)
                 {
-                    Visible = false,
-                    IntegralHeight = true,
-                    Height = 120
-                };
-                _productSuggestList.Click += ProductSuggestList_Click;
-                _productSuggestList.KeyDown += ProductSuggestList_KeyDown;
-                this.Controls.Add(_productSuggestList);
+                    // Debounce timer: auto-process barcode 300ms after last character typed
+                    _barcodeTimer = new System.Windows.Forms.Timer();
+                    _barcodeTimer.Interval = 300;
+                    _barcodeTimer.Tick += (ts, te) =>
+                    {
+                        _barcodeTimer.Stop();
+                        string code = txtBarcodeScanner.Text.Trim();
+                        if (!string.IsNullOrEmpty(code))
+                            ProcessBarcode(code);
+                    };
 
-                // Create suggestion list for vendor search
-                _vendorSuggestList = new ListBox
-                {
-                    Visible = false,
-                    IntegralHeight = true,
-                    Height = 120
-                };
-                _vendorSuggestList.Click += VendorSuggestList_Click;
-                _vendorSuggestList.KeyDown += VendorSuggestList_KeyDown;
-                this.Controls.Add(_vendorSuggestList);
-                
-                // Create barcode scanner
-                CreateBarcodeScanner();
-                
-                // Create barcode display and editing UI
-                CreateBarcodeDisplay();
+                    txtBarcodeScanner.KeyDown += (s, e) =>
+                    {
+                        if (e.KeyCode == Keys.Enter)
+                        {
+                            e.Handled = true;
+                            e.SuppressKeyPress = true;
+                            _barcodeTimer.Stop();
+                            ProcessBarcode(txtBarcodeScanner.Text.Trim());
+                        }
+                    };
+
+                    // Auto-process when scanner sends characters without Enter
+                    txtBarcodeScanner.TextChanged += (s, e) =>
+                    {
+                        if (txtBarcodeScanner.Text.Length >= 3)
+                        {
+                            _barcodeTimer.Stop();
+                            _barcodeTimer.Start();
+                        }
+                        else
+                        {
+                            _barcodeTimer.Stop();
+                        }
+                    };
+                }
             }
             catch (Exception ex)
             {
@@ -224,10 +227,16 @@ namespace Vape_Store
                 dgvPurchaseItems.Rows[emptyRow].Cells["colProductCode"].Value = product.ProductCode ?? string.Empty;
                 dgvPurchaseItems.Rows[emptyRow].Cells["colQty"].Value = 1;
                 dgvPurchaseItems.Rows[emptyRow].Cells["colPurchasePrice"].Value = product.PurchasePrice > 0 ? product.PurchasePrice : product.CostPrice;
+                dgvPurchaseItems.Rows[emptyRow].Cells["colSalePrice"].Value = product.RetailPrice;
                 CalculateRowTotal(emptyRow);
                 CalculateTotals();
+                
+                // Ensure a fresh blank row is ready for next entry
+                EnsureBlankRowAtBottom();
             }
         }
+
+
 
         private void SetupSearchableComboBoxes()
         {
@@ -252,10 +261,10 @@ namespace Vape_Store
                 cmbVendorName.PreviewKeyDown += CmbVendorName_PreviewKeyDown;
                 cmbVendorName.Leave += CmbVendorName_Leave;
                 
-                // Make Payment Terms ComboBox searchable
-                cmbPaymentTerms.DropDownStyle = ComboBoxStyle.DropDown;
-                cmbPaymentTerms.AutoCompleteMode = AutoCompleteMode.None; // Disable auto-complete to prevent conflicts
-                cmbPaymentTerms.AutoCompleteSource = AutoCompleteSource.None;
+                // Make Payment Method ComboBox searchable
+                cmbPaymentMethod.DropDownStyle = ComboBoxStyle.DropDown;
+                cmbPaymentMethod.AutoCompleteMode = AutoCompleteMode.None; 
+                cmbPaymentMethod.AutoCompleteSource = AutoCompleteSource.None;
                 
                 // Product search: keep dropdown and enable auto-complete suggestions
                 cmbProductName.DropDownStyle = ComboBoxStyle.DropDown;
@@ -267,6 +276,9 @@ namespace Vape_Store
 
                 // Always show full product list when opening the dropdown
                 cmbProductName.DropDown += (s, e2) => { PopulateProductNameComboBox(); };
+                cmbBrand.SelectionChangeCommitted += (s, e) => { PopulateProductNameComboBox(); MarkFormDirty(); };
+                
+                // Barcode Scanner events are now consolidated in SetupEventHandlers
             }
             catch (Exception ex)
             {
@@ -341,22 +353,6 @@ namespace Vape_Store
                 
                 if (e.KeyCode == Keys.Enter)
                 {
-                    // Prefer popup suggestion selection if visible
-                    if (_vendorSuggestList != null && _vendorSuggestList.Visible)
-                    {
-                        if (_vendorSuggestList.SelectedItem is Supplier sel)
-                        {
-                            CommitVendorSelection(sel);
-                        }
-                        else if (_vendorSuggestList.Items.Count > 0 && _vendorSuggestList.Items[0] is Supplier first)
-                        {
-                            CommitVendorSelection(first);
-                        }
-                        HideVendorSuggestions();
-                        cb.DroppedDown = false;
-                        e.Handled = true;
-                        return;
-                    }
 
                     // Fallback to existing behavior
                     string selectedVendorName = null;
@@ -380,13 +376,11 @@ namespace Vape_Store
                         cb.Text = selectedVendorName;
                         cb.SelectedItem = selectedVendorName;
                     }
-                    HideVendorSuggestions();
                     cb.DroppedDown = false;
                     e.Handled = true;
                 }
                 else if (e.KeyCode == Keys.Escape)
                 {
-                    HideVendorSuggestions();
                     cb.DroppedDown = false;
                     e.Handled = true;
                 }
@@ -600,8 +594,8 @@ namespace Vape_Store
                         // Store selected product for later use
                         _selectedProduct = selectedProduct;
                         
-                        // Update barcode display
-                        UpdateBarcodeDisplay(selectedProduct);
+                        // Update barcode display - removed as UI control deleted
+                        // UpdateBarcodeDisplay(selectedProduct);
                         
                         MarkFormDirty();
                     }
@@ -610,7 +604,7 @@ namespace Vape_Store
                 {
                     txtExistingStock.Clear();
                     _selectedProduct = null;
-                    UpdateBarcodeDisplay(null);
+                    // UpdateBarcodeDisplay(null); // Removed as UI control deleted
                 }
             }
             catch (Exception ex)
@@ -642,6 +636,11 @@ namespace Vape_Store
                 colSalePrice.Width = 150;
                 colTotal.Width = 150;
                 colDelete.Width = 80;
+
+                // Configure column visibility
+                colBatchNo.Visible = false;
+                colFreeQty.Visible = false;
+                colSalePrice.Visible = true;
             
             // Format currency columns
                 colPurchasePrice.DefaultCellStyle.Format = "F2";
@@ -700,160 +699,29 @@ namespace Vape_Store
                 ShowError($"Error setting up product name combo box: {ex.Message}");
             }
         }
+        #endregion
 
-        private void CreateBarcodeScanner()
+        // Barcode processing methods
+        private void ProcessBarcode(string barcode)
         {
+            if (string.IsNullOrEmpty(barcode)) return;
+
             try
             {
-                // Create barcode scanner input field
-                txtBarcodeScanner = new TextBox
-                {
-                    Name = "txtBarcodeScanner",
-                    Text = "Scan or enter product barcode...",
-                    Location = new Point(20, 100),
-                    Size = new Size(200, 25),
-                    TabIndex = 0,
-                    Font = new Font("Arial", 10),
-                    ForeColor = Color.Gray
-                };
-                
-                // Add placeholder functionality
-                txtBarcodeScanner.Enter += (s, e) => {
-                    if (txtBarcodeScanner.Text == "Scan or enter product barcode...")
-                    {
-                        txtBarcodeScanner.Text = "";
-                        txtBarcodeScanner.ForeColor = Color.Black;
-                    }
-                };
-                
-                txtBarcodeScanner.Leave += (s, e) => {
-                    if (string.IsNullOrWhiteSpace(txtBarcodeScanner.Text))
-                    {
-                        txtBarcodeScanner.Text = "Scan or enter product barcode...";
-                        txtBarcodeScanner.ForeColor = Color.Gray;
-                    }
-                };
-                
-                // Add to the first panel if available, otherwise add to form
-                if (this.Controls.Count > 0 && this.Controls[0] is Panel panel1)
-                {
-                    panel1.Controls.Add(txtBarcodeScanner);
-                    txtBarcodeScanner.BringToFront();
-                }
-                else
-                {
-                    // Add to form if no panel found
-                    this.Controls.Add(txtBarcodeScanner);
-                    txtBarcodeScanner.BringToFront();
-                }
-                
-                // Add event handler for barcode scanning
-                txtBarcodeScanner.KeyPress += TxtBarcodeScanner_KeyPress;
-                txtBarcodeScanner.TextChanged += TxtBarcodeScanner_TextChanged;
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Error creating barcode scanner: {ex.Message}");
-            }
-        }
-
-        private void TxtBarcodeScanner_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            // Handle Enter key to process barcode
-            if (e.KeyChar == (char)Keys.Enter)
-            {
-                e.Handled = true;
-                ProcessBarcodeScan();
-            }
-        }
-
-        private void TxtBarcodeScanner_TextChanged(object sender, EventArgs e)
-        {
-            // Auto-process barcode when text is entered (for barcode scanners that don't send Enter)
-            // Note: Barcodes can be auto-generated or user-edited, so we use a reasonable minimum length
-            if (txtBarcodeScanner != null && !string.IsNullOrWhiteSpace(txtBarcodeScanner.Text) 
-                && txtBarcodeScanner.Text != "Scan or enter product barcode..."
-                && txtBarcodeScanner.Text.Length >= 3) // Minimum barcode length (supports both auto-generated and custom barcodes)
-            {
-                // Use a timer to avoid processing while user is still typing
-                // Stop any existing timer to prevent multiple executions
-                if (_barcodeTimer != null)
-                {
-                    _barcodeTimer.Stop();
-                    _barcodeTimer.Dispose();
-                }
-                
-                _barcodeTimer = new Timer();
-                _barcodeTimer.Interval = 100; // Reduced delay for better responsiveness
-                _barcodeTimer.Tick += (s, args) => {
-                    _barcodeTimer.Stop();
-                    _barcodeTimer.Dispose();
-                    ProcessBarcodeScan();
-                };
-                _barcodeTimer.Start();
-            }
-        }
-
-        private void ProcessBarcodeScan()
-        {
-            try
-            {
-                if (txtBarcodeScanner == null) return;
-                
-                string scannedBarcode = txtBarcodeScanner.Text.Trim();
-                
-                // Ignore placeholder text
-                if (string.IsNullOrEmpty(scannedBarcode) || scannedBarcode == "Scan or enter product barcode...")
-                    return;
-
-                // Find product by barcode (works with both auto-generated and user-edited barcodes)
-                // Barcodes are unique per product, so exact match is required
-                var product = _products?.FirstOrDefault(p => 
-                    !string.IsNullOrEmpty(p.Barcode) && 
-                    p.Barcode.Trim().Equals(scannedBarcode, StringComparison.OrdinalIgnoreCase));
-                
+                var product = _productRepository.GetProductByBarcode(barcode);
                 if (product != null)
                 {
-                    // Product found - add to purchase items automatically
                     AddOrIncrementPurchaseProduct(product);
                     
-                    // Clear scanner input and set placeholder - ensure complete reset
+                    // Clear and focus for next scan
                     txtBarcodeScanner.Clear();
-                    txtBarcodeScanner.Text = "Scan or enter product barcode...";
-                    txtBarcodeScanner.ForeColor = Color.Gray;
-                    txtBarcodeScanner.SelectAll(); // Ensure cursor is positioned properly
                     txtBarcodeScanner.Focus();
-                    
-                    // Reset error flag
-                    _isShowingBarcodeError = false;
                 }
                 else
                 {
-                    // Only show error if not already showing one
-                    if (!_isShowingBarcodeError)
-                    {
-                        _isShowingBarcodeError = true;
-                        // Use simple MessageBox for barcode errors to avoid UI clutter
-                        MessageBox.Show($"Product not found for barcode: {scannedBarcode}", "Scanner", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        
-                        
-                        // Clear invalid barcode - ensure complete reset
-                        txtBarcodeScanner.Clear();
-                        txtBarcodeScanner.Text = "Scan or enter product barcode...";
-                        txtBarcodeScanner.ForeColor = Color.Gray;
-                        txtBarcodeScanner.SelectAll(); // Ensure cursor is positioned properly
-                        txtBarcodeScanner.Focus();
-                        
-                        // Reset the error flag after a brief delay
-                        Timer resetTimer = new Timer();
-                        resetTimer.Interval = 500; // 500ms delay
-                        resetTimer.Tick += (s, args) => {
-                            resetTimer.Stop();
-                            resetTimer.Dispose();
-                            _isShowingBarcodeError = false;
-                        };
-                        resetTimer.Start();
-                    }
+                    MessageBox.Show($"Product with barcode '{barcode}' not found.", "Not Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    txtBarcodeScanner.SelectAll();
+                    txtBarcodeScanner.Focus();
                 }
             }
             catch (Exception ex)
@@ -862,424 +730,10 @@ namespace Vape_Store
             }
         }
 
-        private void CreateBarcodeDisplay()
-        {
-            try
-            {
-                // Find panelVendorInfo where product controls are located
-                Panel panelVendorInfo = null;
-                foreach (Control control in this.Controls)
-                {
-                    if (control is Panel panel && panel.Name == "panelVendorInfo")
-                    {
-                        panelVendorInfo = panel;
-                        break;
-                    }
-                    // Also check nested panels (panelMainContainer contains panelVendorInfo)
-                    if (control is Panel mainPanel)
-                    {
-                        foreach (Control nestedControl in mainPanel.Controls)
-                        {
-                            if (nestedControl is Panel nestedPanel && nestedPanel.Name == "panelVendorInfo")
-                            {
-                                panelVendorInfo = nestedPanel;
-                                break;
-                            }
-                        }
-                        if (panelVendorInfo != null) break;
-                    }
-                }
-                
-                // If panelVendorInfo not found, try to find it by searching all controls recursively
-                if (panelVendorInfo == null)
-                {
-                    panelVendorInfo = FindControlByName<Panel>(this, "panelVendorInfo");
-                }
-                
-                // If still not found, use panelMainContainer or form itself
-                Panel targetPanel = panelVendorInfo;
-                if (targetPanel == null)
-                {
-                    // Try to find panelMainContainer
-                    targetPanel = FindControlByName<Panel>(this, "panelMainContainer");
-                    if (targetPanel == null && this.Controls.Count > 0 && this.Controls[0] is Panel firstPanel)
-                    {
-                        targetPanel = firstPanel;
-                    }
-                }
-                
-                // Position barcode controls next to existing stock field (around y=180 based on typical layout)
-                int barcodeY = 180; // Position below existing stock field
-                int barcodeX = 600;  // Position to the right of product name field
-                
-                // Create label for barcode field
-                var lblBarcode = new Label
-                {
-                    Text = "Product Barcode:",
-                    Location = new Point(barcodeX, barcodeY - 25),
-                    Size = new Size(150, 20),
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                    ForeColor = Color.Black,
-                    AutoSize = true
-                };
-                
-                // Create barcode text input field
-                txtBarcode = new TextBox
-                {
-                    Name = "txtBarcode",
-                    Location = new Point(barcodeX, barcodeY),
-                    Size = new Size(250, 25),
-                    TabIndex = 1,
-                    Font = new Font("Segoe UI", 9)
-                };
-                
-                // Create barcode display panel
-                pnlBarcode = new Panel
-                {
-                    Name = "pnlBarcode",
-                    Location = new Point(barcodeX, barcodeY + 30),
-                    Size = new Size(300, 120),
-                    BorderStyle = BorderStyle.FixedSingle,
-                    BackColor = Color.White,
-                    Visible = true
-                };
-                
-                // Add controls to the target panel
-                if (targetPanel != null)
-                {
-                    targetPanel.Controls.Add(lblBarcode);
-                    targetPanel.Controls.Add(txtBarcode);
-                    targetPanel.Controls.Add(pnlBarcode);
-                    lblBarcode.BringToFront();
-                    txtBarcode.BringToFront();
-                    pnlBarcode.BringToFront();
-                }
-                else
-                {
-                    // Fallback: add to form
-                    this.Controls.Add(lblBarcode);
-                    this.Controls.Add(txtBarcode);
-                    this.Controls.Add(pnlBarcode);
-                    lblBarcode.BringToFront();
-                    txtBarcode.BringToFront();
-                    pnlBarcode.BringToFront();
-                }
-                
-                // Add event handlers
-                txtBarcode.TextChanged += TxtBarcode_TextChanged;
-                txtBarcode.KeyDown += TxtBarcode_KeyDown;
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Error creating barcode display: {ex.Message}");
-            }
-        }
 
-        private T FindControlByName<T>(Control parent, string name) where T : Control
-        {
-            try
-            {
-                if (parent == null) return null;
-                
-                if (parent is T control && parent.Name == name)
-                {
-                    return control;
-                }
-                
-                foreach (Control child in parent.Controls)
-                {
-                    var found = FindControlByName<T>(child, name);
-                    if (found != null) return found;
-                }
-            }
-            catch { }
-            return null;
-        }
 
-        private void TxtBarcode_TextChanged(object sender, EventArgs e)
-        {
-            try
-            {
-                if (txtBarcode == null) return;
-                
-                string barcodeText = txtBarcode.Text.Trim();
-                
-                if (string.IsNullOrEmpty(barcodeText))
-                {
-                    // Clear barcode display if text is empty
-                    if (pnlBarcode != null)
-                        pnlBarcode.Controls.Clear();
-                    return;
-                }
 
-                // Validate barcode format in real-time
-                if (!_barcodeService.ValidateBarcode(barcodeText))
-                {
-                    // Don't show error message on every keystroke, just clear the display
-                    if (pnlBarcode != null)
-                        pnlBarcode.Controls.Clear();
-                    return;
-                }
 
-                // If validation passes, generate and display the barcode
-                if (_barcodeService.TestBarcodeGeneration(barcodeText))
-                {
-                    DisplayBarcodeImage(barcodeText);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Silently handle errors during real-time validation
-                System.Diagnostics.Debug.WriteLine($"Barcode validation error: {ex.Message}");
-            }
-        }
-
-        private void TxtBarcode_KeyDown(object sender, KeyEventArgs e)
-        {
-            // Allow Enter key to generate/update barcode
-            if (e.KeyCode == Keys.Enter)
-            {
-                e.Handled = true;
-                GenerateBarcode();
-            }
-        }
-
-        private void DisplayBarcodeImage(string barcodeText)
-        {
-            try
-            {
-                if (pnlBarcode == null)
-                {
-                    System.Diagnostics.Debug.WriteLine("pnlBarcode is null");
-                    return;
-                }
-                
-                if (string.IsNullOrEmpty(barcodeText))
-                {
-                    pnlBarcode.Controls.Clear();
-                    return;
-                }
-
-                // Ensure panel is visible
-                pnlBarcode.Visible = true;
-                pnlBarcode.BringToFront();
-
-                // Generate barcode image using BarcodeService
-                var barcodeImage = _barcodeService.GenerateBarcodeImageObject(barcodeText, 280, 80);
-                
-                if (barcodeImage != null)
-                {
-                    // Clear the panel and add the barcode image
-                    pnlBarcode.Controls.Clear();
-                    
-                    var pictureBox = new PictureBox
-                    {
-                        Image = barcodeImage,
-                        SizeMode = PictureBoxSizeMode.Zoom,
-                        Dock = DockStyle.Fill,
-                        BackColor = Color.White
-                    };
-                    
-                    pnlBarcode.Controls.Add(pictureBox);
-                    
-                    // Add barcode text below the image
-                    var label = new Label
-                    {
-                        Text = barcodeText,
-                        Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                        TextAlign = ContentAlignment.MiddleCenter,
-                        Dock = DockStyle.Bottom,
-                        Height = 25,
-                        BackColor = Color.White,
-                        ForeColor = Color.Black
-                    };
-                    
-                    pnlBarcode.Controls.Add(label);
-                    
-                    // Force refresh
-                    pnlBarcode.Invalidate();
-                    pnlBarcode.Refresh();
-                    pnlBarcode.Update();
-                    
-                    System.Diagnostics.Debug.WriteLine($"Barcode image displayed: {barcodeText}");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("Failed to generate barcode image");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error displaying barcode image: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-            }
-        }
-
-        private void GenerateBarcode()
-        {
-            try
-            {
-                if (txtBarcode == null) return;
-                
-                // Check if user has entered custom barcode text
-                if (!string.IsNullOrWhiteSpace(txtBarcode.Text))
-                {
-                    // User wants to use custom barcode
-                    string customBarcode = txtBarcode.Text.Trim();
-                    
-                    // Validate custom barcode
-                    if (!_barcodeService.ValidateBarcode(customBarcode))
-                    {
-                        ShowError("Invalid barcode format! Only letters, numbers, hyphens, underscores, and dots are allowed.");
-                        txtBarcode.Focus();
-                        return;
-                    }
-                    
-                    // Test barcode generation
-                    if (!_barcodeService.TestBarcodeGeneration(customBarcode))
-                    {
-                        ShowError("Invalid barcode format! Cannot generate barcode with this text.");
-                        txtBarcode.Focus();
-                        return;
-                    }
-                    
-                    // Display the custom barcode
-                    DisplayBarcodeImage(customBarcode);
-                }
-                else
-                {
-                    // Generate automatic barcode for new product
-                    string productCode = GetCurrentProductCode();
-                    if (string.IsNullOrWhiteSpace(productCode))
-                    {
-                        productCode = "PROD" + DateTime.Now.ToString("yyyyMMddHHmmss").Substring(0, 8);
-                    }
-                    
-                    // Generate barcode text
-                    string barcodeText = GenerateBarcodeFromCode(productCode);
-                    txtBarcode.Text = barcodeText;
-                    
-                    // Generate and display barcode image
-                    DisplayBarcodeImage(barcodeText);
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Error generating barcode: {ex.Message}");
-            }
-        }
-
-        private string GenerateBarcodeFromCode(string productCode)
-        {
-            try
-            {
-                // Generate a unique barcode using product code + timestamp
-                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-                string uniqueBarcode = $"PRD{productCode}{timestamp.Substring(timestamp.Length - 6)}";
-                
-                // Ensure uniqueness by checking against existing barcodes
-                if (_products != null && _products.Count > 0)
-                {
-                    int attempts = 0;
-                    while (_products.Any(p => !string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(uniqueBarcode, StringComparison.OrdinalIgnoreCase)) && attempts < 10)
-                    {
-                        uniqueBarcode = $"PRD{productCode}{DateTime.Now.Ticks.ToString().Substring(Math.Max(0, DateTime.Now.Ticks.ToString().Length - 6))}";
-                        attempts++;
-                    }
-                }
-                
-                return uniqueBarcode;
-            }
-            catch (Exception ex)
-            {
-                // Fallback to simple barcode if generation fails
-                return $"PRD{productCode}{DateTime.Now.Ticks}";
-            }
-        }
-
-        private string GetCurrentProductCode()
-        {
-            try
-            {
-                // Try to get product code from selected row in DataGridView
-                if (dgvPurchaseItems != null && dgvPurchaseItems.CurrentCell != null)
-                {
-                    int rowIndex = dgvPurchaseItems.CurrentCell.RowIndex;
-                    if (rowIndex >= 0 && rowIndex < dgvPurchaseItems.Rows.Count)
-                    {
-                        var row = dgvPurchaseItems.Rows[rowIndex];
-                        var productCodeCell = row.Cells["colProductCode"];
-                        if (productCodeCell != null && productCodeCell.Value != null)
-                        {
-                            return productCodeCell.Value.ToString();
-                        }
-                    }
-                }
-                
-                // Try to get from selected product
-                if (_selectedProduct != null && !string.IsNullOrEmpty(_selectedProduct.ProductCode))
-                {
-                    return _selectedProduct.ProductCode;
-                }
-                
-                return string.Empty;
-            }
-            catch
-            {
-                return string.Empty;
-            }
-        }
-
-        private void UpdateBarcodeDisplay(Product product)
-        {
-            try
-            {
-                if (txtBarcode == null)
-                {
-                    System.Diagnostics.Debug.WriteLine("txtBarcode is null in UpdateBarcodeDisplay");
-                    return;
-                }
-                
-                if (product != null)
-                {
-                    _currentProductIdForBarcode = product.ProductID;
-                    
-                    // Display existing barcode if available
-                    if (!string.IsNullOrEmpty(product.Barcode))
-                    {
-                        txtBarcode.Text = product.Barcode;
-                        System.Diagnostics.Debug.WriteLine($"Displaying existing barcode: {product.Barcode}");
-                        DisplayBarcodeImage(product.Barcode);
-                    }
-                    else
-                    {
-                        // Generate new barcode for product without one
-                        string productCode = product.ProductCode ?? "PROD" + DateTime.Now.ToString("yyyyMMddHHmmss").Substring(0, 8);
-                        string newBarcode = GenerateBarcodeFromCode(productCode);
-                        txtBarcode.Text = newBarcode;
-                        System.Diagnostics.Debug.WriteLine($"Generated new barcode: {newBarcode}");
-                        DisplayBarcodeImage(newBarcode);
-                    }
-                }
-                else
-                {
-                    // Clear barcode display when no product is selected
-                    txtBarcode.Clear();
-                    if (pnlBarcode != null)
-                    {
-                        pnlBarcode.Controls.Clear();
-                        pnlBarcode.Invalidate();
-                    }
-                    _currentProductIdForBarcode = -1;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error updating barcode display: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                ShowError($"Error updating barcode display: {ex.Message}");
-            }
-        }
 
         private void SetupEventHandlers()
         {
@@ -1300,7 +754,8 @@ namespace Vape_Store
             // Calculation events
             txtDiscountPercent.TextChanged += CalculateTotals;
             txtTaxPercent.TextChanged += CalculateTotals;
-            txtPaid.TextChanged += CalculateBalance;
+            txtPaid.TextChanged += CalculateTotals;
+            cmbPaymentMethod.SelectedIndexChanged += cmbPaymentMethod_SelectedIndexChanged;
             
             // DataGridView events
             dgvPurchaseItems.CellValueChanged += DgvPurchaseItems_CellValueChanged;
@@ -1313,10 +768,9 @@ namespace Vape_Store
             dgvPurchaseItems.DataError += DgvPurchaseItems_DataError;
             dgvPurchaseItems.CellClick += DgvPurchaseItems_CellClick;
             dgvPurchaseItems.DataError += (s, e) => { e.ThrowException = false; };
-            // Hide any leftover suggestion popup when grid scrolls or loses focus
-            dgvPurchaseItems.Scroll += (s, e) => { HideProductSuggestions(); };
-            dgvPurchaseItems.Leave += (s, e) => { HideProductSuggestions(); };
             
+
+
             // Form events
             this.FormClosing += NewPurchase_FormClosing;
         }
@@ -1341,10 +795,8 @@ namespace Vape_Store
                 {
                     // Clear existing stock if no row is selected
                     txtExistingStock.Clear();
-                    UpdateBarcodeDisplay(null);
+                    // UpdateBarcodeDisplay(null); // Removed as UI control deleted
                 }
-                // Ensure any stale popup is hidden when selection moves to a new row
-                HideProductSuggestions();
             }
             catch (Exception ex)
             {
@@ -1380,6 +832,11 @@ namespace Vape_Store
                 LoadProducts();
                 LoadCategories();
                 LoadBrands();
+                
+                // Populate the UI controls after data is loaded
+                PopulateCategories();
+                PopulateBrands();
+                
                 DisplayPurchaseSummary();
             }
             catch (Exception ex)
@@ -1395,7 +852,7 @@ namespace Vape_Store
                 // Display purchase details
                 DisplayPurchaseDetails();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Don't show error for display update
             }
@@ -1445,13 +902,12 @@ namespace Vape_Store
                 // Update the details display (if you have a textbox for this)
                 // txtPurchaseDetails.Text = details.ToString();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Don't show error for display update
             }
         }
-        #endregion
-
+        
         #region Data Loading
         private void LoadSuppliers()
         {
@@ -1474,8 +930,14 @@ namespace Vape_Store
         {
             try
             {
-                _products = _productRepository.GetAllProducts();
+                _products = _productRepository.GetAllProducts() ?? new List<Product>();
                 
+                // Refresh search cache
+                _allProductSearchStrings = _products
+                    .Where(p => !string.IsNullOrWhiteSpace(p.ProductName))
+                    .Select(p => $"{p.ProductName} | {p.ProductCode}")
+                    .ToList();
+
                 // Refresh the product ComboBox in DataGridView
                 SetupProductNameComboBox();
                 
@@ -1544,6 +1006,48 @@ namespace Vape_Store
                 ShowError($"Error loading brands: {ex.Message}");
             }
         }
+
+        private void PopulateCategories()
+        {
+            try
+            {
+                cmbCategory.Items.Clear();
+                cmbCategory.Items.Add("-- Select Category --");
+                if (_categories != null)
+                {
+                    foreach (var category in _categories)
+                    {
+                        cmbCategory.Items.Add(category.CategoryName);
+                    }
+                }
+                cmbCategory.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error populating categories: {ex.Message}");
+            }
+        }
+
+        private void PopulateBrands()
+        {
+            try
+            {
+                cmbBrand.Items.Clear();
+                cmbBrand.Items.Add("-- Select Brand --");
+                if (_brands != null)
+                {
+                    foreach (var brand in _brands)
+                    {
+                        cmbBrand.Items.Add(brand.BrandName);
+                    }
+                }
+                cmbBrand.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error populating brands: {ex.Message}");
+            }
+        }
         #endregion
         
         #region Invoice Management
@@ -1554,6 +1058,12 @@ namespace Vape_Store
                 // Generate unique invoice number with timestamp
                 _invoiceNumber = $"PUR{DateTime.Now:yyyyMMdd}{DateTime.Now:HHmmss}";
                 txtInvoiceNo.Text = _invoiceNumber;
+                
+                // Generate and display barcode image
+                if (_barcodeService != null)
+                {
+                    picBarcode.Image = _barcodeService.GenerateBarcodeImageObject(_invoiceNumber);
+                }
                 
                 // Auto-generate invoice number on form load
                 txtInvoiceNo.ReadOnly = true;
@@ -1708,7 +1218,6 @@ namespace Vape_Store
                     }
                 }
                 
-                HideVendorSuggestions();
             }
             catch { }
         }
@@ -1720,9 +1229,9 @@ namespace Vape_Store
             if (supplier != null)
             {
                 // For now, just ensure a default is selected
-                if (cmbPaymentTerms.SelectedIndex == -1)
+                if (cmbPaymentMethod.SelectedIndex == -1)
                 {
-                    cmbPaymentTerms.SelectedIndex = 0; // Cash
+                    cmbPaymentMethod.SelectedIndex = 0; // Cash
                 }
             }
         }
@@ -1849,6 +1358,46 @@ namespace Vape_Store
             return -1;
         }
 
+        private void EnsureBlankRowAtBottom()
+        {
+            try
+            {
+                int emptyRowIndex = GetFirstEmptyRowIndex();
+                if (emptyRowIndex < 0)
+                {
+                    AddBlankRow();
+                }
+            }
+            catch { }
+        }
+
+        private void RemoveExtraEmptyRows()
+        {
+            try
+            {
+                bool foundEmpty = false;
+                for (int i = dgvPurchaseItems.Rows.Count - 1; i >= 0; i--)
+                {
+                    var row = dgvPurchaseItems.Rows[i];
+                    var val = row.Cells["colProductName"].Value;
+                    bool isEmpty = (val == null || val == DBNull.Value || (val is int id && id == 0) || string.IsNullOrWhiteSpace(val.ToString()));
+                    
+                    if (isEmpty)
+                    {
+                        if (!foundEmpty)
+                        {
+                            foundEmpty = true; // Keep the last empty row
+                        }
+                        else
+                        {
+                            dgvPurchaseItems.Rows.RemoveAt(i); // Remove redundant empty row
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
         private void FocusProductCell(int rowIndex)
         {
             try
@@ -1859,91 +1408,15 @@ namespace Vape_Store
                 {
                     ec.DroppedDown = true;
                 }
-                // Hide any suggestion list left from previous row
-                HideProductSuggestions();
             }
             catch { }
         }
 
         private void ShowVendorSuggestions(ComboBox cb)
         {
-            try
-            {
-                if (cb == null || cb.IsDisposed) return;
-                string text = cb.Text ?? string.Empty;
-                var list = (_suppliers ?? new List<Supplier>())
-                    .Where(s => (!string.IsNullOrEmpty(s.SupplierName) && s.SupplierName.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0))
-                    .Take(100)
-                    .ToList();
-
-                if (list.Count == 0)
-                {
-                    HideVendorSuggestions();
-                    return;
-                }
-
-                // Place suggestion list under the vendor ComboBox
-                var screen = cb.PointToScreen(new System.Drawing.Point(0, cb.Height));
-                var client = this.PointToClient(screen);
-                _vendorSuggestList.Left = client.X;
-                _vendorSuggestList.Top = client.Y;
-                _vendorSuggestList.Width = cb.Width;
-
-                _vendorSuggestList.BeginUpdate();
-                try
-                {
-                    _vendorSuggestList.DataSource = null;
-                    _vendorSuggestList.Items.Clear();
-                    foreach (var s in list) _vendorSuggestList.Items.Add(s);
-                    _vendorSuggestList.DisplayMember = nameof(Supplier.SupplierName);
-                }
-                finally
-                {
-                    _vendorSuggestList.EndUpdate();
-                }
-
-                _vendorSuggestList.Visible = true;
-                _vendorSuggestList.BringToFront();
-            }
-            catch { }
+            // Redundant: vendors are now handled by searchable ComboBox pattern
         }
 
-        private void HideVendorSuggestions()
-        {
-            try { if (_vendorSuggestList != null) _vendorSuggestList.Visible = false; } catch { }
-        }
-
-        private void VendorSuggestList_KeyDown(object sender, KeyEventArgs e)
-        {
-            try
-            {
-                if (e.KeyCode == Keys.Enter && _vendorSuggestList.SelectedItem is Supplier s)
-                {
-                    CommitVendorSelection(s);
-                    HideVendorSuggestions();
-                    e.Handled = true;
-                }
-                else if (e.KeyCode == Keys.Escape)
-                {
-                    HideVendorSuggestions();
-                    e.Handled = true;
-                }
-            }
-            catch { }
-        }
-
-        private void VendorSuggestList_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                if (_vendorSuggestList.SelectedItem is Supplier s)
-                {
-                    CommitVendorSelection(s);
-                    HideVendorSuggestions();
-                }
-            }
-            catch { }
-        }
 
         private void CommitVendorSelection(Supplier supplier)
         {
@@ -2190,11 +1663,9 @@ namespace Vape_Store
                         {
                             cb.SelectionChangeCommitted += ProductCombo_SelectionChangeCommitted; // Mouse click commits
                             cb.KeyDown += ProductCombo_KeyDown; // Enter key commits, arrows just navigate
-                            cb.KeyUp += ProductTextBox_KeyUp; // Use textbox-like suggestions
+                            cb.TextUpdate += ProductCombo_TextUpdate; // NEW SEARCH LOGIC (SalesForm Style)
                             cb.KeyPress += ProductCombo_KeyPress; // Detect typing to open dropdown
                             cb.PreviewKeyDown += ProductCombo_PreviewKeyDown;
-                            // TextChanged disabled - using KeyUp instead to avoid conflicts
-                            // cb.TextChanged += ProductCombo_TextChanged; // DISABLED - conflicts with KeyUp
                             cb.Leave += ProductCombo_Leave;
                             cb.DropDown += ProductCombo_DropDown; // Ensure all products shown when dropdown opens
                         }
@@ -2677,14 +2148,6 @@ namespace Vape_Store
 
                 if (e.KeyCode == Keys.Enter)
                 {
-                    // If suggestion list is visible, commit that selection first
-                    if (_productSuggestList != null && _productSuggestList.Visible && _productSuggestList.SelectedItem is Product selP)
-                    {
-                        CommitProductSelection(selP);
-                        HideProductSuggestions();
-                        e.Handled = true;
-                        return;
-                    }
                     try
                     {
                         if (dgvPurchaseItems.CurrentCell != null &&
@@ -2692,272 +2155,84 @@ namespace Vape_Store
                         {
                             int currentRow = dgvPurchaseItems.CurrentCell.RowIndex;
                         
-                            // Get selected item or first item in filtered list
                             Product selectedProduct = null;
                             string selectedText = null;
                             
-                            // First priority: If user navigated with arrow keys, use selected item
+                            // 1. Explicit selection from dropdown
                             if (cb.SelectedIndex >= 0 && cb.SelectedItem != null)
                             {
                                 selectedText = cb.SelectedItem.ToString();
                             }
-                            // Second priority: If no selection but filtered items exist, use first filtered item
-                            // CRITICAL: This ensures Enter key works when user types and presses Enter
+                            // 2. No selection but filtered list exists: pick the first one (SalesForm Style)
                             else if (cb.Items.Count > 0)
                             {
-                                // Use first item in filtered list - this is the best match for what user typed
                                 selectedText = cb.Items[0].ToString();
                             }
-                            // Third priority: If no items but user typed something, try to find exact match
+                            // 3. Typed text match
                             else if (!string.IsNullOrEmpty(cb.Text))
                             {
-                                // Try to find product that matches the typed text
-                                string searchText = cb.Text.Trim();
-                                var matchedProduct = _products?.FirstOrDefault(p => 
-                                    (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                                    (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.Equals(searchText, StringComparison.OrdinalIgnoreCase)));
-                                
-                                if (matchedProduct != null)
-                                {
-                                    selectedText = $"{matchedProduct.ProductName} | {matchedProduct.ProductCode}";
-                                }
-                                else
-                                {
-                                    selectedText = searchText;
-                                }
+                                selectedText = cb.Text.Trim();
                             }
                             
                             if (!string.IsNullOrEmpty(selectedText))
                             {
-                                // Extract product name and code from format "ProductName | ProductCode"
-                                string productName = "";
-                                string productCode = "";
-                                string parsedBarcode = string.Empty;
+                                // Resolve text to Product
+                                string productName = selectedText.Contains(" | ") ? selectedText.Split(new[] { " | " }, StringSplitOptions.None)[0].Trim() : selectedText.Trim();
+                                string productCode = selectedText.Contains(" | ") ? selectedText.Split(new[] { " | " }, StringSplitOptions.None)[1].Trim() : "";
                                 
-                                // Parse the selected text - it should be in format "ProductName | ProductCode"
-                                if (selectedText.Contains(" | "))
+                                if (!string.IsNullOrEmpty(productCode))
                                 {
-                                    var parts = selectedText.Split(new[] { " | " }, StringSplitOptions.None);
-                                    if (parts.Length >= 3)
-                                    {
-                                        productName = parts[0].Trim();
-                                        productCode = parts[1].Trim();
-                                        parsedBarcode = parts[2].Trim();
-                                    }
-                                    else if (parts.Length == 2)
-                                    {
-                                        productName = parts[0].Trim();
-                                        productCode = parts[1].Trim();
-                                    }
-                                    else if (parts.Length == 1)
-                                    {
-                                        productName = parts[0].Trim();
-                                    }
-                                }
-                                else if (selectedText.Contains("|"))
-                                {
-                                    var parts = selectedText.Split('|');
-                                    if (parts.Length >= 3)
-                                    {
-                                        productName = parts[0].Trim();
-                                        productCode = parts[1].Trim();
-                                        parsedBarcode = parts[2].Trim();
-                                    }
-                                    else if (parts.Length == 2)
-                                    {
-                                        productName = parts[0].Trim();
-                                        productCode = parts[1].Trim();
-                                    }
-                                    else if (parts.Length == 1)
-                                    {
-                                        productName = parts[0].Trim();
-                                    }
-                                }
-                                else
-                                {
-                                    // No separator - treat as product name
-                                    productName = selectedText.Trim();
+                                    selectedProduct = _products?.FirstOrDefault(p => p.ProductCode == productCode);
                                 }
                                 
-                                // Prefer matching by Barcode (unique), then ProductCode, then Name
-                                string barcode = parsedBarcode;
-                                if (!string.IsNullOrEmpty(barcode))
+                                if (selectedProduct == null)
                                 {
-                                    selectedProduct = _products?.FirstOrDefault(p =>
-                                        !string.IsNullOrEmpty(p.Barcode) &&
-                                        p.Barcode.Equals(barcode, StringComparison.OrdinalIgnoreCase));
-                                }
-                                
-                                // CRITICAL: Match by ProductCode FIRST (should be unique)
-                                // This ensures we get the exact product the user selected
-                                if (selectedProduct == null && !string.IsNullOrEmpty(productCode))
-                                {
-                                    selectedProduct = _products?.FirstOrDefault(p => 
-                                        !string.IsNullOrEmpty(p.ProductCode) && 
-                                        p.ProductCode.Equals(productCode, StringComparison.OrdinalIgnoreCase));
-                                }
-                                
-                                // If not found by code, try matching by both name AND code together
-                                if (selectedProduct == null && !string.IsNullOrEmpty(productName) && !string.IsNullOrEmpty(productCode))
-                                {
-                                    selectedProduct = _products?.FirstOrDefault(p => 
-                                        !string.IsNullOrEmpty(p.ProductName) && 
-                                        !string.IsNullOrEmpty(p.ProductCode) &&
-                                        p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase) &&
-                                        p.ProductCode.Equals(productCode, StringComparison.OrdinalIgnoreCase));
-                                }
-                                
-                                // Last resort: match by name only (may have duplicates, but best we can do)
-                                if (selectedProduct == null && !string.IsNullOrEmpty(productName))
-                                {
-                                    selectedProduct = _products?.FirstOrDefault(p => 
-                                        !string.IsNullOrEmpty(p.ProductName) && 
-                                        p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase));
+                                    selectedProduct = _products?.FirstOrDefault(p => p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase));
                                 }
                             }
                             
-                            // Set the product in the cell
-                            // CRITICAL: Column expects ProductID (int), and DisplayMember will show ProductName
                             if (selectedProduct != null)
                             {
-                                // Set ProductID - this will trigger CellValueChanged which populates product details
-                                dgvPurchaseItems.CurrentCell.Value = selectedProduct.ProductID;
+                                // CRITICAL: Stop the key event from propagating further to the grid defaults
+                                e.Handled = true;
+                                e.SuppressKeyPress = true;
+
+                                // Close dropdown before commit
+                                if (cb.DroppedDown) cb.DroppedDown = false;
+
+                                // CRITICAL: Sequence commitment to avoid "cannot commit or quit cell value change"
+                                // 1. Set the value in the ComboBox itself first
+                                cb.Text = selectedProduct.ProductName;
                                 
-                                // Ensure the cell displays correctly by forcing a refresh
-                                // The column's DisplayMember will show the ProductName automatically
-                                dgvPurchaseItems.InvalidateCell(dgvPurchaseItems.CurrentCell);
-                            }
-                            else if (!string.IsNullOrEmpty(cb.Text))
-                            {
-                                // Try to find product one more time with the exact text
-                                string searchText = cb.Text.Trim();
-                                var fallbackProduct = _products?.FirstOrDefault(p => 
-                                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                                    (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                                    (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.Equals(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                                    (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                                    (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                                    (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0));
-                                
-                                if (fallbackProduct != null)
-                                {
-                                    dgvPurchaseItems.CurrentCell.Value = fallbackProduct.ProductID;
-                                    dgvPurchaseItems.InvalidateCell(dgvPurchaseItems.CurrentCell);
-                                }
-                                else
-                                {
-                                    // Last resort: store as text if no match found
-                                    dgvPurchaseItems.CurrentCell.Value = cb.Text.Trim();
-                                }
-                            }
-                            
-                            // CRITICAL: Store current row index before commit to ensure we don't access invalid row
-                            int rowIndexBeforeCommit = currentRow;
-                            
-                            // Commit the edit - this triggers CellValueChanged which populates product details
-                            // Use try-catch to handle any index issues during commit
-                            try
-                            {
-                                dgvPurchaseItems.CommitEdit(DataGridViewDataErrorContexts.Commit);
-                                
-                                // Force a refresh to ensure display updates (only if row still exists)
-                                if (selectedProduct != null && dgvPurchaseItems.CurrentCell != null &&
-                                    rowIndexBeforeCommit >= 0 && rowIndexBeforeCommit < dgvPurchaseItems.Rows.Count)
-                                {
-                                    dgvPurchaseItems.RefreshEdit();
-                                }
-                            }
-                            catch (ArgumentOutOfRangeException)
-                            {
-                                // Row was deleted/modified during commit, ignore
-                            }
-                            catch (IndexOutOfRangeException)
-                            {
-                                // Row index invalid, ignore
-                            }
-                            
-                            // Automatically add new row and move to it
-                            e.Handled = true;
-                            
-                            // Use BeginInvoke to ensure commit completes first
-                            if (this != null && !this.IsDisposed && this.IsHandleCreated)
-                            {
+                                // 2. Finalize existing edit before applying logic that changes rows/focus
                                 this.BeginInvoke(new Action(() => 
-                                { 
-                                    try
+                                {
+                                    if (dgvPurchaseItems != null && !dgvPurchaseItems.IsDisposed)
                                     {
-                                        if (this != null && !this.IsDisposed && 
-                                            dgvPurchaseItems != null && !dgvPurchaseItems.IsDisposed)
+                                        // Commit the current cell
+                                        CommitProductSelection(selectedProduct);
+                                        
+                                        // Then add blank row and move focus
+                                        AddBlankRow();
+                                        int nextRow = currentRow + 1;
+                                        if (nextRow < dgvPurchaseItems.Rows.Count)
                                         {
-                                            // Check if we need to add a new row (check if any row has empty/null product)
-                                            // CRITICAL: Check for null, DBNull, 0, or empty string
-                                            int emptyRowCount = dgvPurchaseItems.Rows
-                                                .Cast<DataGridViewRow>()
-                                                .Count(r => {
-                                                    var val = r.Cells["colProductName"].Value;
-                                                    if (val == null || val == DBNull.Value) return true;
-                                                    if (val is int productId) return productId == 0;
-                                                    return string.IsNullOrWhiteSpace(val.ToString());
-                                                });
-                                            
-                                            // If last row was just filled, add a new empty row
-                                            if (currentRow == dgvPurchaseItems.Rows.Count - 1 || emptyRowCount == 0)
+                                            dgvPurchaseItems.CurrentCell = dgvPurchaseItems.Rows[nextRow].Cells["colProductName"];
+                                            dgvPurchaseItems.BeginEdit(true);
+                                            if (dgvPurchaseItems.EditingControl is ComboBox nextCb)
                                             {
-                                                AddBlankRow();
-                                            }
-                                            
-                                            // Move to next row's product name cell
-                                            int nextRow = currentRow + 1;
-                                            if (nextRow < dgvPurchaseItems.Rows.Count)
-                                            {
-                                                // Move to next row - use BeginInvoke again to ensure current edit is fully committed
-                                                this.BeginInvoke(new Action(() =>
-                                                {
-                                                    try
-                                                    {
-                                                        if (this != null && !this.IsDisposed && 
-                                                            dgvPurchaseItems != null && !dgvPurchaseItems.IsDisposed &&
-                                                            nextRow < dgvPurchaseItems.Rows.Count)
-                                                        {
-                                                            dgvPurchaseItems.CurrentCell = dgvPurchaseItems.Rows[nextRow].Cells["colProductName"];
-                                                            dgvPurchaseItems.BeginEdit(true);
-                                                            
-                                                            // Auto-open dropdown for next row
-                                                            if (dgvPurchaseItems.EditingControl is ComboBox nextCb && !nextCb.IsDisposed)
-                                                            {
-                                                                if (nextCb.Items.Count == 0 && _products != null && _products.Count > 0)
-                                                                {
-                                                                    RefreshAllProductsInComboBox(nextCb);
-                                                                }
-                                                                if (nextCb.Items.Count > 0 && !nextCb.DroppedDown)
-                                                                {
-                                                                    nextCb.DroppedDown = true;
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                    catch { }
-                                                }), null);
+                                                nextCb.DroppedDown = true;
                                             }
                                         }
                                     }
-                                    catch { }
                                 }));
                             }
                         }
                     }
                     catch { }
                 }
-                else if (e.KeyCode == Keys.Down || e.KeyCode == Keys.Up)
-                {
-                    // Arrow keys - let ComboBox handle navigation naturally
-                    // Don't handle it here - PreviewKeyDown already marked it as input key
-                    // This allows the native ComboBox arrow key navigation to work
-                    e.Handled = false;
-                }
                 else if (e.KeyCode == Keys.Escape)
                 {
-                    // Cancel editing
                     if (dgvPurchaseItems != null && !dgvPurchaseItems.IsDisposed)
                     {
                         dgvPurchaseItems.CancelEdit();
@@ -2965,169 +2240,82 @@ namespace Vape_Store
                     e.Handled = true;
                 }
             }
-            catch (ObjectDisposedException) { }
-            catch (InvalidOperationException) { }
             catch { }
         }
 
-        // TextBox-like suggestions while typing inside the grid ComboBox editor
-        private void ProductTextBox_KeyUp(object sender, KeyEventArgs e)
+        private void ProductCombo_TextUpdate(object sender, EventArgs e)
         {
+            if (_isFilteringProductCombo) return;
+
+            var cb = sender as ComboBox;
+            if (!IsComboBoxValid(cb)) return;
+
+            string typed = cb.Text;
+            _isFilteringProductCombo = true;
+
             try
             {
-                var cb = sender as ComboBox;
-                if (!IsComboBoxValid(cb)) return;
-
-                // Ignore control keys; suggestions show on any printable char and backspace/delete
-                if (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down ||
-                    e.KeyCode == Keys.Left || e.KeyCode == Keys.Right ||
-                    e.KeyCode == Keys.Enter || e.KeyCode == Keys.Escape ||
-                    e.KeyCode == Keys.Tab) return;
-
-                string text = cb.Text ?? string.Empty;
-                var list = (_products ?? new List<Product>())
-                    .Where(p =>
-                        (!string.IsNullOrEmpty(p.ProductName) && p.ProductName.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                        (!string.IsNullOrEmpty(p.ProductCode) && p.ProductCode.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                        (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0))
-                    .Take(100)
+                // Filter the pre-cached search strings
+                var filtered = _allProductSearchStrings
+                    .Where(s => s.IndexOf(typed, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .Take(20) // Limit results for performance in grid
                     .ToList();
 
-                if (list.Count == 0)
+                if (filtered.Count > 0)
                 {
-                    HideProductSuggestions();
-                    return;
+                    cb.DataSource = filtered;
+                    cb.DroppedDown = true;
+                    // Restore text and position cursor at end
+                    cb.Text = typed;
+                    cb.SelectionStart = typed.Length;
+                    cb.SelectionLength = 0;
                 }
-
-                // Place the suggestion list under the current cell
-                int colIndex = dgvPurchaseItems.Columns["colProductName"].Index;
-                int rowIndex = dgvPurchaseItems.CurrentCell != null ? dgvPurchaseItems.CurrentCell.RowIndex : -1;
-                if (rowIndex >= 0)
+                else
                 {
-                    var cellRect = dgvPurchaseItems.GetCellDisplayRectangle(colIndex, rowIndex, true);
-                    var screen = dgvPurchaseItems.PointToScreen(new System.Drawing.Point(cellRect.Left, cellRect.Bottom));
-                    var client = this.PointToClient(screen);
-                    _productSuggestList.Left = client.X;
-                    _productSuggestList.Top = client.Y;
-                    _productSuggestList.Width = cellRect.Width;
+                    cb.DroppedDown = false;
                 }
-
-                _productSuggestList.BeginUpdate();
-                try
-                {
-                    _productSuggestList.DataSource = null;
-                    _productSuggestList.Items.Clear();
-                    foreach (var p in list)
-                    {
-                        // Show combined text while keeping Product object
-                        _productSuggestList.Items.Add(p);
-                    }
-                    _productSuggestList.DisplayMember = nameof(Product.ProductName);
-                }
-                finally
-                {
-                    _productSuggestList.EndUpdate();
-                }
-
-                _productSuggestList.Visible = true;
-                _productSuggestList.BringToFront();
             }
-            catch { }
-        }
-
-        private void ProductSuggestList_KeyDown(object sender, KeyEventArgs e)
-        {
-            try
+            finally
             {
-                if (e.KeyCode == Keys.Enter && _productSuggestList.SelectedItem is Product p)
-                {
-                    CommitProductSelection(p);
-                    HideProductSuggestions();
-                    e.Handled = true;
-                }
-                else if (e.KeyCode == Keys.Escape)
-                {
-                    HideProductSuggestions();
-                    e.Handled = true;
-                }
+                _isFilteringProductCombo = false;
             }
-            catch { }
-        }
-
-        private void ProductSuggestList_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                if (_productSuggestList.SelectedItem is Product p)
-                {
-                    CommitProductSelection(p);
-                    HideProductSuggestions();
-                }
-            }
-            catch { }
-        }
-
-        private void HideProductSuggestions()
-        {
-            try { if (_productSuggestList != null) _productSuggestList.Visible = false; } catch { }
         }
 
         private void CommitProductSelection(Product selectedProduct)
         {
             try
             {
-                if (selectedProduct == null) return;
-                if (dgvPurchaseItems.CurrentCell == null) return;
+                if (selectedProduct == null || dgvPurchaseItems.CurrentCell == null) return;
 
-                // Set ProductID in the current cell of colProductName (bound to ProductID)
-                dgvPurchaseItems.CurrentCell.Value = selectedProduct.ProductID;
-                dgvPurchaseItems.InvalidateCell(dgvPurchaseItems.CurrentCell);
-
-                // Update related cells in the same row if present
                 int rowIndex = dgvPurchaseItems.CurrentCell.RowIndex;
-                if (rowIndex >= 0 && rowIndex < dgvPurchaseItems.Rows.Count)
-                {
-                    var row = dgvPurchaseItems.Rows[rowIndex];
-                    try { row.Cells["colProductCode"].Value = selectedProduct.ProductCode; } catch { }
-                    try { row.Cells["colPurchasePrice"].Value = selectedProduct.PurchasePrice; } catch { }
-                    try { row.Cells["colSalePrice"].Value = selectedProduct.RetailPrice; } catch { }
-                    try { UpdateExistingStockDisplay(selectedProduct); } catch { }
-                    try { CalculateRowTotal(rowIndex); } catch { }
-                }
                 
-                // Update barcode display for selected product
-                _selectedProduct = selectedProduct;
-                UpdateBarcodeDisplay(selectedProduct);
-
-                // Automatically move to the next empty row for quick entry
-                // Only move if the current row now has a product (we just filled it)
+                // CRITICAL: Ensure we aren't already in the middle of a grid operation
+                _isFilteringProductCombo = true; 
                 try
                 {
-                    bool currentRowHasProduct = false;
-                    if (rowIndex >= 0 && rowIndex < dgvPurchaseItems.Rows.Count)
-                    {
-                        var currentRowProduct = dgvPurchaseItems.Rows[rowIndex].Cells["colProductName"].Value;
-                        currentRowHasProduct = currentRowProduct != null && 
-                            !string.IsNullOrWhiteSpace(currentRowProduct.ToString());
-                    }
+                    // 1. Force end edit to commit the current session gracefully
+                    dgvPurchaseItems.EndEdit();
+
+                    // 2. Set the ID value
+                    dgvPurchaseItems.Rows[rowIndex].Cells["colProductName"].Value = selectedProduct.ProductID;
                     
-                    // Only move to next row if we just filled the current row with a product
-                    if (currentRowHasProduct)
-                    {
-                        int nextEmpty = GetFirstEmptyRowIndex();
-                        if (nextEmpty == -1)
-                        {
-                            AddBlankRow();
-                            nextEmpty = GetFirstEmptyRowIndex();
-                        }
-                        // Move to the next empty row (should be different from current row)
-                        if (nextEmpty >= 0 && nextEmpty != rowIndex)
-                        {
-                            FocusProductCell(nextEmpty);
-                        }
-                    }
+                    // 3. Populate other columns (with validation)
+                    var row = dgvPurchaseItems.Rows[rowIndex];
+                    row.Cells["colProductCode"].Value = selectedProduct.ProductCode;
+                    row.Cells["colPurchasePrice"].Value = selectedProduct.CostPrice; // Ensure correct price used
+                    row.Cells["colSalePrice"].Value = selectedProduct.RetailPrice;
+                    
+                    // 4. Update formatting and totals
+                    UpdateExistingStockDisplay(selectedProduct);
+                    CalculateRowTotal(rowIndex);
+                    CalculateTotals();
+                    
+                    dgvPurchaseItems.InvalidateRow(rowIndex);
                 }
-                catch { }
+                finally
+                {
+                    _isFilteringProductCombo = false;
+                }
             }
             catch { }
         }
@@ -3162,146 +2350,7 @@ namespace Vape_Store
 
         private void ProductCombo_KeyUp(object sender, KeyEventArgs e)
         {
-            // Prevent re-entrant calls
-            if (_isFilteringProductCombo) return;
-            
-            try
-            {
-                var cb = sender as ComboBox;
-                if (!IsComboBoxValid(cb)) return;
-                
-                // Skip filtering for control keys (arrows, enter, etc.)
-                if (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down || 
-                    e.KeyCode == Keys.Enter || e.KeyCode == Keys.Escape || 
-                    e.KeyCode == Keys.Tab || e.KeyCode == Keys.Left || 
-                    e.KeyCode == Keys.Right)
-                {
-                    return;
-                }
-                
-                // Handle Delete and Backspace - they should trigger filtering
-                // (Enter is handled separately in KeyDown)
-                
-                _isFilteringProductCombo = true;
-                
-                try
-                {
-                    // Get the current filter text (what user has typed)
-                    string filter = (cb.Text ?? string.Empty).ToLower().Trim();
-                    
-                    // If filter is empty, show all products
-                    if (string.IsNullOrWhiteSpace(filter))
-                    {
-                        RefreshAllProductsInComboBox(cb);
-                        if (IsComboBoxValid(cb) && cb.Items.Count > 0 && !cb.DroppedDown)
-                        {
-                            cb.DroppedDown = true;
-                        }
-                        return;
-                    }
-                    
-                    // Filter products based on search text (contains match - works for "ap" -> "apple")
-                    if (_products == null || _products.Count == 0) return;
-                    
-                    // Create list of all product strings, include barcode for searching
-                    var allItems = _products
-                        .Where(p => !string.IsNullOrEmpty(p.ProductName))
-                        .Select(p => $"{p.ProductName} | {p.ProductCode} | {p.Barcode}")
-                        .ToList();
-                    
-                    // Filter items that contain the search text (case-insensitive substring match)
-                    // Matches within name, code, or barcode
-                    // Sort by priority: exact match > starts with > contains, then alphabetically
-                    var filteredItemsWithPriority = allItems
-                        .Where(x => !string.IsNullOrEmpty(x) && x.ToLower().Contains(filter))
-                        .Select(x => new
-                        {
-                            Item = x,
-                            // Extract product name (part before first |)
-                            ProductName = x.Split('|')[0].Trim().ToLower(),
-                            FullText = x.ToLower()
-                        })
-                        .Select(x => new
-                        {
-                            x.Item,
-                            Priority = x.ProductName == filter ? 0 : // Exact match
-                                       x.ProductName.StartsWith(filter) ? 1 : // Starts with
-                                       2, // Contains
-                            ProductName = x.ProductName
-                        })
-                        .OrderBy(x => x.Priority) // Sort by priority first
-                        .ThenBy(x => x.ProductName, StringComparer.OrdinalIgnoreCase) // Then alphabetically
-                        .Select(x => x.Item)
-                        .ToList();
-                    
-                    var filteredItems = filteredItemsWithPriority;
-                    
-                    // Preserve current text and caret position BEFORE modifying
-                    string currentText = cb.Text ?? string.Empty;
-                    int selectionStart = Math.Max(0, Math.Min(cb.SelectionStart, currentText.Length));
-                    
-                    // Update items safely
-                    if (IsComboBoxValid(cb))
-                    {
-                        // Close dropdown before modifying items to prevent AccessViolationException
-                        bool wasDroppedDown = cb.DroppedDown;
-                        if (wasDroppedDown)
-                        {
-                            cb.DroppedDown = false;
-                        }
-                        
-                        try
-                        {
-                            cb.BeginUpdate();
-                            cb.Items.Clear();
-                            if (filteredItems.Count > 0)
-                            {
-                                cb.Items.AddRange(filteredItems.ToArray());
-                            }
-                            cb.EndUpdate();
-                            
-                            // Restore text and caret position AFTER updating items
-                            // Use _isFilteringProductCombo flag to prevent TextChanged from interfering
-                            _isFilteringProductCombo = true;
-                            try
-                            {
-                                // Keep the user's typed text visible
-                                cb.Text = currentText;
-                                if (selectionStart >= 0 && selectionStart <= currentText.Length)
-                                {
-                                    cb.SelectionStart = selectionStart;
-                                    cb.SelectionLength = 0;
-                                }
-                                
-                                // CRITICAL: Don't auto-select first item here - it would overwrite user's text
-                                // Instead, Enter handler will use Items[0] if nothing is selected
-                                // This allows user to see their typed text while filtering happens
-                            }
-                            finally
-                            {
-                                _isFilteringProductCombo = false;
-                            }
-                            
-                            // Reopen dropdown if it was open and we have filtered items
-                            if (filteredItems.Count > 0 && wasDroppedDown)
-                            {
-                                cb.DroppedDown = true;
-                            }
-                        }
-                        catch (ObjectDisposedException) { }
-                        catch (AccessViolationException) { }
-                        catch (InvalidOperationException) { }
-                        catch { }
-                    }
-                }
-                finally
-                {
-                    _isFilteringProductCombo = false;
-                }
-            }
-            catch (ObjectDisposedException) { }
-            catch (InvalidOperationException) { }
-            catch { }
+            // Redundant: search is now handled by TextUpdate like SalesForm
         }
 
         private void ProductCombo_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
@@ -4688,7 +3737,8 @@ namespace Vape_Store
         private void DgvPurchaseItems_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
             // CRITICAL: Prevent re-entrant calls and validate immediately
-            if (_isCalculating)
+            // Respect BOTH calculation and product selection busy states
+            if (_isCalculating || _isFilteringProductCombo)
             {
                 return; // Already processing, prevent re-entry
             }
@@ -4712,7 +3762,7 @@ namespace Vape_Store
                     // Set flag to prevent re-entrant calls
                     _isCalculating = true;
                     // Auto-fill product information when product name is selected
-                    if (e.ColumnIndex == 1) // Product Name column
+                    if (e.ColumnIndex == colProductName.Index) // Product Name column
                     {
                         // CRITICAL: Double-check row index is still valid before accessing
                         if (e.RowIndex < 0 || e.RowIndex >= dgvPurchaseItems.Rows.Count)
@@ -4769,7 +3819,46 @@ namespace Vape_Store
                         }
                         if (product != null && row != null)
                         {
-                            // Auto-fill product information (with validation)
+                            // CRITICAL: Check if this product already exists in another row to merge
+                            int existingRowIndex = -1;
+                            for (int i = 0; i < dgvPurchaseItems.Rows.Count; i++)
+                            {
+                                if (i == e.RowIndex) continue; // Skip current row
+                                var otherRow = dgvPurchaseItems.Rows[i];
+                                var otherCode = otherRow.Cells["colProductCode"].Value?.ToString();
+                                if (!string.IsNullOrEmpty(otherCode) && otherCode.Equals(product.ProductCode, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    existingRowIndex = i;
+                                    break;
+                                }
+                            }
+
+                            if (existingRowIndex >= 0)
+                            {
+                                // Increment quantity in existing row
+                                var existingRow = dgvPurchaseItems.Rows[existingRowIndex];
+                                int currentQty = 0;
+                                int.TryParse(existingRow.Cells["colQty"].Value?.ToString() ?? "0", out currentQty);
+                                existingRow.Cells["colQty"].Value = currentQty + 1;
+                                CalculateRowTotal(existingRowIndex);
+                                
+                                // Clear current row (reset selection)
+                                _isCalculating = true; // Use flag to prevent recursive calls
+                                row.Cells["colProductName"].Value = null;
+                                row.Cells["colProductCode"].Value = string.Empty;
+                                row.Cells["colPurchasePrice"].Value = 0.00m;
+                                _isCalculating = false;
+
+                                CalculateTotals();
+                                
+                                // Clean up and focus the existing row
+                                dgvPurchaseItems.CurrentCell = existingRow.Cells["colQty"];
+                                return;
+                            }
+
+                            else
+                            {
+                                // Auto-fill product information (with validation)
                             // Use the cached row reference instead of accessing by index again
                             try
                             {
@@ -4805,18 +3894,19 @@ namespace Vape_Store
                             
                             // Update barcode display for selected product
                             _selectedProduct = product;
-                            UpdateBarcodeDisplay(product);
+                            // UpdateBarcodeDisplay(product); // Removed as UI control deleted
 
                             // Calculate total for this row (with validation)
                             if (e.RowIndex >= 0 && e.RowIndex < dgvPurchaseItems.Rows.Count)
                             {
                                 CalculateRowTotal(e.RowIndex);
                             }
+                            }
                         }
                         else if (row != null)
                         {
                             // Product not found - clear the fields (with validation)
-                            UpdateBarcodeDisplay(null);
+                            // UpdateBarcodeDisplay(null); // Removed as UI control deleted
                             // Use the cached row reference instead of accessing by index again
                             try
                             {
@@ -4840,14 +3930,14 @@ namespace Vape_Store
                     }
                     
                     // Calculate total amount for the row when quantity or price changes
-                    if ((e.ColumnIndex == 3 || e.ColumnIndex == 4) && // Qty or Purchase Price column
+                    if ((e.ColumnIndex == colQty.Index || e.ColumnIndex == colPurchasePrice.Index) && // Qty or Purchase Price column
                         e.RowIndex >= 0 && e.RowIndex < dgvPurchaseItems.Rows.Count)
                     {
                         CalculateRowTotal(e.RowIndex);
                     }
                     
                     // Update product retail price in database when sale price changes
-                    if (e.ColumnIndex == 5 && // Sale Price column
+                    if (e.ColumnIndex == colSalePrice.Index && // Sale Price column
                         e.RowIndex >= 0 && e.RowIndex < dgvPurchaseItems.Rows.Count)
                     {
                         UpdateProductRetailPrice(e.RowIndex);
@@ -4908,18 +3998,18 @@ namespace Vape_Store
                     {
                         UpdateExistingStockDisplay(product);
                         _selectedProduct = product;
-                        UpdateBarcodeDisplay(product);
+                        // UpdateBarcodeDisplay(product); // Removed as UI control deleted
                     }
                     else
                     {
                         txtExistingStock.Clear();
-                        UpdateBarcodeDisplay(null);
+                        // UpdateBarcodeDisplay(null); // Removed as UI control deleted
                     }
                 }
                 else
                 {
                     txtExistingStock.Clear();
-                    UpdateBarcodeDisplay(null);
+                    // UpdateBarcodeDisplay(null); // Removed as UI control deleted
                 }
             }
             catch (Exception ex)
@@ -5143,6 +4233,8 @@ namespace Vape_Store
 
         private void DgvPurchaseItems_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
+            if (_isCalculating || _isFilteringProductCombo) return;
+            
             try
             {
                 if (e.RowIndex >= 0)
@@ -5195,7 +4287,7 @@ namespace Vape_Store
             try
             {
                 // Handle Delete button click
-                if (e.ColumnIndex == 7 && e.RowIndex >= 0) // Delete column
+                if (e.RowIndex >= 0 && dgvPurchaseItems.Columns[e.ColumnIndex].Name == "colDelete") // Delete column
                 {
                     if (MessageBox.Show("Are you sure you want to delete this item?", "Confirm Delete", 
                         MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
@@ -5225,19 +4317,6 @@ namespace Vape_Store
                             RemoveExtraEmptyRows();
                         }
                     }
-                }
-                // Handle Product Name column click - ensure it's editable and opens dropdown
-                else if (e.RowIndex >= 0 && e.ColumnIndex == dgvPurchaseItems.Columns["colProductName"].Index)
-                {
-                    try
-                    {
-                        // Ensure cell is editable
-                        dgvPurchaseItems.Rows[e.RowIndex].Cells["colProductName"].ReadOnly = false;
-                        // Begin editing to open dropdown
-                        dgvPurchaseItems.CurrentCell = dgvPurchaseItems.Rows[e.RowIndex].Cells["colProductName"];
-                        dgvPurchaseItems.BeginEdit(true);
-                    }
-                    catch { }
                 }
                 // Update existing stock when clicking on any cell in a row with a product
                 else if (e.RowIndex >= 0 && e.RowIndex < dgvPurchaseItems.Rows.Count)
@@ -5389,15 +4468,16 @@ namespace Vape_Store
                 decimal balance = netAmount - paidAmount;
                 
                 // Update display with proper formatting
-                txtSubtotal.Text = _subtotal.ToString("F2");
-                txtNetAmount.Text = netAmount.ToString("F2");
-                txtBalance.Text = balance.ToString("F2");
+                txtSubtotal.Text = _subtotal.ToString("N2");
+                txtTotal.Text = netAmount.ToString("N2"); 
+                txtBalance.Text = balance.ToString("N2");
                 
-                // Update form title with purchase summary
-                UpdateFormTitle(totalItems, totalQuantity);
-                
-                // Calculate balance
-                CalculateBalance();
+                // Keep discount and tax amounts updated in state if needed
+                _grandTotal = netAmount;
+                _balanceAmount = balance;
+
+                // Ensure a blank row is always available at the bottom for high-volume entry
+                EnsureBlankRowAtBottom();
             }
             catch (Exception ex)
             {
@@ -5420,9 +4500,34 @@ namespace Vape_Store
                 }
                 this.Text = title;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Don't show error for title update
+            }
+        }
+
+        private void cmbPaymentMethod_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (cmbPaymentMethod.SelectedItem?.ToString() == "Credit")
+                {
+                    txtPaid.Text = "0.00";
+                    txtPaid.Enabled = false; 
+                }
+                else
+                {
+                    txtPaid.Enabled = true;
+                    if (string.IsNullOrEmpty(txtPaid.Text) || txtPaid.Text == "0" || txtPaid.Text == "0.00")
+                    {
+                         txtPaid.Text = txtTotal.Text;
+                    }
+                }
+                CalculateTotals();
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error handling payment method change: {ex.Message}");
             }
         }
 
@@ -5438,7 +4543,7 @@ namespace Vape_Store
                 }
                 this.Text = title;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Don't show error for display update
             }
@@ -5449,23 +4554,26 @@ namespace Vape_Store
             try
             {
                 decimal paidAmount = ParseDecimal(txtPaid.Text);
-                decimal netAmount = ParseDecimal(txtNetAmount.Text);
+                decimal netAmount = ParseDecimal(txtTotal.Text);
                 decimal balance = netAmount - paidAmount;
                 
-                txtBalance.Text = balance.ToString("F2");
+                txtBalance.Text = balance.ToString("N2");
                 
                 // Color code the balance
                 if (balance > 0)
                 {
-                    txtBalance.BackColor = Color.LightCoral; // Amount due
+                    txtBalance.BackColor = Color.MistyRose; // Amount due
+                    txtBalance.ForeColor = Color.Red;
                 }
                 else if (balance < 0)
                 {
                     txtBalance.BackColor = Color.LightGreen; // Overpaid
+                    txtBalance.ForeColor = Color.Green;
                 }
                 else
                 {
-                    txtBalance.BackColor = Color.White; // Exact payment
+                    txtBalance.BackColor = Color.Honeydew; // Exact payment
+                    txtBalance.ForeColor = Color.Green;
                 }
             }
             catch (Exception ex)
@@ -5501,10 +4609,19 @@ namespace Vape_Store
                 
                 // Show progress
                 this.Cursor = Cursors.WaitCursor;
+                System.Diagnostics.Debug.WriteLine("Creating purchase objects...");
 
                 // Create purchase object
                 var purchase = CreatePurchaseObject();
                 
+                // CRITICAL VALIDATION: Ensure total amount is valid
+                if (purchase.TotalAmount <= 0)
+                {
+                    ShowError("Total amount must be greater than 0. Please check your items and prices.");
+                    this.Cursor = Cursors.Default;
+                    return;
+                }
+
                 // Create purchase items
                 var purchaseItems = CreatePurchaseItems();
                 
@@ -5565,8 +4682,8 @@ namespace Vape_Store
                     // Stock is already updated in ProcessPurchase method
                     // No need to update again here
                     
-                    // Generate thermal invoice with current data (like sales form does)
-                    GenerateThermalInvoice(purchase, purchaseItems);
+                    // Show A4 professional document preview
+                    ShowPurchaseReceiptPreview(purchase, purchaseItems);
                     
                     // Show success message
                     MessageBox.Show("Purchase saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -5717,14 +4834,15 @@ namespace Vape_Store
                 SubTotal = _subtotal,
                 TaxAmount = ParseDecimal(txtTaxPercent.Text) > 0 ? (_subtotal * ParseDecimal(txtTaxPercent.Text) / 100) : 0,
                 TaxPercent = ParseDecimal(txtTaxPercent.Text),
-                TotalAmount = ParseDecimal(txtNetAmount.Text),
-                PaymentMethod = cmbPaymentTerms.SelectedItem?.ToString() ?? "Cash",
+                TotalAmount = ParseDecimal(txtTotal.Text),
+                PaymentMethod = cmbPaymentMethod.SelectedItem?.ToString() ?? "Cash",
                 PaidAmount = ParseDecimal(txtPaid.Text),
                 ChangeAmount = ParseDecimal(txtBalance.Text),
                 UserID = _currentUserID,
                 CreatedDate = DateTime.Now,
-                PaymentTerms = cmbPaymentTerms.SelectedItem?.ToString() ?? "Cash",
+                PaymentTerms = cmbPaymentMethod.SelectedItem?.ToString() ?? "Cash",
                 DiscountAmount = ParseDecimal(txtDiscountPercent.Text) > 0 ? (_subtotal * ParseDecimal(txtDiscountPercent.Text) / 100) : 0,
+                DiscountPercent = ParseDecimal(txtDiscountPercent.Text),
                 Notes = txtDescription.Text.Trim()
             };
         }
@@ -5733,143 +4851,90 @@ namespace Vape_Store
         {
             var purchaseItems = new List<PurchaseItem>();
             
+            // Pre-fetch all products once to avoid repeated database calls inside the loop
+            var allProducts = _productRepository.GetAllProducts();
+            var productsByName = allProducts.GroupBy(p => p.ProductName.ToLower()).ToDictionary(g => g.Key, g => g.First());
+            var productsByCode = allProducts.GroupBy(p => p.ProductCode.ToLower()).ToDictionary(g => g.Key, g => g.First());
+
             foreach (DataGridViewRow row in dgvPurchaseItems.Rows)
             {
                 // Strict validation: Only process rows with both product name AND product code
                 var rawProductVal = row.Cells["colProductName"].Value;
-                string productCode = row.Cells["colProductCode"].Value?.ToString() ?? "";
+                string productCodeStr = row.Cells["colProductCode"].Value?.ToString() ?? "";
                 
                 // Skip empty rows - must have both product name and code to be valid
                 bool hasProductName = rawProductVal != null && !string.IsNullOrWhiteSpace(rawProductVal.ToString());
-                bool hasProductCode = !string.IsNullOrWhiteSpace(productCode);
+                bool hasProductCode = !string.IsNullOrWhiteSpace(productCodeStr);
                 
                 if (!hasProductName || !hasProductCode)
                 {
-                    // Skip this row - it's empty or incomplete
                     continue;
                 }
                 
-                // Get quantity and price - use defaults if missing
                 decimal quantity = ParseDecimal(row.Cells["colQty"].Value);
                 decimal purchasePrice = ParseDecimal(row.Cells["colPurchasePrice"].Value);
                 
-                // Find product first to get default values
+                // Find product
                 Product product = null;
-                if (rawProductVal is int idVal)
+                string productName = rawProductVal.ToString();
+                if (productName.Contains(" | "))
                 {
-                    product = _products.FirstOrDefault(p => p.ProductID == idVal);
+                    productName = productName.Split('|')[0].Trim();
                 }
-                else
+
+                // Try lookup in pre-fetched data
+                if (productsByCode.ContainsKey(productCodeStr.ToLower()))
                 {
-                    string productName = rawProductVal.ToString();
-                    // Remove any " | Code" suffix if present
-                    if (productName.Contains(" | "))
-                    {
-                        productName = productName.Split('|')[0].Trim();
-                    }
-                    
-                    product = _products.FirstOrDefault(p => 
-                        p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase) ||
-                        (!string.IsNullOrEmpty(productCode) && p.ProductCode.Equals(productCode, StringComparison.OrdinalIgnoreCase)));
+                    product = productsByCode[productCodeStr.ToLower()];
                 }
-                
-                // If product not found in local list, try database lookup
-                if (product == null)
+                else if (productsByName.ContainsKey(productName.ToLower()))
                 {
-                    var allProducts = _productRepository.GetAllProducts();
-                    string productName = rawProductVal.ToString();
-                    if (productName.Contains(" | "))
-                    {
-                        productName = productName.Split('|')[0].Trim();
-                    }
-                    
-                    if (!string.IsNullOrEmpty(productName))
-                    {
-                        product = allProducts.FirstOrDefault(p => 
-                            p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase));
-                    }
-                    
-                    if (product == null && !string.IsNullOrEmpty(productCode))
-                    {
-                        product = allProducts.FirstOrDefault(p => 
-                            p.ProductCode.Equals(productCode, StringComparison.OrdinalIgnoreCase));
-                    }
-                }
-                
-                // If product still not found, skip this row
-                if (product == null || product.ProductID <= 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Product not found for row: {rawProductVal} / {productCode}");
-                    continue;
+                    product = productsByName[productName.ToLower()];
                 }
                 
                 // Use defaults if quantity or price is missing/zero
-                if (quantity <= 0)
+                if (quantity <= 0) quantity = 1;
+                
+                decimal finalPurchasePrice = purchasePrice;
+                if (finalPurchasePrice <= 0 && product != null)
                 {
-                    quantity = 1; // Default to 1 if not specified
+                    finalPurchasePrice = product.PurchasePrice > 0 ? product.PurchasePrice : 
+                                       (product.CostPrice > 0 ? product.CostPrice : 0);
                 }
                 
-                if (purchasePrice <= 0)
-                {
-                    // Use product's purchase price or cost price as default
-                    purchasePrice = product.PurchasePrice > 0 ? product.PurchasePrice : 
-                                   (product.CostPrice > 0 ? product.CostPrice : 0);
-                    
-                    // If still 0, skip this row (product has no valid price)
-                    if (purchasePrice <= 0)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Product {product.ProductName} has no valid price, skipping");
-                        continue;
-                    }
-                }
-                
-                // Calculate subtotal if not already set
+                if (finalPurchasePrice <= 0) continue; // Still no price, skip
+
                 decimal subtotal = ParseDecimal(row.Cells["colTotal"].Value);
-                if (subtotal <= 0)
-                {
-                    subtotal = quantity * purchasePrice;
-                }
+                if (subtotal <= 0) subtotal = quantity * finalPurchasePrice;
                 
-                // Get selling price or use product's retail price
                 decimal sellingPrice = ParseDecimal(row.Cells["colSalePrice"].Value);
                 if (sellingPrice <= 0 && product != null)
                 {
-                    sellingPrice = product.RetailPrice > 0 ? product.RetailPrice : purchasePrice;
+                    sellingPrice = product.RetailPrice > 0 ? product.RetailPrice : finalPurchasePrice;
                 }
                 
                 var purchaseItem = new PurchaseItem
                 {
-                    ProductID = product.ProductID,
-                    Quantity = (int)Math.Round(quantity, 0), // Convert decimal to int properly
-                    Unit = "pcs", // Default unit
-                    UnitPrice = purchasePrice,
+                    ProductID = product?.ProductID ?? 0, // 0 means new product to be auto-created
+                    Quantity = (int)Math.Round(quantity, 0),
+                    Unit = "pcs",
+                    UnitPrice = finalPurchasePrice,
                     SellingPrice = sellingPrice,
                     SubTotal = subtotal,
                     Bonus = 0,
-                    BatchNumber = "",
-                    ExpiryDate = DateTime.Now.AddYears(1),
+                    BatchNumber = row.Cells["colBatchNo"].Value?.ToString() ?? "",
+                    ExpiryDate = row.Cells["colExpiryDate"].Value is DateTime edt ? edt : DateTime.Now.AddYears(1),
                     DiscountAmount = 0,
                     TaxPercent = 0,
                     Remarks = "",
-                    ProductName = product.ProductName ?? "Unknown Product",
-                    ProductCode = product.ProductCode ?? ""
+                    ProductName = product?.ProductName ?? productName,
+                    ProductCode = product?.ProductCode ?? productCodeStr
                 };
                 
-                // Validate purchase item before adding
-                if (purchaseItem.Quantity <= 0)
+                if (purchaseItem.Quantity > 0 && purchaseItem.UnitPrice > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Skipping item with invalid quantity: {purchaseItem.ProductName}, Qty: {purchaseItem.Quantity}");
-                    continue;
+                    purchaseItems.Add(purchaseItem);
                 }
-                
-                if (purchaseItem.UnitPrice <= 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Skipping item with invalid price: {purchaseItem.ProductName}, Price: {purchaseItem.UnitPrice}");
-                    continue;
-                }
-                
-                purchaseItems.Add(purchaseItem);
-                System.Diagnostics.Debug.WriteLine($"Added purchase item: {purchaseItem.ProductName} (ID: {purchaseItem.ProductID}), Qty: {purchaseItem.Quantity}, Price: {purchaseItem.UnitPrice}, SubTotal: {purchaseItem.SubTotal}");
             }
             
             return purchaseItems;
@@ -5902,39 +4967,7 @@ namespace Vape_Store
             }
         }
 
-        private void RemoveExtraEmptyRows()
-        {
-            try
-            {
-                // Find all empty rows
-                var emptyRowIndices = new List<int>();
-                for (int i = 0; i < dgvPurchaseItems.Rows.Count; i++)
-                {
-                    var val = dgvPurchaseItems.Rows[i].Cells["colProductName"].Value?.ToString();
-                    if (string.IsNullOrWhiteSpace(val))
-                    {
-                        emptyRowIndices.Add(i);
-                    }
-                }
-                
-                // Keep only the last empty row, remove all others
-                if (emptyRowIndices.Count > 1)
-                {
-                    // Sort descending to remove from end first
-                    emptyRowIndices.Sort((a, b) => b.CompareTo(a));
-                    // Remove all except the first one (which will be the last in the grid after sorting)
-                    for (int i = 1; i < emptyRowIndices.Count; i++)
-                    {
-                        dgvPurchaseItems.Rows.RemoveAt(emptyRowIndices[i]);
-                    }
-                    RefreshRowNumbers();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error removing extra empty rows: {ex.Message}");
-            }
-        }
+
         #endregion
 
         #region Form Management
@@ -5942,12 +4975,21 @@ namespace Vape_Store
         {
             try
             {
-                // TODO: Implement print functionality
-                ShowInfo("Print functionality will be implemented in the next version.");
+                // Scrape current form data to show a preview even if not saved yet
+                var purchase = CreatePurchaseObject();
+                var purchaseItems = CreatePurchaseItems();
+                
+                if (purchaseItems == null || purchaseItems.Count == 0)
+                {
+                    ShowError("Please add at least one product with quantity and price to preview the receipt.");
+                    return;
+                }
+                
+                ShowPurchaseReceiptPreview(purchase, purchaseItems);
             }
             catch (Exception ex)
             {
-                ShowError($"Error printing invoice: {ex.Message}");
+                ShowError($"Error showing print preview: {ex.Message}");
             }
         }
 
@@ -6003,7 +5045,7 @@ namespace Vape_Store
                 txtInvoiceNo.Clear();
                 dtpInvoiceDate.Value = _businessDateService.GetCurrentBusinessDate();
                 txtDescription.Clear();
-                cmbPaymentTerms.SelectedIndex = 0;
+                cmbPaymentMethod.SelectedIndex = 0;
                 txtExistingStock.Clear();
                 _selectedProduct = null;
                 
@@ -6012,11 +5054,17 @@ namespace Vape_Store
                 
                 // Clear totals
                 txtSubtotal.Clear();
-                txtDiscountPercent.Clear();
-                txtTaxPercent.Clear();
-                txtNetAmount.Clear();
+                txtDiscountPercent.Text = "0";
+                txtTaxPercent.Text = "0";
+                txtTotal.Clear();
                 txtPaid.Clear();
                 txtBalance.Clear();
+                
+                // Reset barcode
+                picBarcode.Image = null;
+                
+                // Generate new invoice number
+                GenerateInvoiceNumber();
                 
                 // Generate new invoice number
                 GenerateInvoiceNumber();
@@ -6309,17 +5357,17 @@ namespace Vape_Store
             }
         }
 
-        private void GenerateThermalInvoice(Purchase purchase, List<PurchaseItem> purchaseItems)
+        private void ShowPurchaseReceiptPreview(Purchase purchase, List<PurchaseItem> purchaseItems)
         {
             try
             {
-                // Show receipt preview - exact same as sales form
+                // Show A4 size professional document preview for purchases
                 var receiptPreview = new PurchaseReceiptPreviewForm(purchase, purchaseItems);
                 receiptPreview.ShowDialog();
             }
             catch (Exception ex)
             {
-                ShowError($"Error printing receipt: {ex.Message}");
+                ShowError($"Error showing purchase receipt preview: {ex.Message}");
             }
         }
         #endregion

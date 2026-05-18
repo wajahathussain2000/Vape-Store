@@ -106,6 +106,8 @@ namespace Vape_Store
             var lblPreset = new Label { Text = "Size Preset:", Left = 440, Top = 90, Width = 80 };
             cmbSizePreset = new ComboBox { Left = 520, Top = 86, Width = 150, DropDownStyle = ComboBoxStyle.DropDownList };
             
+            lblSizeInfo = new Label { Text = "", Left = 440, Top = 60, Width = 250, Font = new Font("Segoe UI", 8, FontStyle.Italic), ForeColor = Color.Gray };
+            
 
             this.Controls.Add(lblProduct);
             this.Controls.Add(cmbProduct);

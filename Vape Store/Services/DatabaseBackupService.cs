@@ -3,6 +3,9 @@ using System.IO;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Windows.Forms;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Vape_Store.Services
 {
@@ -58,6 +61,7 @@ namespace Vape_Store.Services
                     if (TestWriteAccess(savedLocation))
                     {
                         backupFolderPath = savedLocation;
+                        GrantSqlServerPermissions(backupFolderPath);
                         return;
                     }
                 }
@@ -88,6 +92,7 @@ namespace Vape_Store.Services
                     if (TestWriteAccess(location))
                     {
                         backupFolderPath = location;
+                        GrantSqlServerPermissions(backupFolderPath);
                         SaveBackupLocation(location);
                         break;
                     }
@@ -179,12 +184,68 @@ namespace Vape_Store.Services
 
                 // Update location
                 backupFolderPath = newLocation;
+                GrantSqlServerPermissions(backupFolderPath);
                 SaveBackupLocation(newLocation);
                 return true;
             }
             catch
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to grant SQL Server service account permissions to the backup folder
+        /// This ensures the client doesn't have to manually configuration folder permissions
+        /// </summary>
+        /// <param name="folderPath">The path to the folder to grant permissions to</param>
+        private void GrantSqlServerPermissions(string folderPath)
+        {
+            if (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath))
+                return;
+
+            try
+            {
+                // Most standard SQL service account names
+                string[] serviceAccounts = {
+                    "NT SERVICE\\MSSQLSERVER",
+                    "NT SERVICE\\SQLEXPRESS",
+                    "NETWORK SERVICE",
+                    "SYSTEM",
+                    "Everyone" // Last resort for high accessibility
+                };
+
+                foreach (string account in serviceAccounts)
+                {
+                    try
+                    {
+                        // Run icacls to grant permissions
+                        // /grant:r = grant replace
+                        // (OI)(CI) = Object Inherit, Container Inherit
+                        // F = Full Control
+                        ProcessStartInfo psi = new ProcessStartInfo
+                        {
+                            FileName = "icacls.exe",
+                            Arguments = $"\"{folderPath}\" /grant \"{account}:(OI)(CI)F\" /T /C /Q",
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            RedirectStandardOutput = true
+                        };
+
+                        using (Process process = Process.Start(psi))
+                        {
+                            process?.WaitForExit(3000); // Wait up to 3 seconds per account
+                        }
+                    }
+                    catch
+                    {
+                        // Continue to next account if one fails
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to grant SQL permissions: {ex.Message}");
             }
         }
 
@@ -438,8 +499,12 @@ namespace Vape_Store.Services
                                       "Please contact your database administrator to grant this permission.";
                         break;
                     case 3201: // Cannot open backup device
+                        // Try to auto-grant permissions and advice user
+                        GrantSqlServerPermissions(Path.GetDirectoryName(sqlBackupPath));
+                        
                         errorMessage += "Cannot access the backup location. " +
                                       $"SQL Server cannot write to: {sqlBackupPath}\n\n" +
+                                      "The system has attempted to fix permissions automatically. Please try again.\n\n" +
                                       "Possible solutions:\n" +
                                       "1. Ensure SQL Server service account has write permissions to the backup folder\n" +
                                       "2. Use SQL Server's default backup directory\n" +

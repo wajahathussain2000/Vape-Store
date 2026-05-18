@@ -19,17 +19,17 @@ namespace Vape_Store.Repositories
         public List<Product> GetAllProducts()
         {
             List<Product> products = new List<Product>();
-            string query = @"SELECT p.ProductID, p.ProductCode, p.ProductName, p.Description, p.CategoryID, p.BrandID,
-                           p.PurchasePrice, ISNULL(p.CostPrice, p.PurchasePrice) as CostPrice, 
-                           ISNULL((SELECT TOP 1 pi.SellingPrice FROM PurchaseItems pi JOIN Purchases pur ON pi.PurchaseID = pur.PurchaseID WHERE pi.ProductID = p.ProductID AND pi.RemainingQuantity > 0 ORDER BY pur.PurchaseDate ASC, pi.PurchaseItemID ASC), p.RetailPrice) as RetailPrice, 
-                           p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, ISNULL(p.IsAvailableForSale, 1) as IsAvailableForSale, p.CreatedDate,
-                           c.CategoryName, b.BrandName
-                           FROM Products p
-                           LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
-                           LEFT JOIN Brands b ON p.BrandID = b.BrandID
-                           WHERE p.IsActive = 1
-                           ORDER BY p.ProductName";
-            
+             string query = @"SELECT p.ProductID, p.ProductCode, p.ProductName, p.Description, p.CategoryID, p.BrandID,
+               p.PurchasePrice, ISNULL(p.CostPrice, p.PurchasePrice) as CostPrice, 
+               p.RetailPrice as RetailPrice,  -- ? FIXED HERE
+               p.StockQuantity, p.ReorderLevel, p.Barcode, p.IsActive, ISNULL(p.IsAvailableForSale, 1) as IsAvailableForSale, p.CreatedDate,
+               c.CategoryName, b.BrandName
+               FROM Products p
+               LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
+               LEFT JOIN Brands b ON p.BrandID = b.BrandID
+               WHERE p.IsActive = 1
+               ORDER BY p.ProductName";
+
             try
             {
                 using (var connection = DatabaseConnection.GetConnection())
@@ -71,7 +71,7 @@ namespace Vape_Store.Repositories
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }

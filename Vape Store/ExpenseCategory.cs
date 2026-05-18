@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -25,6 +25,7 @@ namespace Vape_Store
         public ExpenseCategoryForm()
         {
             InitializeComponent();
+            
             _expenseCategoryRepository = new ExpenseCategoryRepository();
             
             SetupEventHandlers();

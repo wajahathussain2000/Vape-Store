@@ -115,6 +115,12 @@
     <Compile Include="Dashboard.Designer.cs">
       <DependentUpon>Dashboard.cs</DependentUpon>
     </Compile>
+    <Compile Include="EditBatch.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EditBatch.Designer.cs">
+      <DependentUpon>EditBatch.cs</DependentUpon>
+    </Compile>
     <Compile Include="EditSale.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -148,12 +154,6 @@
     <Compile Include="ProductEntryForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="NewSale.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="NewSale.Designer.cs">
-      <DependentUpon>NewSale.cs</DependentUpon>
-    </Compile>
     <Compile Include="Products.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -167,6 +167,12 @@
     </Compile>
     <Compile Include="PurchaseReturn.Designer.cs">
       <DependentUpon>PurchaseReturn.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SalesForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SalesForm.Designer.cs">
+      <DependentUpon>SalesForm.cs</DependentUpon>
     </Compile>
     <Compile Include="SalesReturn.cs">
       <SubType>Form</SubType>
@@ -197,6 +203,12 @@
     </Compile>
     <Compile Include="SalesReportForm.Designer.cs">
       <DependentUpon>SalesReportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DateRangeReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DateRangeReportForm.Designer.cs">
+      <DependentUpon>DateRangeReportForm.cs</DependentUpon>
     </Compile>
     <Compile Include="HTMLReportViewerForm.cs">
       <SubType>Form</SubType>
@@ -265,6 +277,7 @@
     <Compile Include="Models\CustomerLedgerEntry.cs" />
     <Compile Include="Models\SupplierLedgerEntry.cs" />
     <Compile Include="Models\SupplierPayment.cs" />
+    <Compile Include="Models\StoreSettings.cs" />
     <Compile Include="Repositories\UserRepository.cs" />
     <Compile Include="Repositories\ProductRepository.cs" />
     <Compile Include="Repositories\CustomerRepository.cs" />
@@ -284,6 +297,7 @@
     <Compile Include="Repositories\SupplierLedgerRepository.cs" />
     <Compile Include="Repositories\SupplierPaymentRepository.cs" />
     <Compile Include="Repositories\RoleRepository.cs" />
+    <Compile Include="Repositories\StoreSettingsRepository.cs" />
     <Compile Include="Services\SalesService.cs" />
     <Compile Include="Services\InventoryService.cs" />
     <Compile Include="Services\AuthenticationService.cs" />
@@ -297,6 +311,12 @@
     <Compile Include="Services\LoggingService.cs" />
     <Compile Include="Services\RoleManagerService.cs" />
     <Compile Include="Services\BusinessDateService.cs" />
+    <Compile Include="SettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SettingsForm.Designer.cs">
+      <DependentUpon>SettingsForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="RolesPermissionsForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -315,8 +335,8 @@
     <Compile Include="PrintBarcodeForm.Designer.cs">
       <DependentUpon>PrintBarcodeForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="InvoicePreviewForm.Designer.cs">
-      <DependentUpon>ThermalInvoiceForm.cs</DependentUpon>
+    <Compile Include="SaleReceiptPreviewForm.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="PurchaseReceiptPreviewForm.cs">
       <SubType>Form</SubType>
@@ -402,6 +422,9 @@
     <EmbeddedResource Include="Dashboard.resx">
       <DependentUpon>Dashboard.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="EditBatch.resx">
+      <DependentUpon>EditBatch.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="EditSale.resx">
       <DependentUpon>EditSale.cs</DependentUpon>
     </EmbeddedResource>
@@ -417,9 +440,6 @@
     <EmbeddedResource Include="NewPurchase.resx">
       <DependentUpon>NewPurchase.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="NewSale.resx">
-      <DependentUpon>NewSale.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Products.resx">
       <DependentUpon>Products.cs</DependentUpon>
     </EmbeddedResource>
@@ -434,6 +454,9 @@
     </Compile>
     <EmbeddedResource Include="PurchaseReturn.resx">
       <DependentUpon>PurchaseReturn.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SalesForm.resx">
+      <DependentUpon>SalesForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="SalesReturn.resx">
       <DependentUpon>SalesReturn.cs</DependentUpon>

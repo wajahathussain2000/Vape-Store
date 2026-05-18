@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -38,6 +38,7 @@ namespace Vape_Store
         public Products()
         {
             InitializeComponent();
+            
             _productRepository = new ProductRepository();
             _categoryRepository = new CategoryRepository();
             _brandRepository = new BrandRepository();
@@ -556,7 +557,7 @@ namespace Vape_Store
 
                 // Validate input
                 if (string.IsNullOrWhiteSpace(txtProductName.Text))
-                {
+                {                   
                     ShowMessage("Please enter a product name.", "Validation Error", MessageBoxIcon.Warning);
                     txtProductName.Focus();
                     return;
@@ -746,6 +747,7 @@ namespace Vape_Store
             txtPrice.Clear();
             txtretailprice.Clear();
             txtReorderLevel.Clear();
+            txtStockQuantity.Text = "0";
             txtBarcode.Clear();
             // Clear barcode display panel
             if (pnlBarcode != null)
@@ -961,7 +963,7 @@ namespace Vape_Store
                 
                 return uniqueBarcode;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Fallback to simple barcode if generation fails
                 return $"PRD{productCode}{DateTime.Now.Ticks}";
@@ -1100,6 +1102,7 @@ namespace Vape_Store
                 txtPrice.Text = product.CostPrice.ToString("F2");
                 txtretailprice.Text = product.RetailPrice.ToString("F2");
                 txtReorderLevel.Text = product.ReorderLevel.ToString();
+                txtStockQuantity.Text = product.StockQuantity.ToString();
                 
                 // Load and display barcode
                 if (!string.IsNullOrEmpty(product.Barcode))
@@ -1128,45 +1131,8 @@ namespace Vape_Store
 
         private void TxtSearch_TextChanged(object sender, EventArgs e)
         {
-            if (this.IsDisposed)
-                return;
-                
-            void ExecuteFilter()
-            {
-                try
-                {
-                    FilterProducts();
-                }
-                catch (AccessViolationException ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"AccessViolation during product search filter: {ex.Message}");
-                    // Swallow to prevent crash; grid might have been disposed momentarily
-                }
-                catch (ObjectDisposedException)
-                {
-                    // Control disposed while filtering; safe to ignore
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Unexpected error filtering products: {ex.Message}");
-                }
-            }
-
-            if (this.InvokeRequired)
-            {
-                try
-            {
-                    this.BeginInvoke(new Action(ExecuteFilter));
-                }
-                catch
-                {
-                    // Ignore invoke errors if form is closing
-                }
-            }
-            else
-            {
-                ExecuteFilter();
-            }
+            if (this.IsDisposed) return;
+            FilterProducts();
         }
 
         [HandleProcessCorruptedStateExceptions]
@@ -1454,6 +1420,152 @@ namespace Vape_Store
                 // Silently handle errors during real-time validation
                 System.Diagnostics.Debug.WriteLine($"Barcode validation error: {ex.Message}");
             }
+        }
+
+        private void panel1_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void txtStockQuantity_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lblStockQuantity_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void panel4_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void lblTitle_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void gridGroup_Enter(object sender, EventArgs e)
+        {
+
+        }
+
+        private void barcodeGroup_Enter(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pnlBarcode_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void txtBarcode_TextChanged_1(object sender, EventArgs e)
+        {
+
+        }
+
+        private void barcodeLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+
+        private void dgvProducts_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void productGroup_Enter_1(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void txtReorderLevel_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void reorderLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void txtPrice_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void priceLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void cmbBrand_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void brandLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void cmbCategory_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void categoryLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void txtDescription_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void descLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void txtProductName_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void nameLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void txtProductCode_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void codeLabel_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

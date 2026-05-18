@@ -32,6 +32,7 @@ namespace Vape_Store
         public PurchaseReportForm()
         {
             InitializeComponent();
+            
             _purchaseRepository = new PurchaseRepository();
             _supplierRepository = new SupplierRepository();
             _productRepository = new ProductRepository();
@@ -521,7 +522,8 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("MADNI MOBILE AND PHOTOSTATE - PURCHASE REPORT", titleFont);
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                Paragraph title = new Paragraph($"{storeName} - PURCHASE REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);
@@ -650,7 +652,8 @@ namespace Vape_Store
                 html.AppendLine("</style>");
                 html.AppendLine("</head><body>");
                 
-                html.AppendLine("<h1>MADNI MOBILE AND PHOTOSTATE - PURCHASE REPORT</h1>");
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                html.AppendLine($"<h1>{storeName} - PURCHASE REPORT</h1>");
                 html.AppendLine($"<p><strong>Report Period:</strong> {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}</p>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 

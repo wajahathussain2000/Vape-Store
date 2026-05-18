@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -24,6 +24,7 @@ namespace Vape_Store
         public Cash_in_Hand()
         {
             InitializeComponent();
+            
             _cashInHandRepository = new CashInHandRepository();
             _userRepository = new UserRepository();
             
@@ -222,7 +223,7 @@ namespace Vape_Store
                 decimal closingCash = openingCash + cashIn - cashOut - expenses;
                 txtclosingbalance.Text = closingCash.ToString("F2");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Don't show error message for calculation, just set to 0
                 txtclosingbalance.Text = "0.00";

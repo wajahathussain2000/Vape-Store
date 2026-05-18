@@ -21,6 +21,7 @@ namespace Vape_Store
         private SaleRepository _saleRepository;
         private PurchaseRepository _purchaseRepository;
         private ExpenseRepository _expenseRepository;
+        private SalesReturnRepository _salesReturnRepository;
         private ReportingService _reportingService;
         
         private List<ProfitLossItem> _profitLossItems;
@@ -31,9 +32,11 @@ namespace Vape_Store
             try
             {
                 InitializeComponent();
+                
                 _saleRepository = new SaleRepository();
                 _purchaseRepository = new PurchaseRepository();
                 _expenseRepository = new ExpenseRepository();
+                _salesReturnRepository = new SalesReturnRepository();
                 _reportingService = new ReportingService();
                 
                 _profitLossItems = new List<ProfitLossItem>();
@@ -253,7 +256,7 @@ namespace Vape_Store
                 var sales = _saleRepository.GetSalesByDateRange(fromDate, toDate);
                 var totalSales = sales.Sum(s => s.TotalAmount);
                 var totalSalesTax = sales.Sum(s => s.TaxAmount);
-                var salesReturns = 0m; // placeholder if returns are modeled elsewhere
+                var salesReturns = _salesReturnRepository.GetTotalReturnsAmount(fromDate, toDate);
                 var netRevenue = Math.Max(0m, totalSales - totalSalesTax - salesReturns);
                 
                 // Add revenue items
@@ -277,6 +280,17 @@ namespace Vape_Store
                     Date = fromDate,
                     IsHeader = false,
                     Percentage = netRevenue > 0 ? totalSalesTax / netRevenue : 0
+                });
+
+                items.Add(new ProfitLossItem
+                {
+                    Category = "REVENUE",
+                    Description = "Sales Returns",
+                    Amount = -salesReturns,
+                    Type = "Revenue",
+                    Date = fromDate,
+                    IsHeader = false,
+                    Percentage = netRevenue > 0 ? salesReturns / netRevenue : 0
                 });
 
                 items.Add(new ProfitLossItem
@@ -566,7 +580,8 @@ namespace Vape_Store
                 html.AppendLine("</style>");
                 html.AppendLine("</head><body>");
                 
-                html.AppendLine("<h1>MADNI MOBILE AND PHOTOSTATE - PROFIT & LOSS REPORT</h1>");
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                html.AppendLine($"<h1>{storeName} - PROFIT & LOSS REPORT</h1>");
                 html.AppendLine($"<p><strong>Report Period:</strong> {dtpFromDate.Value:yyyy-MM-dd} to {dtpToDate.Value:yyyy-MM-dd}</p>");
                 html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
                 
@@ -611,7 +626,8 @@ namespace Vape_Store
                 iTextSharp.text.Font smallFont = new iTextSharp.text.Font(baseFont, 8, iTextSharp.text.Font.NORMAL);
 
                 // Title
-                Paragraph title = new Paragraph("MADNI MOBILE AND PHOTOSTATE - PROFIT & LOSS REPORT", titleFont);
+                string storeName = ConfigurationService.Instance.ApplicationName.ToUpper();
+                Paragraph title = new Paragraph($"{storeName} - PROFIT & LOSS REPORT", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
                 title.SpacingAfter = 20f;
                 document.Add(title);

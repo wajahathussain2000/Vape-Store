@@ -42,6 +42,8 @@ namespace Vape_Store.Services
 
         private readonly string _applicationPath;
         private readonly string _logDirectory;
+        private readonly Repositories.StoreSettingsRepository _settingsRepo;
+        private Models.StoreSettings _cachedSettings;
 
         #endregion
 
@@ -54,6 +56,7 @@ namespace Vape_Store.Services
         {
             _applicationPath = AppDomain.CurrentDomain.BaseDirectory;
             _logDirectory = Path.Combine(_applicationPath, "Logs");
+            _settingsRepo = new Repositories.StoreSettingsRepository();
         }
 
         #endregion
@@ -143,21 +146,187 @@ namespace Vape_Store.Services
         }
 
         /// <summary>
-        /// Gets the application name
+        /// Refreshes the cached store settings from the database
+        /// </summary>
+        public void RefreshSettings()
+        {
+            _cachedSettings = _settingsRepo.GetSettings();
+        }
+
+        /// <summary>
+        /// Gets the current store name
         /// </summary>
         public string ApplicationName
         {
             get
             {
-                try
-                {
-                    string value = ConfigurationManager.AppSettings["ApplicationName"];
-                    return string.IsNullOrEmpty(value) ? "Vape Store" : value;
-                }
-                catch
-                {
-                    return "Vape Store";
-                }
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.StoreName ?? GetConfigValue("ApplicationName", "Vape Store");
+            }
+        }
+
+        /// <summary>
+        /// Gets the current store contact number
+        /// </summary>
+        public string StoreContact
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.StoreContact ?? "0345:5518744";
+            }
+        }
+
+        /// <summary>
+        /// Gets the current store address
+        /// </summary>
+        public string StoreAddress
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.StoreAddress ?? "Shop#3, opp Save Mart, main Tulsa road, lalazar,Rwp";
+            }
+        }
+
+        /// <summary>
+        /// Gets the current receipt footer
+        /// </summary>
+        public string ReceiptFooter
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.ReceiptFooter ?? "- GOODS PURCHASED ARE NOT RETURNABLE\n- GOODS ONCE PURCHASED ARE ONLY EXCHANGEABLE NOT RETURNABLE.\n- MADNI MOBILE SHOP IS NOT RESPONSIBLE FOR ANY WARRANTY CLAIMS.";
+            }
+        }
+
+        /// <summary>
+        /// Gets the current store email
+        /// </summary>
+        public string StoreEmail
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.StoreEmail ?? string.Empty;
+            }
+        }
+
+        public string BarcodeDefaultLabel
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeDefaultLabel ?? ApplicationName;
+            }
+        }
+
+        public int BarcodeWidth
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeWidth ?? 130;
+            }
+        }
+
+        public int BarcodeHeight
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeHeight ?? 90;
+            }
+        }
+
+        public decimal BarcodeGap
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeGap ?? 3m;
+            }
+        }
+
+        public decimal BarcodeMarginLeft
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeMarginLeft ?? 0m;
+            }
+        }
+
+        public decimal BarcodeMarginRight
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeMarginRight ?? 12m;
+            }
+        }
+
+        public decimal BarcodeMarginTop
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeMarginTop ?? 4m;
+            }
+        }
+
+        public decimal BarcodeMarginBottom
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeMarginBottom ?? 0m;
+            }
+        }
+
+        public bool BarcodeIsThermal
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodeIsThermal ?? true;
+            }
+        }
+
+        public int ThermalPaperWidth
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.ThermalPaperWidth ?? 300;
+            }
+        }
+
+        public string ThermalPrinterName
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.ThermalPrinterName ?? string.Empty;
+            }
+        }
+
+        public string BarcodePrinterName
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.BarcodePrinterName ?? string.Empty;
+            }
+        }
+
+        public bool DirectPrintReceipt
+        {
+            get
+            {
+                if (_cachedSettings == null) RefreshSettings();
+                return _cachedSettings?.DirectPrintReceipt ?? false;
             }
         }
 

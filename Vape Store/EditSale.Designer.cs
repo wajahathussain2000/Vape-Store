@@ -1,4 +1,4 @@
-﻿namespace Vape_Store
+namespace Vape_Store
 {
     partial class EditSale
     {
@@ -53,6 +53,8 @@
             this.priceLabel = new System.Windows.Forms.Label();
             this.guna2DateTimePicker1 = new Guna.UI2.WinForms.Guna2DateTimePicker();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.btnGetData = new System.Windows.Forms.Button();
+            this.txtinvoiceNo = new System.Windows.Forms.ComboBox();
             this.txtStockQuantity = new System.Windows.Forms.TextBox();
             this.stockLabel = new System.Windows.Forms.Label();
             this.txtReorderLevel = new System.Windows.Forms.TextBox();
@@ -70,8 +72,6 @@
             this.ItemName = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Qty = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Price = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.txtinvoiceNo = new System.Windows.Forms.ComboBox();
-            this.btnGetData = new System.Windows.Forms.Button();
             this.panel2.SuspendLayout();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
@@ -126,7 +126,7 @@
             this.cmbPaymentMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbPaymentMethod.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cmbPaymentMethod.FormattingEnabled = true;
-            this.cmbPaymentMethod.Location = new System.Drawing.Point(730, 648);
+            this.cmbPaymentMethod.Location = new System.Drawing.Point(220, 789);
             this.cmbPaymentMethod.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.cmbPaymentMethod.Name = "cmbPaymentMethod";
             this.cmbPaymentMethod.Size = new System.Drawing.Size(298, 36);
@@ -136,7 +136,7 @@
             // 
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(532, 648);
+            this.label1.Location = new System.Drawing.Point(22, 789);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(180, 28);
@@ -173,7 +173,7 @@
             // 
             // saveBtn
             // 
-            this.saveBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(46)))), ((int)(((byte)(204)))), ((int)(((byte)(113)))));
+            this.saveBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(181)))), ((int)(((byte)(246)))));
             this.saveBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.saveBtn.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.saveBtn.ForeColor = System.Drawing.Color.White;
@@ -295,9 +295,9 @@
             this.panel2.Controls.Add(this.label13);
             this.panel2.Controls.Add(this.label14);
             this.panel2.Controls.Add(this.cmbTax);
-            this.panel2.Location = new System.Drawing.Point(1122, 618);
+            this.panel2.Location = new System.Drawing.Point(1013, 714);
             this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(492, 344);
+            this.panel2.Size = new System.Drawing.Size(492, 333);
             this.panel2.TabIndex = 44;
             // 
             // txtTaxPercent
@@ -328,7 +328,6 @@
             this.SubTotal.HeaderText = "SubTotal";
             this.SubTotal.MinimumWidth = 8;
             this.SubTotal.Name = "SubTotal";
-            this.SubTotal.Width = 200;
             // 
             // priceLabel
             // 
@@ -356,7 +355,7 @@
             // 
             // panel1
             // 
-            this.panel1.BackColor = System.Drawing.Color.SeaGreen;
+            this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(181)))), ((int)(((byte)(246)))));
             this.panel1.Controls.Add(this.btnGetData);
             this.panel1.Controls.Add(this.txtinvoiceNo);
             this.panel1.Controls.Add(this.txtStockQuantity);
@@ -379,6 +378,30 @@
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(1789, 223);
             this.panel1.TabIndex = 35;
+            // 
+            // btnGetData
+            // 
+            this.btnGetData.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(152)))), ((int)(((byte)(219)))));
+            this.btnGetData.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnGetData.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnGetData.ForeColor = System.Drawing.Color.White;
+            this.btnGetData.Location = new System.Drawing.Point(425, 14);
+            this.btnGetData.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.btnGetData.Name = "btnGetData";
+            this.btnGetData.Size = new System.Drawing.Size(105, 31);
+            this.btnGetData.TabIndex = 41;
+            this.btnGetData.Text = "Get Data";
+            this.btnGetData.UseVisualStyleBackColor = false;
+            // 
+            // txtinvoiceNo
+            // 
+            this.txtinvoiceNo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtinvoiceNo.FormattingEnabled = true;
+            this.txtinvoiceNo.Location = new System.Drawing.Point(177, 14);
+            this.txtinvoiceNo.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.txtinvoiceNo.Name = "txtinvoiceNo";
+            this.txtinvoiceNo.Size = new System.Drawing.Size(240, 36);
+            this.txtinvoiceNo.TabIndex = 28;
             // 
             // txtStockQuantity
             // 
@@ -494,9 +517,9 @@
             this.categoryLabel.Location = new System.Drawing.Point(607, 9);
             this.categoryLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.categoryLabel.Name = "categoryLabel";
-            this.categoryLabel.Size = new System.Drawing.Size(137, 28);
+            this.categoryLabel.Size = new System.Drawing.Size(103, 28);
             this.categoryLabel.TabIndex = 10;
-            this.categoryLabel.Text = "📂 Category:";
+            this.categoryLabel.Text = "Category:";
             // 
             // label3
             // 
@@ -526,8 +549,7 @@
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.RowHeadersWidth = 25;
             this.dataGridView1.RowTemplate.Height = 28;
-            this.dataGridView1.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.dataGridView1.Size = new System.Drawing.Size(1614, 397);
+            this.dataGridView1.Size = new System.Drawing.Size(1614, 496);
             this.dataGridView1.TabIndex = 36;
             // 
             // SrNo
@@ -535,59 +557,30 @@
             this.SrNo.HeaderText = "Sr.No";
             this.SrNo.MinimumWidth = 8;
             this.SrNo.Name = "SrNo";
-            this.SrNo.Width = 150;
             // 
             // ItemName
             // 
             this.ItemName.HeaderText = "ItemName";
             this.ItemName.MinimumWidth = 8;
             this.ItemName.Name = "ItemName";
-            this.ItemName.Width = 450;
             // 
             // Qty
             // 
             this.Qty.HeaderText = "Qty";
             this.Qty.MinimumWidth = 8;
             this.Qty.Name = "Qty";
-            this.Qty.Width = 180;
             // 
             // Price
             // 
             this.Price.HeaderText = "Price";
             this.Price.MinimumWidth = 8;
             this.Price.Name = "Price";
-            this.Price.Width = 180;
-            // 
-            // txtinvoiceNo (ComboBox for searchable invoice)
-            // 
-            this.txtinvoiceNo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
-            this.txtinvoiceNo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtinvoiceNo.FormattingEnabled = true;
-            this.txtinvoiceNo.Location = new System.Drawing.Point(177, 14);
-            this.txtinvoiceNo.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.txtinvoiceNo.Name = "txtinvoiceNo";
-            this.txtinvoiceNo.Size = new System.Drawing.Size(240, 36);
-            this.txtinvoiceNo.TabIndex = 28;
-            // 
-            // btnGetData
-            // 
-            this.btnGetData.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(152)))), ((int)(((byte)(219)))));
-            this.btnGetData.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnGetData.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnGetData.ForeColor = System.Drawing.Color.White;
-            this.btnGetData.Location = new System.Drawing.Point(425, 14);
-            this.btnGetData.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.btnGetData.Name = "btnGetData";
-            this.btnGetData.Size = new System.Drawing.Size(105, 31);
-            this.btnGetData.TabIndex = 41;
-            this.btnGetData.Text = "Get Data";
-            this.btnGetData.UseVisualStyleBackColor = false;
             // 
             // EditSale
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1789, 951);
+            this.ClientSize = new System.Drawing.Size(1789, 1050);
             this.Controls.Add(this.RefreshBtn);
             this.Controls.Add(this.cmbPaymentMethod);
             this.Controls.Add(this.label1);
@@ -598,10 +591,8 @@
             this.Controls.Add(this.ClearBtn);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.dataGridView1);
-            this.MaximizeBox = true;
-            this.MinimizeBox = true;
             this.Name = "EditSale";
-            this.Text = "madni mobile Mobiles Rwp - Edit Sale";
+            this.Text = "Vape Store - Edit Sale";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();
