@@ -14,6 +14,7 @@ namespace Vape_Store.DataAccess
                     connection.Open();
                     EnsureCustomerLedgerTable(connection);
                     EnsureStoreSettingsTable(connection);
+                    EnsureBrandsTable(connection);
                     EnsureSalesReturnItemsMigration(connection);
                     HealDatabaseStockBatches(connection);
                 }
@@ -24,6 +25,55 @@ namespace Vape_Store.DataAccess
                 // but we don't want to crash start up if it's just a minor connection issue that might resolve later.
                 // However, missing tables are critical.
                 System.Diagnostics.Debug.WriteLine($"Database initialization failed: {ex.Message}");
+            }
+        }
+
+        private static void EnsureBrandsTable(SqlConnection connection)
+        {
+            try
+            {
+                string checkTableQuery = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'Brands'";
+                using (var command = new SqlCommand(checkTableQuery, connection))
+                {
+                    int count = Convert.ToInt32(command.ExecuteScalar());
+                    if (count == 0)
+                    {
+                        string createTableQuery = @"
+                            CREATE TABLE [dbo].[Brands](
+                                [BrandID] [int] IDENTITY(1,1) NOT NULL,
+                                [BrandName] [nvarchar](100) NOT NULL,
+                                [Description] [nvarchar](255) NULL,
+                                [IsActive] [bit] NOT NULL DEFAULT 1,
+                                [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE(),
+                                CONSTRAINT [PK_Brands] PRIMARY KEY CLUSTERED ([BrandID] ASC)
+                            );
+                        ";
+                        using (var createCommand = new SqlCommand(createTableQuery, connection))
+                        {
+                            createCommand.ExecuteNonQuery();
+                            System.Diagnostics.Debug.WriteLine("Created table: Brands");
+                        }
+                    }
+                }
+
+                string checkProductColumnQuery = @"
+                    IF NOT EXISTS (
+                        SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+                        WHERE TABLE_NAME = 'Products' AND COLUMN_NAME = 'BrandID'
+                    )
+                    BEGIN
+                        ALTER TABLE Products ADD BrandID INT NULL;
+                    END";
+                
+                using (var command = new SqlCommand(checkProductColumnQuery, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Ensured Products table has BrandID column.");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to create Brands table or update Products table: {ex.Message}");
             }
         }
 

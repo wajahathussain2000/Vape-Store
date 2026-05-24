@@ -254,10 +254,11 @@ namespace Vape_Store
                 
                 // Get sales data
                 var sales = _saleRepository.GetSalesByDateRange(fromDate, toDate);
-                var totalSales = sales.Sum(s => s.TotalAmount);
+                var totalSales = sales.Sum(s => s.TotalAmount + s.DiscountAmount);
+                var totalDiscount = sales.Sum(s => s.DiscountAmount);
                 var totalSalesTax = sales.Sum(s => s.TaxAmount);
                 var salesReturns = _salesReturnRepository.GetTotalReturnsAmount(fromDate, toDate);
-                var netRevenue = Math.Max(0m, totalSales - totalSalesTax - salesReturns);
+                var netRevenue = Math.Max(0m, totalSales - totalDiscount - totalSalesTax - salesReturns);
                 
                 // Add revenue items
                 items.Add(new ProfitLossItem
@@ -271,6 +272,17 @@ namespace Vape_Store
                     Percentage = netRevenue > 0 ? totalSales / netRevenue : 0
                 });
                 
+                items.Add(new ProfitLossItem
+                {
+                    Category = "REVENUE",
+                    Description = "Discounts Given",
+                    Amount = -totalDiscount,
+                    Type = "Revenue",
+                    Date = fromDate,
+                    IsHeader = false,
+                    Percentage = netRevenue > 0 ? totalDiscount / netRevenue : 0
+                });
+
                 items.Add(new ProfitLossItem
                 {
                     Category = "REVENUE",
@@ -306,17 +318,19 @@ namespace Vape_Store
                 
                 _summary.TotalRevenue = netRevenue;
                 
-                // Get purchase data (Cost of Goods Sold)
+                // Get purchase data (for breakdown purposes)
                 var purchases = _purchaseRepository.GetPurchasesByDateRange(fromDate, toDate);
                 var totalPurchases = purchases.Sum(p => p.TotalAmount);
                 var totalPurchaseTax = purchases.Sum(p => p.TaxAmount);
-                var cogs = Math.Max(0m, totalPurchases - totalPurchaseTax);
+                
+                // Calculate COGS based on actual items sold
+                var cogs = sales.SelectMany(s => s.SaleItems).Sum(item => item.CostPrice * item.Quantity);
                 
                 // Add COGS items
                 items.Add(new ProfitLossItem
                 {
                     Category = "COST OF GOODS SOLD",
-                    Description = "Purchases (Net of Tax)",
+                    Description = "Cost of Goods Sold",
                     Amount = cogs,
                     Type = "Expense",
                     Date = fromDate,
@@ -424,6 +438,8 @@ namespace Vape_Store
                 ShowMessage($"Error generating profit & loss report: {ex.Message}", "Error", MessageBoxIcon.Error);
             }
         }
+
+
 
         private void BuildAndBindBreakdowns(List<Sale> sales, List<Purchase> purchases, List<Expense> expenses, decimal netRevenue, decimal cogs, decimal totalExpenses)
         {
